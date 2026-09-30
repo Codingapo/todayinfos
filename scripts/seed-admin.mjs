@@ -1,0 +1,11 @@
+import 'dotenv/config';
+import bcrypt from 'bcryptjs';
+import pg from 'pg';
+const {Pool}=pg;
+const url=process.env.DATABASE_URL;if(!url)throw new Error('DATABASE_URL is required');
+const username=process.env.SEED_ADMIN_USERNAME||'apo';const password=process.env.SEED_ADMIN_PASSWORD||'admin';
+if(process.env.NODE_ENV==='production'&&password==='admin')throw new Error('Refusing to seed production with password "admin". Set SEED_ADMIN_PASSWORD.');
+const email=process.env.SEED_ADMIN_EMAIL||'admin@example.com';const hash=await bcrypt.hash(password,12);
+const pool=new Pool({connectionString:url,ssl:String(process.env.DATABASE_SSL??'true').toLowerCase()!=='false'?{rejectUnauthorized:false}:false});
+await pool.query(`insert into admin_users(username,email,display_name,role,password_hash) values($1,$2,$3,'owner',$4) on conflict(username) do update set password_hash=excluded.password_hash,email=excluded.email,role='owner',active=true`,[username,email,'TodayInfo Owner',hash]);
+await pool.end();console.log(`Seeded admin user: ${username}`);

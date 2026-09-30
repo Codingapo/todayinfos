@@ -1,0 +1,170 @@
+openapi: 3.1.0
+info:
+  title: TodayInfo Managed Content API
+  version: 0.2.0
+  description: Structured public API. Only reviewed and published content is exposed.
+servers:
+  - url: /api/v1
+paths:
+  /site:
+    get:
+      summary: Public TodayInfo site settings
+      responses: {'200': {description: Site settings}}
+  /posts:
+    get:
+      summary: All published content
+      parameters:
+        - {name: page, in: query, schema: {type: integer}}
+        - {name: limit, in: query, schema: {type: integer, maximum: 100}}
+      responses: {'200': {description: Published content collection}}
+  /news:
+    get:
+      summary: Published news
+      responses: {'200': {description: News collection}}
+  /bursaries:
+    get:
+      summary: Published bursaries
+      responses: {'200': {description: Bursary collection}}
+  /jobs:
+    get:
+      summary: Published jobs
+      responses: {'200': {description: Job collection}}
+  /internships:
+    get:
+      summary: Published internships
+      responses: {'200': {description: Internship collection}}
+  /learnerships:
+    get:
+      summary: Published learnerships
+      responses: {'200': {description: Learnership collection}}
+  /trending:
+    get:
+      summary: Content manually marked as trending
+      responses: {'200': {description: Trending collection}}
+  /posts/{slug}:
+    get:
+      summary: Get one structured content page
+      parameters:
+        - {name: slug, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: Structured page response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ContentDetail'}
+        '404': {description: Not found}
+  /tags:
+    get:
+      summary: Published tags with counts
+      responses: {'200': {description: Tag collection}}
+  /tags/{slug}:
+    get:
+      summary: Published content sharing a tag, including psychometric-test when published with that tag
+      parameters:
+        - {name: slug, in: path, required: true, schema: {type: string}}
+      responses: {'200': {description: Tag page}}
+  /categories:
+    get:
+      summary: Published categories
+      responses: {'200': {description: Category collection}}
+  /categories/{slug}:
+    get:
+      summary: Published content in a category
+      parameters:
+        - {name: slug, in: path, required: true, schema: {type: string}}
+      responses: {'200': {description: Category page}}
+  /search:
+    get:
+      summary: Search reviewed/published content only
+      parameters:
+        - {name: q, in: query, schema: {type: string}}
+      responses: {'200': {description: Search results}}
+  /analytics/events:
+    post:
+      summary: Record a public analytics event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event_type]
+              properties:
+                visitor_id: {type: string}
+                event_type: {enum: [view, read, search, application_click, download, related_click, recommendation_click, tag_click]}
+                post_id: {type: string}
+                meta: {type: object}
+      responses: {'202': {description: Accepted}}
+  /crawl/status:
+    get:
+      summary: Sanitized status; raw indexed/crawler counts remain private
+      responses: {'200': {description: Managed status}}
+components:
+  schemas:
+    Link:
+      type: object
+      required: [title, url]
+      properties:
+        title: {type: string}
+        url: {type: string}
+        type: {type: string}
+        icon: {type: [string, 'null']}
+    Tag:
+      type: object
+      properties:
+        name: {type: string}
+        slug: {type: string}
+        url: {type: string}
+    Topic:
+      type: object
+      properties:
+        id: {type: string, examples: [t1]}
+        key: {type: string, examples: [t1]}
+        title: {type: string}
+        body:
+          type: object
+          properties:
+            markdown: {type: string}
+            blocks: {type: array, items: {type: object}}
+            html: {type: string}
+        links: {type: array, items: {$ref: '#/components/schemas/Link'}}
+        images: {type: array, items: {type: object}}
+        documents: {type: array, items: {type: object}}
+    ContentDetail:
+      type: object
+      properties:
+        id: {type: string}
+        type: {enum: [news, bursary, job, other, internship, learnership, announcement, story]}
+        slug: {type: string}
+        path: {type: string}
+        title: {type: string}
+        description: {type: string}
+        main_image: {type: [string, 'null']}
+        posted_date: {type: [string, 'null']}
+        updated_date: {type: [string, 'null']}
+        category: {type: [string, 'null']}
+        tags: {type: array, items: {$ref: '#/components/schemas/Tag'}}
+        metadata:
+          type: object
+          description: Type-specific metadata. Bursaries include status/closing date/provider; jobs include company/location; news includes event date.
+        body:
+          type: object
+          properties:
+            markdown: {type: string}
+            blocks: {type: array, items: {type: object}}
+            html: {type: string}
+        topics: {type: array, maxItems: 10, items: {$ref: '#/components/schemas/Topic'}}
+        topic_navigation: {type: array, items: {type: object}}
+        related_links: {type: array, items: {$ref: '#/components/schemas/Link'}}
+        documents: {type: array, items: {type: object}}
+        related_content: {type: array, items: {type: object}}
+        recommendations: {type: array, items: {type: object}}
+        navigation:
+          type: object
+          properties:
+            breadcrumbs: {type: array, items: {$ref: '#/components/schemas/Link'}}
+            links: {type: array, items: {$ref: '#/components/schemas/Link'}}
+        seo: {type: object}
