@@ -162,6 +162,78 @@ async function ashbyBoard(board,{maxAgeDays}){
   })).filter(Boolean);
 }
 
+
+async function remotive({maxAgeDays,target}){
+  const data=await fetchJson(`https://remotive.com/api/remote-jobs?limit=${Math.min(500,Math.max(1,target||200))}`);
+  return (data.jobs||[]).map(j=>toImport({
+    provider:'Remotive',id:j.id,title:j.title,company:j.company_name,location:j.candidate_required_location||'Remote',
+    description:j.description,postedDate:j.publication_date,applicationUrl:j.url,sourceUrl:j.url,
+    tags:[j.category,j.job_type],jobTypes:[j.job_type],salary:{text:j.salary||null},remote:true,raw:j,maxAgeDays
+  })).filter(Boolean);
+}
+
+async function greenhouseBoard(board,{maxAgeDays}){
+  const data=await fetchJson(`https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(board)}/jobs?content=true`);
+  return (data.jobs||[]).map(j=>{
+    const office=(j.offices||[]).map(x=>x.location||x.name).filter(Boolean).join(', ');
+    const department=(j.departments||[]).map(x=>x.name).filter(Boolean);
+    return toImport({
+      provider:`Greenhouse · ${board}`,id:j.id,title:j.title,company:board,
+      location:j.location?.name||office||'',description:j.content||'',
+      postedDate:j.updated_at,applicationUrl:j.absolute_url,sourceUrl:j.absolute_url,
+      tags:department,jobTypes:department,remote:/remote/i.test(`${j.location?.name||''} ${office}`),raw:j,maxAgeDays
+    });
+  }).filter(Boolean);
+}
+
+async function workableAccount(account,{maxAgeDays}){
+  const data=await fetchJson(`https://www.workable.com/api/accounts/${encodeURIComponent(account)}?details=true`);
+  return (data.jobs||[]).map(j=>{
+    const loc=[j.city,j.state,j.country].filter(Boolean).join(', ')||j.location?.location_str||j.location||'';
+    const jobTypes=[j.employment_type,j.experience,j.department,j.workplace_type].filter(Boolean);
+    const salary=j.salary?{
+      min:j.salary.salary_from??j.salary.from??null,max:j.salary.salary_to??j.salary.to??null,
+      currency:j.salary.salary_currency??j.salary.currency??null
+    }:{};
+    return toImport({
+      provider:`Workable · ${data.name||account}`,id:j.shortcode||j.code||j.id,title:j.title,company:data.name||account,
+      location:loc,description:j.full_description||j.description||j.description_html||'',
+      postedDate:j.published_on||j.created_at,applicationUrl:j.url||j.shortlink,sourceUrl:j.url||j.shortlink,
+      tags:jobTypes,jobTypes,salary,remote:/remote/i.test(`${j.workplace_type||''} ${loc}`),raw:j,maxAgeDays
+    });
+  }).filter(Boolean);
+}
+
+async function smartRecruitersCompany(company,{maxAgeDays,target=500}){
+  const rows=[];let offset=0;const limit=100;
+  while(rows.length<target&&offset<5000){
+    const data=await fetchJson(`https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(company)}/postings?limit=${limit}&offset=${offset}&destination=PUBLIC`);
+    const postings=data.content||data.postings||[];
+    if(!postings.length)break;
+    for(let i=0;i<postings.length&&rows.length<target;i+=1){
+      const item=postings[i];let detail=item;
+      if(!item.jobAd?.sections&&!item.jobAd?.description){
+        try{detail=await fetchJson(`https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(company)}/postings/${encodeURIComponent(item.id||item.uuid)}`)}catch{}
+      }
+      const sections=detail.jobAd?.sections||{};
+      const description=[
+        sections.companyDescription?.text,sections.jobDescription?.text,sections.qualifications?.text,
+        sections.additionalInformation?.text,detail.jobAd?.description
+      ].filter(Boolean).join('\n\n');
+      const location=detail.location?[detail.location.city,detail.location.region,detail.location.country].filter(Boolean).join(', '):'';
+      rows.push(toImport({
+        provider:`SmartRecruiters · ${company}`,id:detail.id||detail.uuid,title:detail.name||detail.title,company,
+        location,description,postedDate:detail.releasedDate||detail.createdOn||detail.updatedDate,
+        applicationUrl:detail.ref||detail.applyUrl||detail.url,sourceUrl:detail.ref||detail.url||detail.applyUrl,
+        tags:[detail.department?.label,detail.industry?.label,detail.typeOfEmployment?.label],
+        jobTypes:[detail.typeOfEmployment?.label],remote:/remote/i.test(location),raw:detail,maxAgeDays
+      }));
+    }
+    if(postings.length<limit)break;offset+=limit;
+  }
+  return rows.filter(Boolean).slice(0,target);
+}
+
 async function snapshot(provider,rows){
   const payload={schema:'todayinfo.harvest.v1',provider,generated_at:new Date().toISOString(),count:rows.length,records:rows};
   try{return await savePublishedJson({key:`harvest/snapshots/${slugify(provider)}.json`,payload})}catch(error){return{sync_status:'pending',last_error:error.message}}
@@ -171,8 +243,12 @@ export const GLOBAL_HARVEST_PROVIDERS=[
   {id:'arbeitnow',label:'Arbeitnow Europe',kind:'public_api',attribution:true},
   {id:'jobicy',label:'Jobicy Remote Jobs',kind:'public_api',attribution:true},
   {id:'remoteok',label:'Remote OK',kind:'public_api',attribution:true},
-  {id:'lever',label:'Lever public job boards',kind:'board_api',requires_sites:true},
-  {id:'ashby',label:'Ashby public job boards',kind:'board_api',requires_sites:true}
+  {id:'remotive',label:'Remotive Remote Jobs',kind:'public_api',attribution:true},
+  {id:'lever',label:'Lever public job boards',kind:'board_api',requires:'leverSites'},
+  {id:'ashby',label:'Ashby public job boards',kind:'board_api',requires:'ashbyBoards'},
+  {id:'greenhouse',label:'Greenhouse public job boards',kind:'board_api',requires:'greenhouseBoards'},
+  {id:'workable',label:'Workable public careers',kind:'board_api',requires:'workableAccounts'},
+  {id:'smartrecruiters',label:'SmartRecruiters public postings',kind:'board_api',requires:'smartRecruitersCompanies'}
 ];
 
 export async function harvestGlobalJobs(options={}){
@@ -188,10 +264,17 @@ export async function harvestGlobalJobs(options={}){
       if(provider==='arbeitnow')found=await arbeitnow({target:remaining,maxAgeDays});
       else if(provider==='jobicy')found=await jobicy({maxAgeDays});
       else if(provider==='remoteok')found=await remoteOk({maxAgeDays});
+      else if(provider==='remotive')found=await remotive({maxAgeDays,target:remaining});
       else if(provider==='lever'){
         for(const site of options.leverSites||[]){if(rows.length+found.length>=target)break;found.push(...await leverSite(site,{target:target-rows.length-found.length,maxAgeDays}))}
       }else if(provider==='ashby'){
         for(const board of options.ashbyBoards||[]){if(rows.length+found.length>=target)break;found.push(...await ashbyBoard(board,{maxAgeDays}))}
+      }else if(provider==='greenhouse'){
+        for(const board of options.greenhouseBoards||[]){if(rows.length+found.length>=target)break;found.push(...await greenhouseBoard(board,{maxAgeDays}))}
+      }else if(provider==='workable'){
+        for(const account of options.workableAccounts||[]){if(rows.length+found.length>=target)break;found.push(...await workableAccount(account,{maxAgeDays}))}
+      }else if(provider==='smartrecruiters'){
+        for(const company of options.smartRecruitersCompanies||[]){if(rows.length+found.length>=target)break;found.push(...await smartRecruitersCompany(company,{maxAgeDays,target:target-rows.length-found.length}))}
       }
       const seen=new Set(rows.map(x=>x.source_key));const unique=found.filter(x=>!seen.has(x.source_key));
       rows.push(...unique.slice(0,target-rows.length));

@@ -8,6 +8,7 @@ import { loadPostArtifact } from '../lib/publication-service.mjs';
 import { deriveVisitorSignals, rankSearch } from '../lib/ranking.mjs';
 import { smartRelated, smartRecommendations } from '../lib/related-content.mjs';
 import { clickedDiscoveryRow, normalizeTargetUrl } from '../lib/demand-priority.mjs';
+import { SOURCE_CATEGORIES, SOURCE_CATALOG } from '../lib/source-catalog.mjs';
 
 export const publicRouter=Router();
 
@@ -54,8 +55,18 @@ publicRouter.get('/meta',(req,res)=>res.json({data:{
   news_seo_pattern:'/{country}/news/{category}/{slug}',
   storage:{public_content:'R2/local fallback',index:'database abstraction'},
   tracking:{endpoint:'/api/v1/analytics/events',demand_events:['related_click','recommendation_click'],missing_link_behavior:'private_draft_priority_queue'},
-  relations:{strategy:'deterministic-structured-similarity',signals:['manual','country','content_type','organisation','categories','tags','fields_of_study','education_level','work_mode']}
+  relations:{strategy:'deterministic-structured-similarity',signals:['manual','country','content_type','organisation','categories','tags','fields_of_study','education_level','work_mode']},
+  sources:{endpoint:'/api/v1/sources',catalogued:SOURCE_CATALOG.length,categories:SOURCE_CATEGORIES.length}
 }}));
+
+publicRouter.get('/sources',(req,res)=>res.json({data:{
+  categories:SOURCE_CATEGORIES,
+  sources:SOURCE_CATALOG.map(({aliases,action,...source})=>({
+    ...source,
+    operational:Boolean(action),
+    operation:action?.type||null
+  }))
+},meta:{internal_counts_hidden:true,source_catalog_version:2}}));
 
 publicRouter.get('/posts',async(req,res)=>sendList(req,res));
 publicRouter.get('/pages',async(req,res)=>sendList(req,res));

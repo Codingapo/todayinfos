@@ -30,6 +30,21 @@ export class DemoStore{
   async findUserByUsername(username){return this.db.users.find(u=>u.username.toLowerCase()===String(username).toLowerCase()&&u.active)||null}
   async getUser(v){return this.db.users.find(u=>u.id===v)||null}
   async listUsers(){return this.db.users.map(({password_hash,...u})=>u)}
+  async teamPerformance(){
+    const out={};
+    for(const u of this.db.users)out[u.id]={user_id:u.id,cleaned:0,promoted:0,published:0,edited:0,last_activity_at:null};
+    for(const a of this.db.audit){
+      if(!a.actor_id)continue;
+      out[a.actor_id]||={user_id:a.actor_id,cleaned:0,promoted:0,published:0,edited:0,last_activity_at:null};
+      const row=out[a.actor_id];
+      if(a.action==='import.clean')row.cleaned+=1;
+      if(a.action==='import.promote')row.promoted+=1;
+      if(a.action==='post.publish')row.published+=1;
+      if(a.action==='post.update')row.edited+=1;
+      if(!row.last_activity_at||String(a.created_at)>String(row.last_activity_at))row.last_activity_at=a.created_at;
+    }
+    return Object.values(out);
+  }
   async createUser(i){if(this.db.users.some(u=>u.username.toLowerCase()===i.username.toLowerCase()))throw new Error('Username already exists');if(i.email&&this.db.users.some(u=>u.email?.toLowerCase()===i.email.toLowerCase()))throw new Error('Email already exists');const row={id:id(),username:i.username,email:i.email||'',display_name:i.display_name||i.username,role:i.role||'viewer',active:true,password_hash:i.password_hash||null,created_at:nowIso()};this.db.users.push(row);this.#save();return row}
   async updateUser(v,p){const row=this.db.users.find(u=>u.id===v);if(!row)return null;Object.assign(row,p,{updated_at:nowIso()});this.#save();return row}
 

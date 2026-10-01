@@ -8,7 +8,7 @@ import { fetchImports } from '../lib/importer.mjs';
 import { saveUpload, mediaKind, retryPublicationQueue } from '../lib/r2.mjs';
 import { publishPostArtifact, unpublishPostArtifact } from '../lib/publication-service.mjs';
 import { sendInvite } from '../lib/resend.mjs';
-import { ROLE_PERMISSIONS } from '../lib/rbac.mjs';
+import { ROLE_PERMISSIONS, ROLE_LABELS, hasPermission } from '../lib/rbac.mjs';
 import { config } from '../config.mjs';
 import { CONTENT_TYPE_DEFINITIONS, resolvedDefinition } from '../lib/content-types.mjs';
 import { isSafeUrl, normalizeTags } from '../lib/content-rules.mjs';
@@ -17,6 +17,7 @@ import { loadImportLearning, learnFromImports, publicLearningSummary } from '../
 import { autoPublishDecision } from '../lib/auto-publish.mjs';
 import { CONTENT_LIMITS, SEO_GUIDANCE, zodValidationDetails } from '../lib/content-constraints.mjs';
 import { GLOBAL_HARVEST_PROVIDERS, harvestGlobalJobs } from '../lib/global-harvest.mjs';
+import { sourceHubPayload } from '../lib/source-catalog.mjs';
 
 export const adminRouter=Router();
 const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:25*1024*1024}});
@@ -91,16 +92,11 @@ async function syncPublication(row,actor){
 adminRouter.get('/dashboard',permit('dashboard.view'),async(req,res)=>ok(res,await store.dashboard()));
 adminRouter.get('/content-types',permit('posts.view'),(req,res)=>ok(res,Object.fromEntries(contentTypes.map(t=>[t,resolvedDefinition(t)]))));
 adminRouter.get('/content-constraints',permit('posts.view'),(req,res)=>ok(res,{limits:CONTENT_LIMITS,seo:SEO_GUIDANCE}));
-adminRouter.get('/sources/hub',permit('imports.view'),(req,res)=>ok(res,{
-  regional:[
-    {id:'dailyupdate',label:'DailyUpdate',description:'Fetch jobs, internships and learnerships, then follow useful related opportunity links.',fetch:{kind:'dailyupdate/jobs',maxPages:100,expand:true,expandRelated:true,relatedLimit:150,autoPublish:true}},
-    {id:'zabursaries',label:'ZA Bursaries',description:'Fetch bursary detail pages and follow useful bursary/scholarship links from directory pages.',fetch:{kind:'bursaries',maxPages:100,expand:true,expandRelated:true,relatedLimit:200,autoPublish:true}},
-    {id:'psychometric-test',label:'Psychometric Test topic',description:'Fetch the existing psychometric-test topic and related detail pages.',fetch:{kind:'tag',tagSlug:'psychometric-test',maxPages:20,expand:true,expandRelated:true,relatedLimit:80,autoPublish:true}}
-  ],
-  global:GLOBAL_HARVEST_PROVIDERS,
-  permanent_seeds:{expected_records:80,description:'South Africa and Africa reference datasets are published on startup.'}
-}));
-adminRouter.get('/source-presets',permit('imports.view'),(req,res)=>ok(res,[
+adminRouter.get('/sources/hub',permit('imports.fetch'),async(req,res)=>{
+  const [imports,posts]=await Promise.all([store.listImports({}),store.listPosts({include_deleted:true})]);
+  ok(res,sourceHubPayload({imports,posts,permanentRecords:80}));
+});
+adminRouter.get('/source-presets',permit('imports.fetch'),(req,res)=>ok(res,[
   {id:'pages',label:'All source pages'},{id:'bursaries',label:'ZA Bursaries'},{id:'articles',label:'Articles / news'},{id:'dailyupdate/jobs',label:'DailyUpdate jobs + related'},
   {id:'tag:psychometric-test',label:'Psychometric Test tag',kind:'tag',tagSlug:'psychometric-test'}
 ]));
@@ -175,9 +171,12 @@ adminRouter.post('/harvest/global',permit('imports.fetch'),async(req,res)=>{
   const schema=z.object({
     target:z.number().int().min(1).max(5000).optional().default(1000),
     maxAgeDays:z.number().int().min(1).max(120).optional().default(60),
-    providers:z.array(z.enum(['arbeitnow','jobicy','remoteok','lever','ashby'])).max(5).optional().default(['arbeitnow','jobicy']),
+    providers:z.array(z.enum(['arbeitnow','jobicy','remoteok','remotive','lever','ashby','greenhouse','workable','smartrecruiters'])).max(9).optional().default(['arbeitnow','jobicy']),
     leverSites:z.array(z.string().min(1).max(120)).max(100).optional().default([]),
     ashbyBoards:z.array(z.string().min(1).max(120)).max(100).optional().default([]),
+    greenhouseBoards:z.array(z.string().min(1).max(120)).max(100).optional().default([]),
+    workableAccounts:z.array(z.string().min(1).max(120)).max(100).optional().default([]),
+    smartRecruitersCompanies:z.array(z.string().min(1).max(160)).max(100).optional().default([]),
     autoPublish:z.boolean().optional().default(true)
   });
   const p=schema.safeParse(req.body||{});
@@ -204,10 +203,10 @@ adminRouter.post('/harvest/global',permit('imports.fetch'),async(req,res)=>{
   await audit(req,'harvest.global','source','global',{target:p.data.target,providers:p.data.providers,...harvest.stats,...stored,published:published.length,review:review.length});
   ok(res,{...harvest.stats,...stored,published,review:review.slice(0,100)});
 });
-adminRouter.get('/imports/learning',permit('imports.view'),async(req,res)=>ok(res,publicLearningSummary(await loadImportLearning())));
-adminRouter.get('/imports/priority',permit('imports.view'),async(req,res)=>ok(res,await store.priorityImports({limit:Math.min(500,Math.max(1,Number(req.query.limit)||200))})));
+adminRouter.get('/imports/learning',permit('imports.fetch'),async(req,res)=>ok(res,publicLearningSummary(await loadImportLearning())));
+adminRouter.get('/imports/priority',permit('imports.fetch'),async(req,res)=>ok(res,await store.priorityImports({limit:Math.min(500,Math.max(1,Number(req.query.limit)||200))})));
 adminRouter.get('/imports/:id',permit('imports.view'),async(req,res)=>{const row=await store.getImport(req.params.id);if(!row)return res.status(404).json({error:'Import not found'});ok(res,row)});
-adminRouter.patch('/imports/:id',permit('imports.review'),async(req,res)=>{const schema=z.object({review_status:z.enum(['unreviewed','reviewing','promoted']).optional(),detected_type:z.enum(contentTypes).optional(),prepared_draft:postSchema.partial().optional()});const p=schema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid import update',details:p.error.flatten()});const patch={...p.data};if(patch.prepared_draft)patch.prepared_draft=normalizePost({...patch.prepared_draft,content_type:patch.prepared_draft.content_type||patch.detected_type||'other'});const row=await store.updateImport(req.params.id,patch);if(!row)return res.status(404).json({error:'Import not found'});await audit(req,'import.update','raw_import',row.id,{fields:Object.keys(patch)});ok(res,row)});
+adminRouter.patch('/imports/:id',permit('imports.review'),async(req,res)=>{const schema=z.object({review_status:z.enum(['unreviewed','reviewing','promoted']).optional(),detected_type:z.enum(contentTypes).optional(),prepared_draft:postSchema.partial().optional()});const p=schema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid import update',details:p.error.flatten()});const patch={...p.data};if(patch.prepared_draft)patch.prepared_draft=normalizePost({...patch.prepared_draft,content_type:patch.prepared_draft.content_type||patch.detected_type||'other'});const row=await store.updateImport(req.params.id,patch);if(!row)return res.status(404).json({error:'Import not found'});await audit(req,'import.update','raw_import',row.id,{fields:Object.keys(patch)});if(patch.prepared_draft)await audit(req,'import.clean','raw_import',row.id,{fields:Object.keys(patch.prepared_draft||{})});ok(res,row)});
 adminRouter.post('/imports/:id/promote',permit('imports.review'),async(req,res)=>{const row=await store.promoteImport(req.params.id,req.user.id);if(!row)return res.status(404).json({error:'Import not found'});await audit(req,'import.promote','post',row.id,{source_import:req.params.id});res.status(201).json({data:row})});
 
 adminRouter.get('/posts',permit('posts.view'),async(req,res)=>{
@@ -218,9 +217,9 @@ adminRouter.get('/posts',permit('posts.view'),async(req,res)=>{
   if(req.query.source){const source=String(req.query.source).toLowerCase();rows=rows.filter(x=>String(x.source?.source_name||'').toLowerCase().includes(source))}
   ok(res,rows);
 });
-adminRouter.post('/posts',permit('posts.create'),async(req,res)=>{const p=postSchema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid content',details:zodValidationDetails(p.error)});const body=normalizePost(p.data);if(body.status==='published'){const issues=publishProblems(body);if(issues.length)return res.status(400).json({error:'Publishing checklist failed',details:{formErrors:issues}})}let row=await store.createPost(body,req.user.id);if(row.status==='published')row=await syncPublication(row,req.user.id);await audit(req,'post.create','post',row.id,{title:row.title,type:row.content_type,publication:row.publication?.sync_status||null});res.status(201).json({data:row})});
+adminRouter.post('/posts',permit('posts.create'),async(req,res)=>{const p=postSchema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid content',details:zodValidationDetails(p.error)});const body=normalizePost(p.data);if(body.status==='published'&&!hasPermission(req.user.role,'posts.publish'))return res.status(403).json({error:'Your role cannot publish'});if(body.status==='published'){const issues=publishProblems(body);if(issues.length)return res.status(400).json({error:'Publishing checklist failed',details:{formErrors:issues}})}let row=await store.createPost(body,req.user.id);if(row.status==='published')row=await syncPublication(row,req.user.id);await audit(req,'post.create','post',row.id,{title:row.title,type:row.content_type,publication:row.publication?.sync_status||null});if(row.status==='published')await audit(req,'post.publish','post',row.id,{via:'create',publication:row.publication?.sync_status||null});res.status(201).json({data:row})});
 adminRouter.get('/posts/:id',permit('posts.view'),async(req,res)=>{const row=await store.getPost(req.params.id);if(!row)return res.status(404).json({error:'Post not found'});ok(res,row)});
-adminRouter.patch('/posts/:id',permit('posts.edit'),async(req,res)=>{const p=postSchema.partial().safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid content update',details:zodValidationDetails(p.error)});const current=await store.getPost(req.params.id);if(!current)return res.status(404).json({error:'Post not found'});const merged=normalizePost({...current,...p.data,content_type:p.data.content_type||current.content_type,type_data:{...(current.type_data||{}),...(p.data.type_data||{})},geo:{...(current.geo||{}),...(p.data.geo||{})},classification:{...(current.classification||{}),...(p.data.classification||{})}});if(p.data.status==='published'&&!['owner','super_admin','content_manager','hiring_manager'].includes(req.user.role))return res.status(403).json({error:'Your role cannot publish'});if((p.data.status==='published'||current.status==='published')&&merged.status==='published'){const issues=publishProblems(merged);if(issues.length)return res.status(400).json({error:'Publishing checklist failed',details:{formErrors:issues}})}const patch=Object.fromEntries(Object.keys(p.data).map(k=>[k,merged[k]]));let row=await store.updatePost(req.params.id,patch,req.user.id);row=await syncPublication(row,req.user.id);await audit(req,p.data.status==='published'?'post.publish':'post.update','post',row.id,{fields:Object.keys(patch),publication:row.publication?.sync_status||null});ok(res,row)});
+adminRouter.patch('/posts/:id',permit('posts.edit'),async(req,res)=>{const p=postSchema.partial().safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid content update',details:zodValidationDetails(p.error)});const current=await store.getPost(req.params.id);if(!current)return res.status(404).json({error:'Post not found'});const merged=normalizePost({...current,...p.data,content_type:p.data.content_type||current.content_type,type_data:{...(current.type_data||{}),...(p.data.type_data||{})},geo:{...(current.geo||{}),...(p.data.geo||{})},classification:{...(current.classification||{}),...(p.data.classification||{})}});if(p.data.status==='published'&&!hasPermission(req.user.role,'posts.publish'))return res.status(403).json({error:'Your role cannot publish'});if((p.data.status==='published'||current.status==='published')&&merged.status==='published'){const issues=publishProblems(merged);if(issues.length)return res.status(400).json({error:'Publishing checklist failed',details:{formErrors:issues}})}const patch=Object.fromEntries(Object.keys(p.data).map(k=>[k,merged[k]]));let row=await store.updatePost(req.params.id,patch,req.user.id);row=await syncPublication(row,req.user.id);await audit(req,p.data.status==='published'?'post.publish':'post.update','post',row.id,{fields:Object.keys(patch),publication:row.publication?.sync_status||null});ok(res,row)});
 adminRouter.delete('/posts/:id',permit('posts.delete'),async(req,res)=>{let row=await store.trashPost(req.params.id,req.user.id);if(!row)return res.status(404).json({error:'Post not found'});row=await syncPublication(row,req.user.id);await audit(req,'post.trash','post',row.id,{publication:row.publication?.sync_status||null});ok(res,row)});
 adminRouter.post('/posts/:id/restore',permit('posts.edit'),async(req,res)=>{const row=await store.restorePost(req.params.id,req.user.id);if(!row)return res.status(404).json({error:'Post not found'});await audit(req,'post.restore','post',row.id);ok(res,row)});
 adminRouter.get('/posts/:id/revisions',permit('posts.view'),async(req,res)=>ok(res,await store.revisions(req.params.id)));
@@ -230,10 +229,14 @@ adminRouter.post('/sync/databases',permit('posts.publish'),async(req,res)=>{if(t
 adminRouter.get('/sync/status',permit('dashboard.view'),async(req,res)=>ok(res,{store:store.health?.()||{mode:config.dataStore}}));
 
 adminRouter.get('/analytics',permit('analytics.view'),async(req,res)=>ok(res,await store.analyticsSummary()));
-adminRouter.get('/team',permit('team.view'),async(req,res)=>ok(res,await store.listUsers()));
-adminRouter.post('/team',permit('team.create'),async(req,res)=>{const schema=z.object({username:z.string().min(3).max(80),email:z.string().email(),display_name:z.string().min(2).max(120),role:z.enum(Object.keys(ROLE_PERMISSIONS)),password:z.string().min(8).max(200)});const p=schema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid team member',details:p.error.flatten()});const password_hash=await bcrypt.hash(p.data.password,12);const user=await store.createUser({...p.data,password_hash});let email=null;try{email=await sendInvite({email:user.email,displayName:user.display_name,role:user.role,inviteUrl:`${config.appOrigin}/admin/`})}catch(e){email={sent:false,reason:e.message}}await audit(req,'team.create','admin_user',user.id,{role:user.role});res.status(201).json({data:{user:{id:user.id,username:user.username,email:user.email,display_name:user.display_name,role:user.role},email}})});
-adminRouter.patch('/team/:id',permit('team.edit'),async(req,res)=>{const allowed=['role','active','display_name'];const patch=Object.fromEntries(Object.entries(req.body||{}).filter(([k])=>allowed.includes(k)));if(patch.role&&!ROLE_PERMISSIONS[patch.role])return res.status(400).json({error:'Invalid role'});const row=await store.updateUser(req.params.id,patch);if(!row)return res.status(404).json({error:'User not found'});await audit(req,'team.update','admin_user',row.id,patch);ok(res,row)});
-adminRouter.get('/roles',permit('team.view'),(req,res)=>ok(res,ROLE_PERMISSIONS));
+adminRouter.get('/team',permit('team.view'),async(req,res)=>{
+  const [users,performance]=await Promise.all([store.listUsers(),store.teamPerformance()]);
+  const byUser=new Map(performance.map(x=>[x.user_id,x]));
+  ok(res,users.map(user=>({...user,role_label:ROLE_LABELS[user.role]||user.role,performance:byUser.get(user.id)||{cleaned:0,promoted:0,published:0,edited:0,last_activity_at:null}})));
+});
+adminRouter.post('/team',permit('team.create'),async(req,res)=>{const schema=z.object({username:z.string().min(3).max(80),email:z.string().email(),display_name:z.string().min(2).max(120),role:z.enum(Object.keys(ROLE_PERMISSIONS)),password:z.string().min(8).max(200)});const p=schema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid team member',details:p.error.flatten()});if(p.data.role==='owner'&&req.user.role!=='owner')return res.status(403).json({error:'Only the CEO / Owner can create another owner account'});const password_hash=await bcrypt.hash(p.data.password,12);const user=await store.createUser({...p.data,password_hash});let email=null;try{email=await sendInvite({email:user.email,displayName:user.display_name,role:user.role,inviteUrl:`${config.appOrigin}/admin/`})}catch(e){email={sent:false,reason:e.message}}await audit(req,'team.create','admin_user',user.id,{role:user.role});res.status(201).json({data:{user:{id:user.id,username:user.username,email:user.email,display_name:user.display_name,role:user.role},email}})});
+adminRouter.patch('/team/:id',permit('team.edit'),async(req,res)=>{const allowed=['role','active','display_name'];const patch=Object.fromEntries(Object.entries(req.body||{}).filter(([k])=>allowed.includes(k)));if(patch.role&&!ROLE_PERMISSIONS[patch.role])return res.status(400).json({error:'Invalid role'});const target=await store.getUser(req.params.id);if(!target)return res.status(404).json({error:'User not found'});if((target.role==='owner'||patch.role==='owner')&&req.user.role!=='owner')return res.status(403).json({error:'Only the CEO / Owner can change owner access'});const row=await store.updateUser(req.params.id,patch);if(!row)return res.status(404).json({error:'User not found'});await audit(req,'team.update','admin_user',row.id,patch);ok(res,row)});
+adminRouter.get('/roles',permit('team.view'),(req,res)=>ok(res,Object.fromEntries(Object.entries(ROLE_PERMISSIONS).map(([id,permissions])=>[id,{label:ROLE_LABELS[id]||id,permissions}]))));
 
 adminRouter.get('/settings',permit('settings.view'),async(req,res)=>ok(res,await store.settings()));
 adminRouter.patch('/settings',permit('settings.edit'),async(req,res)=>{const allowed=['site_name','whatsapp_number','contact_email','main_logo_url','dark_logo_url','favicon_url','default_social_image_url'];const patch=Object.fromEntries(Object.entries(req.body||{}).filter(([k])=>allowed.includes(k)));const row=await store.updateSettings(patch);await audit(req,'settings.update','settings','site',{fields:Object.keys(patch)});ok(res,row)});

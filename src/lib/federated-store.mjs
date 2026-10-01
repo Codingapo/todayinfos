@@ -202,6 +202,7 @@ export class FederatedStore {
   findUserByUsername(...a){return this.#primary('findUserByUsername',a)}
   getUser(...a){return this.#primary('getUser',a)}
   listUsers(...a){return this.#primary('listUsers',a)}
+  teamPerformance(...a){return this.#primary('teamPerformance',a)}
   createUser(...a){return this.#primary('createUser',a)}
   updateUser(...a){return this.#primary('updateUser',a)}
   upsertImports(...a){return this.#primary('upsertImports',a)}

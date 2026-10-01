@@ -1,49 +1,67 @@
-# Build Status — v0.6.0 Source Hub + Global Harvest
+# Build Status — v0.7.0 Source Catalog + Employee Workspace
 
-This release expands TodayInfo incrementally. Existing public API routes, publishing rules, R2/local fail-safe behavior, analytics, demand queue, and structured editor remain in place.
+This release updates TodayInfo incrementally. The v0.6 global API, 80 permanent published seed records, R2/local fail-safe publishing, demand queue, analytics, structured editor, source-aware DailyUpdate/ZA Bursaries cleaning and existing public routes remain in place.
 
-## Permanent content
-- South Africa verified reference dataset: 40 records.
-- Africa verified reference dataset: 40 records across Kenya, Nigeria, Ghana, Uganda, Tanzania, Zambia, Zimbabwe and Botswana.
-- Total permanent bootstrap: 80 records.
-- Reference records are deduplicated by source URL / country / slug and published on startup.
-- Published JSON artifacts remain synchronized through the normal R2/local publication pipeline.
+## Source Hub v2
+- Source Hub is now category-based rather than one regional/global list.
+- 28 sources are catalogued in six groups:
+  - TodayInfo Network
+  - South Africa Official
+  - Public Job APIs
+  - Employer ATS Boards
+  - Scholarships & Funding
+  - International Organisations
+- This is exactly 20 additional researched sources beyond the original eight source/integration entries.
+- Each source declares content types, region, access/integration mode and status.
+- Status is explicit: active, discovery, credentials required or licence required.
+- Source cards show internal import/published/quality statistics only to authorized admin users.
+- Search, category and integration-status filters are available in Source Hub.
+- Public API endpoint `GET /api/v1/sources` exposes the safe catalog/capability model without internal admin counts.
 
-## Source Hub
-- New dashboard Source Hub with separate controls for DailyUpdate, ZA Bursaries, Psychometric Test and global feeds.
-- DailyUpdate / ZA Bursaries can fetch useful related detail pages, not only index/archive pages.
-- Related-page expansion is capped and deduplicated.
-- Existing 80%+ safe auto-publish gate remains the final authority.
+## Active harvest expansion
+Existing adapters remain. New active public integrations:
+- Remotive
+- Greenhouse public Job Board API
+- Workable public careers endpoints
+- SmartRecruiters public Posting API
 
-## Smart related content
-- Public detail responses calculate related content deterministically.
-- Signals: manual relation, country, content type, organisation, categories, tags, fields of study, education level and work mode.
-- Manual relationships receive priority.
-- Related content is generated from published content only.
-- No AI/prediction feature is used.
+Existing active integrations:
+- Arbeitnow
+- Jobicy
+- Remote OK
+- Lever public boards
+- Ashby public boards
 
-## Global Harvest
-- Public adapters: Arbeitnow, Jobicy and Remote OK.
-- Configurable public-board adapters: Lever and Ashby.
-- Harvest target can be up to 5,000 records per admin run.
-- Obvious placeholders/non-job pages are rejected.
-- Recent-age filtering is supported.
-- Provider attribution and canonical/source URLs are retained.
-- Harvest snapshots are saved through R2/local fallback.
-- Harvested records enter the Import Inbox, are deduplicated, and only auto-publish when they pass TodayInfo's normal cleanliness + hard publishing checks.
+Sources that require credentials or licensing remain catalogued but are not falsely presented as active.
 
-## Dashboard
-- New Source Hub navigation.
-- Carefully designed source cards, provider controls and harvest progress/result states.
-- Content Library filters now combine:
-  - search
-  - country
-  - content type
-  - publishing status
-  - opportunity status
-  - source
-  - sort order
-- Responsive desktop/tablet/mobile styling added.
+## CEO + employee access
+- Owner is presented as **CEO / Owner**.
+- Apo's owner account retains full wildcard access.
+- New `content_worker` role is available.
+- Editor and Content Worker are restricted to:
+  - Import Inbox review/cleaning
+  - Content Library editing
+  - Publishing
+  - Media viewing/uploading
+- Restricted employees cannot access Overview, Source Hub, Demand Queue/source-fetch APIs, Analytics, Team, Settings or Audit.
+- Restrictions are enforced by backend RBAC in addition to role-aware dashboard navigation.
+- Only an owner can create another owner or change owner-level access.
 
-## Important data-quality policy
-TodayInfo does not invent job listings to reach a target count. Large harvests must come from real public source feeds or public ATS boards and retain attribution. Stale, incomplete or low-quality records remain private for review.
+## Employee productivity
+Productivity comes from audit events, not manually entered counters:
+- cleaned = `import.clean`
+- promoted = `import.promote`
+- published = `post.publish`
+- edited = `post.update`
+- last activity timestamp
+
+The CEO Team view shows employee output and status.
+
+## API improvements
+- `GET /api/v1/meta` advertises source-catalog capabilities.
+- `GET /api/v1/sources` returns categorized source metadata and operational status.
+- Internal import/published source statistics stay private.
+- Existing public content/search/trending/location/filter endpoints remain backward compatible.
+
+## Quality policy
+TodayInfo still uses deterministic rules and human review rather than AI/prediction features. The 80%+ auto-publish threshold and hard safety/publishing checks remain authoritative.

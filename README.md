@@ -1,4 +1,4 @@
-# TodayInfo Control Center v0.6
+# TodayInfo Control Center v0.7
 
 A Node.js admin dashboard and structured publishing API for TodayInfo.
 
@@ -520,3 +520,36 @@ Published detail pages now calculate related content from deterministic structur
 ### Content Library filters
 
 The admin library can now filter simultaneously by country, source, type, publishing status and opportunity status, plus search and sorting.
+
+
+## v0.7 — Categorized Source Hub and employee workspace
+
+TodayInfo now keeps a structured source catalog instead of treating every source as one generic feed. The catalog contains **28 source entries across six categories**, including exactly 20 additional researched sources beyond the original TodayInfo/source-harvest set.
+
+Source Hub distinguishes between **active**, **discovery**, **credentials required**, and **licence required** integrations. Active public harvest support now includes Arbeitnow, Jobicy, Remote OK, Remotive, Lever, Ashby, Greenhouse, Workable, and SmartRecruiters. Sources that require credentials or commercial/licensing setup remain visible for planning but cannot be run as though they were configured.
+
+Public frontend capability discovery:
+
+```text
+GET /api/v1/sources
+GET /api/v1/meta
+```
+
+The public source catalog does not expose private crawler/import counts.
+
+### CEO and employees
+
+The `owner` role is displayed as **CEO / Owner** and retains complete access. The `editor` and new `content_worker` roles are publishing employees. They can review/clean Import Inbox records, edit content, publish content, and use media. They cannot access Source Hub, source fetching, Demand Queue, Analytics, Team, Settings, Audit, or the CEO overview.
+
+These restrictions are enforced by server-side RBAC, not only by hidden navigation.
+
+The Team view tracks employee productivity from audit events:
+
+```text
+cleaned     -> import.clean
+promoted    -> import.promote
+published   -> post.publish
+edited      -> post.update
+```
+
+Counts are calculated by the system and are not manually editable by workers.
