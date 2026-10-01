@@ -27,6 +27,7 @@ import { plainEnglishNewsDraft } from '../src/lib/plain-content.mjs';
 import { NEWS_FEEDS } from '../src/lib/news-harvest.mjs';
 import { buildTrafficAtlas, continentForCode } from '../src/lib/geo-analytics.mjs';
 import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload } from '../src/lib/source-catalog.mjs';
+import { PostgresStore } from '../src/lib/store-postgres.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
   assert.equal(slugify('University of Limpopo — Applications 2027!'),'university-of-limpopo-applications-2027');
@@ -800,4 +801,66 @@ test('dashboard exposes official-news batches direct-link processing and world t
   assert.match(ui,/Checking apply links/);
   assert.match(ui,/WORLD TRAFFIC ATLAS/);
   assert.match(ui,/application clicks/);
+});
+
+
+test('dashboard never calls array methods on querySelector results',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.doesNotMatch(ui,/\$\([^\n;]*\)\.forEach\(/);
+  assert.match(ui,/\$\$\('\#nav button\[data-view\]'\)\.forEach/);
+  assert.match(ui,/\$\$\('\.run-news'\)\.forEach/);
+  assert.match(ui,/\$\$\('\.choose-harvest'\)\.forEach/);
+  assert.match(ui,/\$\$\('\.traffic-dot'\)\.forEach/);
+});
+
+test('CEO owner retains all import editing promoting and publishing permissions',()=>{
+  for(const permission of ['imports.view','imports.fetch','imports.review','posts.view','posts.create','posts.edit','posts.publish','dashboard.view','analytics.view','team.view','settings.view','audit.view']){
+    assert.equal(hasPermission('owner',permission),true,permission);
+  }
+});
+
+test('admin routes still expose CEO import fetch promote edit and publish workflows',()=>{
+  const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+  assert.match(admin,/adminRouter\.post\('\/imports\/fetch',permit\('imports\.fetch'\)/);
+  assert.match(admin,/adminRouter\.get\('\/imports\/priority',permit\('imports\.fetch'\)/);
+  assert.match(admin,/adminRouter\.post\('\/imports\/:id\/promote',permit\('imports\.review'\)/);
+  assert.match(admin,/adminRouter\.patch\('\/posts\/:id',permit\('posts\.edit'\)/);
+  assert.match(admin,/hasPermission\(req\.user\.role,'posts\.publish'\)/);
+});
+
+test('deep sync defaults to latest available and supports empty-year fallback',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  const importer=fs.readFileSync(new URL('../src/lib/importer.mjs',import.meta.url),'utf8');
+  assert.match(ui,/Year filter \(optional\)/);
+  assert.match(ui,/Leave blank for the latest available records/);
+  assert.match(importer,/yearFallbackUsed/);
+  assert.match(importer,/options\.fallbackLatest!==false/);
+});
+
+test('PostgreSQL Import Inbox degrades safely when memory columns are not migrated yet',async()=>{
+  const fake=Object.create(PostgresStore.prototype);
+  fake.tableColumns=async()=>new Set(['id','source_key','source_name','source_url','source_payload','detected_type','prepared_draft','review_status','created_at','updated_at']);
+  const queries=[];
+  fake.q=async(sql,params=[])=>{queries.push({sql,params});return{rows:[]}};
+  await fake.listImports({q:'bursary'});
+  assert.match(queries[0].sql,/order by coalesce\(updated_at,created_at\) desc/);
+  assert.doesNotMatch(queries[0].sql,/source_record_date/);
+  assert.doesNotMatch(queries[0].sql,/last_seen_at/);
+});
+
+test('PostgreSQL legacy import upsert only writes columns that actually exist',async()=>{
+  const fake=Object.create(PostgresStore.prototype);
+  fake.tableColumns=async()=>new Set(['id','source_key','source_name','source_url','source_payload','detected_type','prepared_draft','review_status','created_at','updated_at']);
+  const queries=[];
+  fake.q=async(sql,params=[])=>{queries.push({sql,params});return{rows:[{inserted:true}]}};
+  const result=await fake.upsertImports([{
+    source_key:'legacy:test',source_name:'Legacy Source',source_url:'https://example.com/item',
+    source_payload:{title:'Item'},detected_type:'bursary',prepared_draft:{title:'Item'},review_status:'unreviewed',
+    source_hash:'newer-column',quality_score:99
+  }]);
+  assert.equal(result.inserted,1);
+  assert.equal(result.legacy_schema,true);
+  assert.doesNotMatch(queries[0].sql,/source_hash/);
+  assert.doesNotMatch(queries[0].sql,/quality_score/);
+  assert.match(queries[0].sql,/source_key/);
 });
