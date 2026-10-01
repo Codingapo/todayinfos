@@ -1,47 +1,34 @@
-# Build Status — v0.5.0 Demand Discovery + Source-Aware Extraction
+# Build Status — v0.5.0 Demand-Aware Source Intelligence
 
-This release expands the existing TodayInfo managed API without removing the v0.4/v0.4.1 global, R2, federation, filtering, search, trending, or safe auto-publish behavior.
+## Published reference data
+- The permanent 40-record South Africa reference dataset is now published on startup.
+- Startup is idempotent: unchanged seed records are not rewritten on every restart.
+- Seed imports are linked to their published posts and JSON artifacts.
+- Closed/expired opportunities may remain publicly visible with a date-driven CLOSED status.
 
-## 40 published reference records
-- The permanent South Africa reference dataset still contains 40 records: 20 jobs and 20 bursaries.
-- Startup now ensures all 40 have live `published` posts.
-- Published seed posts are synchronized to the normal JSON/R2/local artifact pipeline.
-- Closed/expired opportunities remain published but expose their calculated closed status.
-- Startup publishing is idempotent: unchanged seed posts are not rewritten on every restart.
+## DailyUpdate + ZA Bursaries source profiles
+- DailyUpdate receives job/internship/learnership-aware extraction.
+- DailyUpdate archive/pagination records are rejected as content pages.
+- ZA Bursaries receives section-aware extraction for eligibility, supporting documents, how to apply, closing date and application links.
+- ZA Bursaries monthly closing-date pages are treated as discovery indexes, not fake bursary posts.
+- Useful links discovered on source/index pages are stored as private draft leads.
 
-## DailyUpdate extraction profile
-- DailyUpdate archive/pagination pages are treated as discovery indexes rather than content.
-- Article chrome such as Table of Contents, Toggle, duplicate headings/dates and Read More noise is removed.
-- Hiring/job/internship/learnership titles are classified deterministically.
-- Requirements, How to Apply and external official application/careers URLs are extracted when present.
-- Relevant related DailyUpdate opportunity links become private discovery drafts.
+## Demand queue
+- Public related/recommended links expose analytics tracking payloads.
+- A click on a missing external related/recommended item creates or reinforces a private discovery draft.
+- Any clicked missing item becomes HIGHEST PRIORITY regardless of its current clean score.
+- Admin API: GET /admin/api/imports/priority
+- Demand Queue supports one-click Fetch & process for the target URL.
 
-## ZA Bursaries extraction profile
-- Monthly “Bursaries Closing in …” pages are treated as discovery indexes, not individual bursary articles.
-- Bursary detail extraction recognizes Eligibility Requirements, How to Apply, Supporting Documents and Closing Date sections.
-- Human-readable dates such as “31 October 2026” are normalized to ISO dates.
-- Useful application links are preferred over navigation/social/junk links.
-- Relevant bursary/scholarship links become private discovery drafts.
+## Analytics + dashboard
+- Overview now shows searches, application clicks, related/recommendation clicks, waiting imports and highest-priority demand.
+- New Demand Queue screen.
+- Analytics now displays top searches, visitors by country, visitors by region/state/province and popular content.
+- Existing content editor/import workflow remains intact.
 
-## Demand-aware missing content
-- Missing related/recommended/source links are stored privately in the Import Inbox as low-quality draft leads.
-- Public related/recommendation link payloads now include frontend-ready analytics tracking metadata.
-- When a visitor clicks a missing external related/recommended link, TodayInfo records that URL as a private draft lead if it is not already known.
-- A clicked missing item receives `priority=highest` and ranks above ordinary clean/changed discoveries.
-- Admin endpoint: `GET /admin/api/imports/priority`.
-- Demand Queue actions can fetch a selected URL through the source API extractor and run it through source-aware cleaning plus the existing 80% auto-publish gate.
+## PostgreSQL hardening
+- Fixed dynamic filter placeholders in listPosts().
+- Added source_url to import search so URL-based discovery deduplication works in PostgreSQL.
+- Global salary/stipend/eligibility filters remain supported.
 
-## Dashboard
-- Added a dedicated Demand Queue.
-- Overview now shows published pages, open bursaries, visitors, searches, application clicks, related clicks, waiting imports and highest-priority missing content.
-- Analytics now shows search intent, visitors by country, visitors by region/province/state, content mix, event history and popular content.
-- Priority states are visually distinct on desktop and mobile.
-
-## Public API tracking contract
-- Related links include `tracking.event_type=related_click`.
-- Recommendation links include `tracking.event_type=recommendation_click`.
-- Tracking payloads contain `post_id`, `target_url`, `target_title` and optional target type.
-- Application URLs include an `application_tracking` payload.
-- `GET /api/v1/meta` advertises this contract.
-
-No AI or prediction functionality was added.
+No AI or prediction functionality is present.
