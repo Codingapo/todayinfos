@@ -15,13 +15,13 @@ import { store } from './lib/store.mjs';
 import { bootstrapReferenceSeeds } from './lib/reference-seed.mjs';
 
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
-let referenceSeedStatus={state:'pending',records:80,last_attempt_at:null,error:null};
+let referenceSeedStatus={state:'pending',records:null,last_attempt_at:null,error:null};
 async function ensureReferenceSeed(){
   referenceSeedStatus={...referenceSeedStatus,state:'loading',last_attempt_at:new Date().toISOString(),error:null};
   try{
     const result=await bootstrapReferenceSeeds(store);
-    referenceSeedStatus={state:result.deferred?'deferred':'ready',records:result.seed_records||80,last_attempt_at:new Date().toISOString(),error:result.error||null,storage:result};
-    if(!result.deferred)console.log(`Reference seeds ready: ${result.seed_records} permanent opportunities.`);
+    referenceSeedStatus={state:result.deferred?'deferred':'ready',records:Number(result.seed_records||0),last_attempt_at:new Date().toISOString(),error:result.error||null,storage:result};
+    if(!result.deferred)console.log(`Reference seed sync ready: ${result.seed_records} seed records; private ingestion can keep growing the catalog.`);
   }catch(error){
     referenceSeedStatus={...referenceSeedStatus,state:'deferred',error:error.message,last_attempt_at:new Date().toISOString()};
     console.warn(`Reference seed deferred: ${error.message}`);
