@@ -1,36 +1,25 @@
-# Build Status — v0.8.1 Admin + Import Repair
+# Build Status — v0.8.2 Import Resilience Hardening
 
-This is a repair release. It keeps the v0.8 API, R2 publishing, source catalog, employee roles, demand queue, application guides, analytics and global harvesting.
+This release is a small stability layer on top of the already-green v0.8.1 repair. It does not remove or replace the v0.8.1 editor, Source Hub, fetch fallback, CEO permissions, R2 publishing, search, analytics, or employee workflows.
 
-## Dashboard/runtime repairs
-- Fixed collection-selector runtime crashes in role-aware navigation, traffic atlas and Source Hub buttons.
-- CEO / Owner wildcard permissions remain unchanged.
-- Import Inbox Review is editable again.
-- Demand Queue Review uses the same editable Import Review.
-- Import Review can save cleanup, save-and-promote, and reopen an already promoted draft.
-- Editing one import field no longer resets unrelated prepared-draft fields.
+## PostgreSQL / Supabase compatibility
+- Import Inbox now inspects the real `raw_imports` columns before querying.
+- Older Supabase schemas can still list and search imports even when newer memory columns are not present.
+- Legacy import upserts write only columns that exist instead of failing the whole fetch.
+- Import cleanup updates skip unavailable optional columns safely.
+- Demand Queue uses the compatible Import Inbox query and remains available even if click-analytics aggregation is temporarily unavailable.
 
-## Fetch repairs
-- Deep Sync defaults to all years rather than silently applying the current-year filter.
-- Source API requests retry transient failures up to three attempts.
-- DailyUpdate jobs fallback order: /dailyupdate/jobs -> /dailyupdate -> /articles.
-- ZA Bursaries fallback order: /bursaries -> /search?q=bursary.
-- The response records which source endpoint was ultimately used.
+## Admin deployment freshness
+- Admin HTML/JS/CSS are served with `Cache-Control: no-store, no-cache, must-revalidate`.
+- This prevents a repaired dashboard from being hidden behind an older cached `app.js` after Render deploys a new commit.
 
-## Source Hub publishing policy
-- No AI rewriting is required.
-- Every source receives a publishing policy describing whether TodayInfo should:
-  - reuse with credit;
-  - create a short attributed summary;
-  - extract structured facts and link back.
-- SAnews is marked reuse-with-credit based on its published media policy.
-- gov.za and DPSA are conservatively treated as facts-and-link for a potentially commercial TodayInfo site.
-- Public job/ATS sources default to structured facts + official source/application links.
-- Official news harvesting is draft-first and does not auto-publish from Source Hub.
+## Preserved v0.8.1 repairs
+- Apo / CEO retains complete edit, review, promote and publish permissions.
+- Import Inbox review forms remain editable.
+- DailyUpdate and bursary source endpoint fallbacks remain.
+- Deep Sync defaults to all years/latest available source data.
+- Source Hub safe publish/paraphrase policies remain.
+- Official news harvesting remains draft-first for human review.
 
-## Verification
-The repair branch must pass:
-- npm install
-- npm run check
-- the complete Node regression test suite
-before merge to main.
+## Release gate
+Merge only after dependency installation, syntax checks and the complete regression suite pass on the exact PR head.
