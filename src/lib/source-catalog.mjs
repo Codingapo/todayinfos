@@ -12,7 +12,7 @@ export const SOURCE_CATALOG=[
     id:'dailyupdate',label:'DailyUpdate',category:'todayinfo_network',region:'South Africa',country_code:'ZA',
     content_types:['job','internship','learnership'],mode:'todayinfo_api',integration_status:'active',
     description:'Long-form employment articles. TodayInfo uses them for facts, requirements, application routes and discovery, but keeps narrative content for manual editorial review.',
-    publishing_policy:{mode:'facts_only_manual_edit',auto_publish:false,auto_rewrite:false,full_copy:false,attribution_required:true,verify_application_url:true,rights_status:'review_required',note:'Use extracted facts and official application details. Edit TodayInfo wording manually before publishing.'},
+    publishing_policy:{mode:'facts_only_manual_edit',auto_publish:false,auto_rewrite:false,can_paraphrase:false,full_copy:false,attribution_required:true,verify_application_url:true,rights_status:'review_required',note:'Use extracted facts and official application details. Edit TodayInfo wording manually before publishing.'},
     homepage:'https://dailyupdate.co.za/',aliases:['dailyupdate','daily update'],
     action:{type:'fetch',fetch:{kind:'dailyupdate/jobs',maxPages:100,expand:true,expandRelated:true,relatedLimit:150,autoPublish:false}}
   },
@@ -20,7 +20,7 @@ export const SOURCE_CATALOG=[
     id:'zabursaries',label:'ZA Bursaries',category:'todayinfo_network',region:'South Africa',country_code:'ZA',
     content_types:['bursary','scholarship'],mode:'todayinfo_api',integration_status:'active',
     description:'Structured funding articles. TodayInfo extracts factual funding details and application routes, while monthly listing pages remain discovery indexes.',
-    publishing_policy:{mode:'facts_only_manual_edit',auto_publish:false,auto_rewrite:false,full_copy:false,attribution_required:true,verify_application_url:true,rights_status:'permission_not_verified',note:'Use factual funding details, dates, requirements and official application routes. Edit narrative wording manually before publishing.'},
+    publishing_policy:{mode:'facts_only_manual_edit',auto_publish:false,auto_rewrite:false,can_paraphrase:false,full_copy:false,attribution_required:true,verify_application_url:true,rights_status:'permission_not_verified',note:'Use factual funding details, dates, requirements and official application routes. Edit narrative wording manually before publishing.'},
     homepage:'https://www.zabursaries.co.za/',aliases:['zabursaries','za bursaries'],
     action:{type:'fetch',fetch:{kind:'bursaries',maxPages:100,expand:true,expandRelated:true,relatedLimit:200,autoPublish:false}}
   },
@@ -36,7 +36,7 @@ export const SOURCE_CATALOG=[
     id:'sanews',label:'SAnews',category:'south_africa_official',region:'South Africa',country_code:'ZA',
     content_types:['news','bursary','opportunity'],mode:'official_rss',integration_status:'active',
     description:'Official South African Government News Agency feed for editorial discovery. TodayInfo keeps source credit and does not automatically rewrite or publish stories.',
-    publishing_policy:{mode:'manual_editorial_summary',auto_publish:false,auto_rewrite:false,full_copy:false,attribution_required:true,verify_facts:true,rights_status:'media_reuse_with_credit',note:'SAnews permits media reuse with credit. TodayInfo still keeps stories private until a person reviews or edits them.'},
+    publishing_policy:{mode:'manual_editorial_summary',auto_publish:false,auto_rewrite:false,can_paraphrase:true,can_quote_or_reuse:true,full_copy:false,attribution_required:true,verify_facts:true,rights_status:'media_reuse_with_credit',note:'SAnews permits media reuse with credit. TodayInfo still keeps stories private until a person reviews or edits them.'},
     homepage:'https://www.sanews.gov.za/',aliases:['sanews','south african government news agency'],
     action:{type:'news_discovery',source:'sanews',limit:10}
   },
@@ -44,7 +44,7 @@ export const SOURCE_CATALOG=[
     id:'dsti-news',label:'DSTI News Feed',category:'south_africa_official',region:'South Africa',country_code:'ZA',
     content_types:['news','opportunity'],mode:'official_rss',integration_status:'active',
     description:'Official Department of Science, Technology and Innovation feed for editorial discovery. TodayInfo stores the lead and source facts for human review.',
-    publishing_policy:{mode:'manual_editorial_summary',auto_publish:false,auto_rewrite:false,full_copy:false,attribution_required:true,verify_facts:true,rights_status:'official_source_review_required',note:'Use the source for factual verification and write TodayInfo wording manually before publishing.'},
+    publishing_policy:{mode:'manual_editorial_summary',auto_publish:false,auto_rewrite:false,can_paraphrase:true,can_quote_or_reuse:false,full_copy:false,attribution_required:true,verify_facts:true,rights_status:'official_source_review_required',note:'Use the source for factual verification and write TodayInfo wording manually before publishing.'},
     homepage:'https://www.dsti.gov.za/',aliases:['dsti','department of science technology and innovation'],
     action:{type:'news_discovery',source:'dsti',limit:10}
   },
