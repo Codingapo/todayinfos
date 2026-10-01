@@ -124,7 +124,7 @@ adminRouter.post('/imports/fetch',permit('imports.fetch'),async(req,res)=>{
 
     for(const imp of candidates.slice(0,config.autoPublishMaxPerFetch)){
       const draft=normalizePost({...imp.prepared_draft,content_type:imp.detected_type||imp.prepared_draft?.content_type||'other'});
-      const decision=autoPublishDecision({importRow:imp,draft,threshold:config.autoPublishMinScore,new Date()});
+      const decision=autoPublishDecision({importRow:imp,draft,threshold:config.autoPublishMinScore,now:new Date()});
       const issues=[...new Set([...publishProblems(draft),...decision.issues])];
       if(issues.length){
         auto_publish_skipped.push({id:imp.id,title:draft.title,score:Number(imp.quality_score||0),issues});
