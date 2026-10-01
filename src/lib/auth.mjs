@@ -33,8 +33,19 @@ export async function requireAuth(req,res,next) {
   if(!token)return res.status(401).json({error:'Authentication required'});
   try{
     const payload=jwt.verify(token,config.jwtSecret,{issuer:'todayinfo-admin'});
-    const user=await store.getUser(payload.sub); if(!user||!user.active)return res.status(401).json({error:'Account unavailable'});
-    req.user=user; next();
+    try{
+      const user=await store.getUser(payload.sub);
+      if(!user||!user.active)return res.status(401).json({error:'Account unavailable'});
+      req.user=user;return next();
+    }catch(databaseError){
+      // During a database outage, an already-signed and unexpired session may continue.
+      // New logins still require the primary admin database.
+      if(config.dataStore==='postgres'&&payload.sub&&payload.role&&payload.username){
+        req.user={id:payload.sub,role:payload.role,username:payload.username,active:true,offline_session:true};
+        return next();
+      }
+      throw databaseError;
+    }
   }catch{return res.status(401).json({error:'Session expired or invalid'});}
 }
 

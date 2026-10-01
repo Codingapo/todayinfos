@@ -1,54 +1,134 @@
 openapi: 3.1.0
 info:
-  title: TodayInfo Managed Content API
-  version: 0.2.0
-  description: Structured public API. Only reviewed and published content is exposed.
+  title: TodayInfo Global Managed API
+  version: 0.4.0
+  description: Published-only global content API for TodayInfo. Drafts and raw imports are never returned by public content/search endpoints.
 servers:
-  - url: /api/v1
+  - url: https://todayinfos.onrender.com/api/v1
 paths:
+  /meta:
+    get:
+      summary: API capabilities, supported content types and filters
+      responses:
+        '200': {description: API metadata}
   /site:
     get:
-      summary: Public TodayInfo site settings
-      responses: {'200': {description: Site settings}}
+      summary: Public site configuration
+      responses:
+        '200': {description: Site information}
   /posts:
     get:
-      summary: All published content
+      summary: Published content across all types
       parameters:
-        - {name: page, in: query, schema: {type: integer}}
-        - {name: limit, in: query, schema: {type: integer, maximum: 100}}
-      responses: {'200': {description: Published content collection}}
-  /news:
+        - {$ref: '#/components/parameters/Q'}
+        - {$ref: '#/components/parameters/Country'}
+        - {$ref: '#/components/parameters/Region'}
+        - {$ref: '#/components/parameters/City'}
+        - {$ref: '#/components/parameters/Category'}
+        - {$ref: '#/components/parameters/Organisation'}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Limit'}
+      responses:
+        '200': {$ref: '#/components/responses/ContentList'}
+  /search:
     get:
-      summary: Published news
-      responses: {'200': {description: News collection}}
-  /bursaries:
-    get:
-      summary: Published bursaries
-      responses: {'200': {description: Bursary collection}}
-  /jobs:
-    get:
-      summary: Published jobs
-      responses: {'200': {description: Job collection}}
-  /internships:
-    get:
-      summary: Published internships
-      responses: {'200': {description: Internship collection}}
-  /learnerships:
-    get:
-      summary: Published learnerships
-      responses: {'200': {description: Learnership collection}}
+      summary: Search published content with structured relevance ranking
+      parameters:
+        - {$ref: '#/components/parameters/Q'}
+        - {$ref: '#/components/parameters/Country'}
+        - {$ref: '#/components/parameters/Region'}
+        - {$ref: '#/components/parameters/City'}
+        - {$ref: '#/components/parameters/Category'}
+        - {$ref: '#/components/parameters/Subcategory'}
+        - {$ref: '#/components/parameters/Organisation'}
+        - {$ref: '#/components/parameters/FieldOfStudy'}
+        - {$ref: '#/components/parameters/EducationLevel'}
+        - {$ref: '#/components/parameters/JobType'}
+        - {$ref: '#/components/parameters/WorkMode'}
+        - {$ref: '#/components/parameters/ClosingBefore'}
+        - {$ref: '#/components/parameters/ClosingAfter'}
+      responses:
+        '200': {$ref: '#/components/responses/ContentList'}
   /trending:
     get:
-      summary: Content manually marked as trending
-      responses: {'200': {description: Trending collection}}
-  /posts/{slug}:
-    get:
-      summary: Get one structured content page
+      summary: Engagement-ranked published content
       parameters:
+        - {$ref: '#/components/parameters/Country'}
+        - {$ref: '#/components/parameters/Region'}
+        - {name: type, in: query, schema: {type: string}, description: Optional content type such as bursary, job or internship}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Limit'}
+      responses:
+        '200': {$ref: '#/components/responses/ContentList'}
+  /trending/{countryCode}:
+    get:
+      summary: Trending published content in one country
+      parameters:
+        - {name: countryCode, in: path, required: true, schema: {type: string, minLength: 2, maxLength: 3}}
+      responses:
+        '200': {$ref: '#/components/responses/ContentList'}
+  /trending/{countryCode}/{region}:
+    get:
+      summary: Trending published content in a country and region/state/province
+      parameters:
+        - {name: countryCode, in: path, required: true, schema: {type: string}}
+        - {name: region, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {$ref: '#/components/responses/ContentList'}
+  /personalized:
+    get:
+      summary: Deterministic anonymous recommendations based on a visitor's own recent activity
+      parameters:
+        - {name: visitor_id, in: query, required: true, schema: {type: string, maxLength: 120}}
+        - {$ref: '#/components/parameters/Country'}
+        - {$ref: '#/components/parameters/Region'}
+      responses:
+        '200': {$ref: '#/components/responses/ContentList'}
+        '400': {description: visitor_id is required}
+  /facets:
+    get:
+      summary: Counts for frontend filter controls
+      parameters:
+        - {$ref: '#/components/parameters/Country'}
+        - {$ref: '#/components/parameters/Region'}
+        - {$ref: '#/components/parameters/Category'}
+      responses:
+        '200': {description: Filter facets}
+  /locations:
+    get:
+      summary: Countries, regions and cities represented by published content
+      parameters:
+        - {$ref: '#/components/parameters/Country'}
+      responses:
+        '200': {description: Location hierarchy}
+  /countries:
+    get:
+      summary: Countries represented by published content
+      responses:
+        '200': {description: Country counts}
+  /{countryCode}/{collection}:
+    get:
+      summary: Country-prefixed collection such as /za/bursaries or /uk/jobs
+      parameters:
+        - {name: countryCode, in: path, required: true, schema: {type: string}}
+        - {name: collection, in: path, required: true, schema: {type: string, enum: [news, announcements, stories, articles, bursaries, scholarships, jobs, internships, learnerships, opportunities]}}
+        - {$ref: '#/components/parameters/Q'}
+        - {$ref: '#/components/parameters/Region'}
+        - {$ref: '#/components/parameters/City'}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Limit'}
+      responses:
+        '200': {$ref: '#/components/responses/ContentList'}
+  /{countryCode}/{collection}/{slug}:
+    get:
+      summary: Country-prefixed published content detail
+      parameters:
+        - {name: countryCode, in: path, required: true, schema: {type: string}}
+        - {name: collection, in: path, required: true, schema: {type: string}}
         - {name: slug, in: path, required: true, schema: {type: string}}
       responses:
         '200':
-          description: Structured page response
+          description: Structured content detail
           content:
             application/json:
               schema:
@@ -56,119 +136,110 @@ paths:
                 properties:
                   data: {$ref: '#/components/schemas/ContentDetail'}
         '404': {description: Not found}
-  /tags:
-    get:
-      summary: Published tags with counts
-      responses: {'200': {description: Tag collection}}
-  /tags/{slug}:
-    get:
-      summary: Published content sharing a tag, including psychometric-test when published with that tag
-      parameters:
-        - {name: slug, in: path, required: true, schema: {type: string}}
-      responses: {'200': {description: Tag page}}
-  /categories:
-    get:
-      summary: Published categories
-      responses: {'200': {description: Category collection}}
-  /categories/{slug}:
-    get:
-      summary: Published content in a category
-      parameters:
-        - {name: slug, in: path, required: true, schema: {type: string}}
-      responses: {'200': {description: Category page}}
-  /search:
-    get:
-      summary: Search reviewed/published content only
-      parameters:
-        - {name: q, in: query, schema: {type: string}}
-      responses: {'200': {description: Search results}}
   /analytics/events:
     post:
-      summary: Record a public analytics event
+      summary: Record anonymous engagement for analytics/trending/personalization
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [event_type]
               properties:
-                visitor_id: {type: string}
-                event_type: {enum: [view, read, search, application_click, download, related_click, recommendation_click, tag_click]}
+                visitor_id: {type: string, maxLength: 120}
+                event_type: {type: string, enum: [view, read, search, application_click, download, related_click, recommendation_click, tag_click]}
                 post_id: {type: string}
-                meta: {type: object}
-      responses: {'202': {description: Accepted}}
-  /crawl/status:
-    get:
-      summary: Sanitized status; raw indexed/crawler counts remain private
-      responses: {'200': {description: Managed status}}
+                meta: {type: object, additionalProperties: true}
+              required: [event_type]
+      responses:
+        '202': {description: Accepted}
 components:
+  parameters:
+    Q: {name: q, in: query, schema: {type: string}, description: Keyword query}
+    Country: {name: country, in: query, schema: {type: string}, description: ISO-style country code or known country name}
+    Region: {name: region, in: query, schema: {type: string}, description: Province/state/region name or code}
+    City: {name: city, in: query, schema: {type: string}}
+    Category: {name: category, in: query, schema: {type: string}}
+    Subcategory: {name: subcategory, in: query, schema: {type: string}}
+    Organisation: {name: organisation, in: query, schema: {type: string}}
+    FieldOfStudy: {name: field_of_study, in: query, schema: {type: string}}
+    EducationLevel: {name: education_level, in: query, schema: {type: string}}
+    JobType: {name: job_type, in: query, schema: {type: string}}
+    WorkMode: {name: work_mode, in: query, schema: {type: string}, description: remote, hybrid or on-site}
+    ClosingBefore: {name: closing_before, in: query, schema: {type: string, format: date}}
+    ClosingAfter: {name: closing_after, in: query, schema: {type: string, format: date}}
+    Page: {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+    Limit: {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+  responses:
+    ContentList:
+      description: Published content list
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items: {$ref: '#/components/schemas/ContentSummary'}
+              meta: {type: object, additionalProperties: true}
   schemas:
-    Link:
-      type: object
-      required: [title, url]
-      properties:
-        title: {type: string}
-        url: {type: string}
-        type: {type: string}
-        icon: {type: [string, 'null']}
-    Tag:
+    Location:
       type: object
       properties:
-        name: {type: string}
-        slug: {type: string}
-        url: {type: string}
-    Topic:
-      type: object
-      properties:
-        id: {type: string, examples: [t1]}
-        key: {type: string, examples: [t1]}
-        title: {type: string}
-        body:
+        country:
           type: object
           properties:
-            markdown: {type: string}
-            blocks: {type: array, items: {type: object}}
-            html: {type: string}
-        links: {type: array, items: {$ref: '#/components/schemas/Link'}}
-        images: {type: array, items: {type: object}}
-        documents: {type: array, items: {type: object}}
-    ContentDetail:
+            code: {type: [string, 'null']}
+            name: {type: [string, 'null']}
+        region:
+          type: object
+          properties:
+            code: {type: [string, 'null']}
+            name: {type: [string, 'null']}
+        city: {type: [string, 'null']}
+        location: {type: [string, 'null']}
+    Classification:
+      type: object
+      properties:
+        subcategory: {type: [string, 'null']}
+        opportunity_type: {type: [string, 'null']}
+        organisation: {type: [string, 'null']}
+        education_level: {type: array, items: {type: string}}
+        fields_of_study: {type: array, items: {type: string}}
+        job_type: {type: [string, 'null']}
+        work_mode: {type: [string, 'null']}
+        salary: {type: object, additionalProperties: true}
+        eligibility_tags: {type: array, items: {type: string}}
+        keywords: {type: array, items: {type: string}}
+    ContentSummary:
       type: object
       properties:
         id: {type: string}
-        type: {enum: [news, bursary, job, other, internship, learnership, announcement, story]}
+        type: {type: string}
         slug: {type: string}
         path: {type: string}
+        legacy_path: {type: string}
         title: {type: string}
         description: {type: string}
-        main_image: {type: [string, 'null']}
         posted_date: {type: [string, 'null']}
         updated_date: {type: [string, 'null']}
         category: {type: [string, 'null']}
-        tags: {type: array, items: {$ref: '#/components/schemas/Tag'}}
-        metadata:
-          type: object
-          description: Type-specific metadata. Bursaries include status/closing date/provider; jobs include company/location; news includes event date.
-        body:
-          type: object
+        subcategory: {type: [string, 'null']}
+        location: {$ref: '#/components/schemas/Location'}
+        classification: {$ref: '#/components/schemas/Classification'}
+        organisation: {type: [string, 'null']}
+        publishing_status: {type: string, const: published}
+        seo: {type: object, additionalProperties: true}
+    ContentDetail:
+      allOf:
+        - {$ref: '#/components/schemas/ContentSummary'}
+        - type: object
           properties:
-            markdown: {type: string}
-            blocks: {type: array, items: {type: object}}
-            html: {type: string}
-        topics: {type: array, maxItems: 10, items: {$ref: '#/components/schemas/Topic'}}
-        topic_navigation: {type: array, items: {type: object}}
-        related_links: {type: array, items: {$ref: '#/components/schemas/Link'}}
-        recommendation_links:
-          type: array
-          description: Custom or source-preserved recommendation links with readable titles.
-          items: {$ref: '#/components/schemas/Link'}
-        documents: {type: array, items: {type: object}}
-        related_content: {type: array, items: {type: object}}
-        recommendations: {type: array, items: {type: object}}
-        navigation:
-          type: object
-          properties:
-            breadcrumbs: {type: array, items: {$ref: '#/components/schemas/Link'}}
-            links: {type: array, items: {$ref: '#/components/schemas/Link'}}
-        seo: {type: object}
+            metadata: {type: object, additionalProperties: true}
+            body: {type: object, additionalProperties: true}
+            topics: {type: array, items: {type: object, additionalProperties: true}}
+            related_links: {type: array, items: {type: object, additionalProperties: true}}
+            recommendation_links: {type: array, items: {type: object, additionalProperties: true}}
+            related_content: {type: array, items: {$ref: '#/components/schemas/ContentSummary'}}
+            recommendations: {type: array, items: {$ref: '#/components/schemas/ContentSummary'}}
+            navigation: {type: object, additionalProperties: true}

@@ -5,12 +5,14 @@ import { z } from 'zod';
 import { store } from '../lib/store.mjs';
 import { requireAuth, requireCsrf, permit } from '../lib/auth.mjs';
 import { fetchImports } from '../lib/importer.mjs';
-import { saveUpload, mediaKind } from '../lib/r2.mjs';
+import { saveUpload, mediaKind, retryPublicationQueue } from '../lib/r2.mjs';
+import { publishPostArtifact, unpublishPostArtifact } from '../lib/publication-service.mjs';
 import { sendInvite } from '../lib/resend.mjs';
 import { ROLE_PERMISSIONS } from '../lib/rbac.mjs';
 import { config } from '../config.mjs';
 import { CONTENT_TYPE_DEFINITIONS, resolvedDefinition } from '../lib/content-types.mjs';
 import { isSafeUrl, normalizeTags } from '../lib/content-rules.mjs';
+import { normalizeGeo, normalizeClassification } from '../lib/global-content.mjs';
 
 export const adminRouter=Router();
 const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:25*1024*1024}});
@@ -28,25 +30,58 @@ function cleanTypeData(type,input={}){
   const allowed={
     news:['event_date'],announcement:['event_date'],
     bursary:['provider','opening_date','closing_date','status_override','requirements','eligibility','how_to_apply','application_url'],
+    scholarship:['provider','opening_date','closing_date','status_override','requirements','eligibility','how_to_apply','application_url'],
     job:['company','location','salary','closing_date','status_override','requirements','responsibilities','how_to_apply','application_url'],
     internship:['company','location','salary','closing_date','status_override','requirements','responsibilities','how_to_apply','application_url'],
     learnership:['company','location','salary','closing_date','status_override','requirements','responsibilities','how_to_apply','application_url'],
+    opportunity:['closing_date','status_override','requirements','how_to_apply','application_url'],
     other:['subtype'],story:[]
   }[type]||[];
   return Object.fromEntries(Object.entries(input||{}).filter(([k])=>allowed.includes(k)));
 }
 function publishProblems(post){
   const issues=[];if(!post.title?.trim())issues.push('Title is required.');if(!post.body_markdown?.trim())issues.push('Main content is required before publishing.');if(!post.tags?.length)issues.push('Add at least one tag.');
-  if(post.content_type==='bursary'){if(!post.type_data?.provider?.trim())issues.push('Bursary provider is required.');if(!post.type_data?.closing_date)issues.push('Bursary closing date is required.');}
+  if(['bursary','scholarship'].includes(post.content_type)){if(!post.type_data?.provider?.trim())issues.push('Funding provider is required.');if(!post.type_data?.closing_date)issues.push('Closing date is required.');}
   if(['job','internship','learnership'].includes(post.content_type)&&!post.type_data?.company?.trim())issues.push('Company / organisation is required.');
   return issues;
 }
+const geoSchema=z.object({
+  country_code:z.string().max(3).optional().nullable(),country_name:z.string().max(120).optional().nullable(),
+  region_code:z.string().max(30).optional().nullable(),region_name:z.string().max(120).optional().nullable(),
+  city:z.string().max(120).optional().nullable(),location:z.string().max(220).optional().nullable()
+}).optional().default({});
+const classificationSchema=z.object({
+  subcategory:z.string().max(120).optional().nullable(),opportunity_type:z.string().max(120).optional().nullable(),
+  organisation:z.string().max(180).optional().nullable(),education_level:z.array(z.string().max(100)).max(40).optional().default([]),
+  fields_of_study:z.array(z.string().max(120)).max(40).optional().default([]),job_type:z.string().max(80).optional().nullable(),
+  work_mode:z.string().max(80).optional().nullable(),salary:z.record(z.string(),z.any()).optional().default({}),
+  eligibility_tags:z.array(z.string().max(100)).max(40).optional().default([]),keywords:z.array(z.string().max(100)).max(40).optional().default([])
+}).optional().default({});
 const postSchema=z.object({
-  title:z.string().min(2).max(220),slug:z.string().max(140).optional(),content_type:z.enum(contentTypes).default('other'),summary:z.string().max(1000).optional().default(''),body_markdown:z.string().max(250000).optional().default(''),posted_date:z.string().nullable().optional(),category:z.string().max(120).optional().default(''),categories:z.array(z.string().max(100)).max(20).optional().default([]),tags:z.array(z.string().max(60)).max(30).optional().default([]),topics:z.array(topicSchema).max(10).optional().default([]),related_links:z.array(linkSchema).max(40).optional().default([]),related_ids:z.array(z.string()).max(40).optional().default([]),recommendation_ids:z.array(z.string()).max(40).optional().default([]),recommendation_links:z.array(linkSchema).max(40).optional().default([]),documents:z.array(documentSchema).max(40).optional().default([]),navigation_links:z.array(linkSchema).max(30).optional().default([]),type_data:z.record(z.string(),z.any()).optional().default({}),main_image_url:nullableUrl,seo_title:z.string().max(220).optional().default(''),seo_description:z.string().max(320).optional().default(''),status:z.enum(['draft','scheduled','published','archived','trash']).optional().default('draft'),is_trending:z.boolean().optional().default(false)
+  title:z.string().min(2).max(220),slug:z.string().max(140).optional(),content_type:z.enum(contentTypes).default('other'),summary:z.string().max(1000).optional().default(''),body_markdown:z.string().max(250000).optional().default(''),posted_date:z.string().nullable().optional(),category:z.string().max(120).optional().default(''),categories:z.array(z.string().max(100)).max(20).optional().default([]),tags:z.array(z.string().max(60)).max(30).optional().default([]),topics:z.array(topicSchema).max(10).optional().default([]),related_links:z.array(linkSchema).max(40).optional().default([]),related_ids:z.array(z.string()).max(40).optional().default([]),recommendation_ids:z.array(z.string()).max(40).optional().default([]),recommendation_links:z.array(linkSchema).max(40).optional().default([]),documents:z.array(documentSchema).max(40).optional().default([]),navigation_links:z.array(linkSchema).max(30).optional().default([]),type_data:z.record(z.string(),z.any()).optional().default({}),geo:geoSchema,classification:classificationSchema,main_image_url:nullableUrl,seo_title:z.string().max(220).optional().default(''),seo_description:z.string().max(320).optional().default(''),status:z.enum(['draft','scheduled','published','archived','trash']).optional().default('draft'),is_trending:z.boolean().optional().default(false)
 });
 function normalizePost(input){
   const topics=(input.topics||[]).map((t,i)=>({...t,id:`t${i+1}`,key:`t${i+1}`}));
-  return{...input,tags:normalizeTags(input.tags),topics,type_data:cleanTypeData(input.content_type,input.type_data)};
+  const type_data=cleanTypeData(input.content_type,input.type_data);
+  const geo=normalizeGeo(input.geo||{});
+  const classification=normalizeClassification({
+    ...(input.classification||{}),
+    organisation:input.classification?.organisation||type_data.company||type_data.provider||''
+  });
+  return{...input,tags:normalizeTags(input.tags),topics,type_data,geo,classification};
+}
+async function syncPublication(row,actor){
+  if(!row)return row;
+  if(row.status==='published'&&!row.deleted_at){
+    const publication=await publishPostArtifact(store,row);
+    return await store.updatePost(row.id,{publication},actor)||{...row,publication};
+  }
+  if(row.publication?.key){
+    const result=await unpublishPostArtifact(row);
+    const publication={...row.publication,sync_status:result.sync_status||'unpublished',last_synced_at:result.last_synced_at||row.publication.last_synced_at||null};
+    return await store.updatePost(row.id,{publication},actor)||{...row,publication};
+  }
+  return row;
 }
 
 adminRouter.get('/dashboard',permit('dashboard.view'),async(req,res)=>ok(res,await store.dashboard()));
@@ -99,12 +134,16 @@ adminRouter.patch('/imports/:id',permit('imports.review'),async(req,res)=>{const
 adminRouter.post('/imports/:id/promote',permit('imports.review'),async(req,res)=>{const row=await store.promoteImport(req.params.id,req.user.id);if(!row)return res.status(404).json({error:'Import not found'});await audit(req,'import.promote','post',row.id,{source_import:req.params.id});res.status(201).json({data:row})});
 
 adminRouter.get('/posts',permit('posts.view'),async(req,res)=>ok(res,await store.listPosts({status:req.query.status,type:req.query.type,q:req.query.q,include_deleted:req.query.include_deleted==='true'})));
-adminRouter.post('/posts',permit('posts.create'),async(req,res)=>{const p=postSchema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid content',details:p.error.flatten()});const body=normalizePost(p.data);if(body.status==='published'){const issues=publishProblems(body);if(issues.length)return res.status(400).json({error:'Publishing checklist failed',details:{formErrors:issues}})}const row=await store.createPost(body,req.user.id);await audit(req,'post.create','post',row.id,{title:row.title,type:row.content_type});res.status(201).json({data:row})});
+adminRouter.post('/posts',permit('posts.create'),async(req,res)=>{const p=postSchema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid content',details:p.error.flatten()});const body=normalizePost(p.data);if(body.status==='published'){const issues=publishProblems(body);if(issues.length)return res.status(400).json({error:'Publishing checklist failed',details:{formErrors:issues}})}let row=await store.createPost(body,req.user.id);if(row.status==='published')row=await syncPublication(row,req.user.id);await audit(req,'post.create','post',row.id,{title:row.title,type:row.content_type,publication:row.publication?.sync_status||null});res.status(201).json({data:row})});
 adminRouter.get('/posts/:id',permit('posts.view'),async(req,res)=>{const row=await store.getPost(req.params.id);if(!row)return res.status(404).json({error:'Post not found'});ok(res,row)});
-adminRouter.patch('/posts/:id',permit('posts.edit'),async(req,res)=>{const p=postSchema.partial().safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid content update',details:p.error.flatten()});const current=await store.getPost(req.params.id);if(!current)return res.status(404).json({error:'Post not found'});const merged=normalizePost({...current,...p.data,content_type:p.data.content_type||current.content_type,type_data:{...(current.type_data||{}),...(p.data.type_data||{})}});if(p.data.status==='published'&&!['owner','super_admin','content_manager','hiring_manager'].includes(req.user.role))return res.status(403).json({error:'Your role cannot publish'});if(p.data.status==='published'){const issues=publishProblems(merged);if(issues.length)return res.status(400).json({error:'Publishing checklist failed',details:{formErrors:issues}})}const patch=Object.fromEntries(Object.keys(p.data).map(k=>[k,merged[k]]));const row=await store.updatePost(req.params.id,patch,req.user.id);await audit(req,p.data.status==='published'?'post.publish':'post.update','post',row.id,{fields:Object.keys(patch)});ok(res,row)});
-adminRouter.delete('/posts/:id',permit('posts.delete'),async(req,res)=>{const row=await store.trashPost(req.params.id,req.user.id);if(!row)return res.status(404).json({error:'Post not found'});await audit(req,'post.trash','post',row.id);ok(res,row)});
+adminRouter.patch('/posts/:id',permit('posts.edit'),async(req,res)=>{const p=postSchema.partial().safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid content update',details:p.error.flatten()});const current=await store.getPost(req.params.id);if(!current)return res.status(404).json({error:'Post not found'});const merged=normalizePost({...current,...p.data,content_type:p.data.content_type||current.content_type,type_data:{...(current.type_data||{}),...(p.data.type_data||{})},geo:{...(current.geo||{}),...(p.data.geo||{})},classification:{...(current.classification||{}),...(p.data.classification||{})}});if(p.data.status==='published'&&!['owner','super_admin','content_manager','hiring_manager'].includes(req.user.role))return res.status(403).json({error:'Your role cannot publish'});if((p.data.status==='published'||current.status==='published')&&merged.status==='published'){const issues=publishProblems(merged);if(issues.length)return res.status(400).json({error:'Publishing checklist failed',details:{formErrors:issues}})}const patch=Object.fromEntries(Object.keys(p.data).map(k=>[k,merged[k]]));let row=await store.updatePost(req.params.id,patch,req.user.id);row=await syncPublication(row,req.user.id);await audit(req,p.data.status==='published'?'post.publish':'post.update','post',row.id,{fields:Object.keys(patch),publication:row.publication?.sync_status||null});ok(res,row)});
+adminRouter.delete('/posts/:id',permit('posts.delete'),async(req,res)=>{let row=await store.trashPost(req.params.id,req.user.id);if(!row)return res.status(404).json({error:'Post not found'});row=await syncPublication(row,req.user.id);await audit(req,'post.trash','post',row.id,{publication:row.publication?.sync_status||null});ok(res,row)});
 adminRouter.post('/posts/:id/restore',permit('posts.edit'),async(req,res)=>{const row=await store.restorePost(req.params.id,req.user.id);if(!row)return res.status(404).json({error:'Post not found'});await audit(req,'post.restore','post',row.id);ok(res,row)});
 adminRouter.get('/posts/:id/revisions',permit('posts.view'),async(req,res)=>ok(res,await store.revisions(req.params.id)));
+
+adminRouter.post('/sync/publications',permit('posts.publish'),async(req,res)=>{const result=await retryPublicationQueue({limit:250});await audit(req,'publications.sync','system','r2',result);ok(res,result)});
+adminRouter.post('/sync/databases',permit('posts.publish'),async(req,res)=>{if(typeof store.retryDatabaseQueue!=='function')return ok(res,{processed:0,synced:0,failed:0,remaining:0,mode:'single-store'});const result=await store.retryDatabaseQueue({limit:250});await audit(req,'databases.sync','system','database',result);ok(res,result)});
+adminRouter.get('/sync/status',permit('dashboard.view'),async(req,res)=>ok(res,{store:store.health?.()||{mode:config.dataStore}}));
 
 adminRouter.get('/analytics',permit('analytics.view'),async(req,res)=>ok(res,await store.analyticsSummary()));
 adminRouter.get('/team',permit('team.view'),async(req,res)=>ok(res,await store.listUsers()));

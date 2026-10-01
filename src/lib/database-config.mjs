@@ -55,3 +55,13 @@ export function resolveStoreMode({ requestedMode = 'auto', databaseUrl = '' } = 
   if (database.valid) return { mode: 'postgres', database, fallback: false };
   return { mode: 'demo', database, fallback: true };
 }
+
+
+export function collectDatabaseUrls(env=process.env,{max=20}={}) {
+  const candidates=[
+    env.DATABASE_URL,
+    ...String(env.DATABASE_URLS||'').split(/[\n,;]+/),
+    ...Array.from({length:max},(_,i)=>env[`DATABASE_URL_${i+1}`])
+  ].map(x=>String(x||'').trim()).filter(Boolean);
+  return [...new Set(candidates.filter(x=>inspectDatabaseUrl(x).valid))];
+}

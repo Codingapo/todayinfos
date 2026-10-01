@@ -7,7 +7,13 @@ import { markdownToBlocks, renderBlocksHtml, extractInlineTags } from '../src/li
 import { publicPost } from '../src/lib/serializers.mjs';
 import { ROLE_PERMISSIONS, hasPermission } from '../src/lib/rbac.mjs';
 import { resolvedDefinition } from '../src/lib/content-types.mjs';
-import { inspectDatabaseUrl, resolveStoreMode } from '../src/lib/database-config.mjs';
+import { inspectDatabaseUrl, resolveStoreMode, collectDatabaseUrls } from '../src/lib/database-config.mjs';
+import { normalizeGeo, normalizeClassification, seoPath, filterPost } from '../src/lib/global-content.mjs';
+import { publicationKey, PUBLICATION_SCHEMA } from '../src/lib/publication-service.mjs';
+import { publishedObjectKey } from '../src/lib/r2.mjs';
+import { PUBLISHED_INDEX_KEY, PUBLISHED_INDEX_SCHEMA } from '../src/lib/published-index.mjs';
+import { FederatedStore, availabilityError } from '../src/lib/federated-store.mjs';
+import { searchScore, trendScore, deriveVisitorSignals } from '../src/lib/ranking.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
   assert.equal(slugify('University of Limpopo — Applications 2027!'),'university-of-limpopo-applications-2027');
@@ -136,4 +142,173 @@ test('explicit source related links are preserved even when their title is not g
     relatedLinks:[{title:'Application Guide for Students',url:'https://source.test/student-guide'}]
   },'bursary');
   assert.deepEqual(recs,[{title:'Application Guide for Students',url:'https://source.test/student-guide',type:'source_related'}]);
+});
+
+
+test('global location model normalizes countries and supports country SEO paths',()=>{
+  const geo=normalizeGeo({country:'South Africa',province:'Gauteng',city:'Johannesburg'});
+  assert.equal(geo.country_code,'ZA');
+  assert.equal(geo.region_name,'Gauteng');
+  assert.equal(seoPath({content_type:'bursary',slug:'example',geo}),'/za/bursaries/example');
+  assert.equal(seoPath({content_type:'news',slug:'application-update',category:'University News',geo}),'/za/news/university-news/application-update');
+});
+
+test('global classification supports opportunity discovery fields',()=>{
+  const c=normalizeClassification({
+    organisation:'Example Org',education_level:['Undergraduate'],fields_of_study:['Engineering'],
+    job_type:'full-time',work_mode:'remote',salary:{min:1000,max:2000,currency:'zar'}
+  });
+  assert.equal(c.organisation,'Example Org');
+  assert.deepEqual(c.fields_of_study,['Engineering']);
+  assert.equal(c.salary.currency,'ZAR');
+});
+
+test('global filter helper matches country region city and field of study',()=>{
+  const post={
+    geo:{country_code:'ZA',region_name:'Gauteng',city:'Johannesburg'},
+    classification:{fields_of_study:['Engineering'],education_level:['Graduate'],work_mode:'hybrid'},
+    type_data:{}
+  };
+  assert.equal(filterPost(post,{country:'za',region:'gauteng',city:'johan',field_of_study:'engineer'}),true);
+  assert.equal(filterPost(post,{country:'GB'}),false);
+});
+
+test('public serializer exposes explicit global location classification and legacy path',()=>{
+  const p=publicPost({
+    id:'g1',slug:'global-job',title:'Global Job',content_type:'job',summary:'Role',body_markdown:'Details',
+    posted_date:'2026-10-01',category:'Technology',categories:['Technology'],tags:['Jobs'],
+    topics:[],related_links:[],related_ids:[],recommendation_ids:[],recommendation_links:[],documents:[],navigation_links:[],
+    type_data:{company:'Example',closing_date:'2026-11-01',status_override:'open'},
+    geo:{country_code:'GB',country_name:'United Kingdom',city:'London'},
+    classification:{organisation:'Example',job_type:'full-time',work_mode:'hybrid',fields_of_study:['Computer Science']},
+    status:'published',created_at:'2026-10-01',updated_at:'2026-10-01'
+  });
+  assert.equal(p.path,'/gb/jobs/global-job');
+  assert.equal(p.legacy_path,'/jobs/global-job');
+  assert.equal(p.location.country.code,'GB');
+  assert.equal(p.classification.job_type,'full-time');
+  assert.equal(p.organisation,'Example');
+});
+
+
+test('published JSON artifact keys are global and country aware',()=>{
+  assert.equal(
+    publishedObjectKey({countryCode:'ZA',collection:'bursaries',slug:'example-bursary'}),
+    'published/za/bursaries/example-bursary.json'
+  );
+  assert.equal(
+    publicationKey({content_type:'job',slug:'remote-role',geo:{country_code:'GB'}}),
+    'published/gb/jobs/remote-role.json'
+  );
+  assert.equal(PUBLICATION_SCHEMA,'todayinfo.content.v1');
+});
+
+
+test('multi-database configuration accepts many valid databases and removes duplicates',()=>{
+  const env={
+    DATABASE_URL:'postgresql://user:pass@db1.example.com:5432/main',
+    DATABASE_URLS:'postgresql://user:pass@db2.example.com:5432/main,postgresql://user:pass@db1.example.com:5432/main',
+    DATABASE_URL_3:'postgresql://user:pass@db3.example.com:5432/main',
+    DATABASE_URL_4:'postgresql://user:pass@host:5432/main'
+  };
+  const urls=collectDatabaseUrls(env,{max:5});
+  assert.equal(urls.length,3);
+  assert.match(urls[1],/db2\.example\.com/);
+});
+
+test('federated public reads merge content from multiple databases',async()=>{
+  const primary={listPosts:async()=>[{id:'1',slug:'za-post',title:'ZA',status:'published',geo:{country_code:'ZA'},updated_at:'2026-10-01'}]};
+  const reader={listPosts:async()=>[{id:'2',slug:'uk-post',title:'UK',status:'published',geo:{country_code:'GB'},updated_at:'2026-10-01'}]};
+  const fallback={cached:[],cachePosts(rows){this.cached=rows},listPosts:async()=>[]};
+  const fed=new FederatedStore({primary,readers:[reader],fallback});
+  const rows=await fed.listPosts({status:'published'});
+  assert.equal(rows.length,2);
+  assert.equal(fallback.cached.length,2);
+});
+
+test('federated writes use local fallback only for availability failures',async()=>{
+  const primary={updatePost:async()=>{const e=new Error('getaddrinfo ENOTFOUND db');e.code='ENOTFOUND';throw e}};
+  const fallback={
+    queued:[],
+    updatePost:async(id,patch)=>({id,slug:'cached',status:'published',...patch}),
+    enqueueDatabaseOperation(method,args){this.queued.push({method,args})}
+  };
+  const fed=new FederatedStore({primary,readers:[],fallback});
+  const row=await fed.updatePost('p1',{title:'Offline update'},'admin');
+  assert.equal(row._database_fallback,true);
+  assert.equal(fallback.queued[0].method,'updatePost');
+  assert.equal(availabilityError(Object.assign(new Error('timeout'),{code:'ETIMEDOUT'})),true);
+});
+
+
+test('structured search ranking favors titles tags organisations and locations',()=>{
+  const strong={title:'Engineering Internship Johannesburg',summary:'Graduate opportunity',tags:['Engineering'],classification:{organisation:'Example Tech',fields_of_study:['Engineering']},geo:{city:'Johannesburg'}};
+  const weak={title:'General Update',summary:'Engineering is mentioned once',tags:[],classification:{},geo:{}};
+  assert.ok(searchScore(strong,'engineering johannesburg')>searchScore(weak,'engineering johannesburg'));
+});
+
+test('trending ranking uses engagement recency and manual editorial boost',()=>{
+  const post={published_at:'2026-10-01T00:00:00Z',is_trending:false};
+  const score=trendScore(post,{view:10,read:3,application_click:2},new Date('2026-10-01T12:00:00Z'));
+  assert.ok(score>40);
+  assert.ok(trendScore({...post,is_trending:true},{},new Date('2026-10-01T12:00:00Z'))>trendScore(post,{},new Date('2026-10-01T12:00:00Z')));
+});
+
+test('visitor signals are deterministic and based on anonymous event history',()=>{
+  const signals=deriveVisitorSignals([
+    {event_type:'search',created_at:'2026-10-01T10:00:00Z',meta:{query:'internships',country_code:'ZA',region_name:'Gauteng',content_type:'internship'}},
+    {event_type:'read',created_at:'2026-10-01T09:00:00Z',meta:{country_code:'ZA',region_name:'Gauteng',content_type:'internship'}},
+    {event_type:'view',created_at:'2026-10-01T08:00:00Z',meta:{country_code:'GB',content_type:'job'}}
+  ]);
+  assert.equal(signals.country,'ZA');
+  assert.equal(signals.region,'Gauteng');
+  assert.equal(signals.content_type,'internship');
+  assert.equal(signals.query,'internships');
+});
+
+
+test('scholarships are distinct from bursaries in the global classifier',()=>{
+  assert.equal(detectContentType({title:'Rhodes Scholarship 2027',type:'article'}),'scholarship');
+  assert.equal(detectContentType({title:'Engineering Bursary 2027',type:'article'}),'bursary');
+});
+
+test('global filters support salary stipend eligibility and work mode',()=>{
+  const post={
+    tags:['Graduate'],
+    geo:{country_code:'ZA',region_name:'Gauteng'},
+    classification:{
+      work_mode:'hybrid',eligibility_tags:['South African citizens','Graduates'],
+      salary:{min:5000,max:8000,currency:'ZAR',stipend:true},
+      education_level:['Graduate'],fields_of_study:['Engineering']
+    },
+    type_data:{}
+  };
+  assert.equal(filterPost(post,{salary_min:6000,currency:'zar',stipend:'true',eligibility:'citizens',work_mode:'hybrid'}),true);
+  assert.equal(filterPost(post,{salary_min:9000}),false);
+  assert.equal(filterPost(post,{stipend:'false'}),false);
+});
+
+test('published R2 manifest has a stable schema and key',()=>{
+  assert.equal(PUBLISHED_INDEX_KEY,'published/_index.json');
+  assert.equal(PUBLISHED_INDEX_SCHEMA,'todayinfo.index.v1');
+});
+
+test('partial database outage can still use the R2 or local fallback path',async()=>{
+  const unavailable={listPosts:async()=>{const e=new Error('network timeout');e.code='ETIMEDOUT';throw e}};
+  const healthy={listPosts:async()=>[]};
+  const fallback={
+    cached:[],cachePosts(rows){this.cached=rows},
+    listPosts:async()=>[{id:'cached',slug:'cached',title:'Cached',status:'published',geo:{country_code:'ZA'},updated_at:'2026-10-01'}]
+  };
+  const fed=new FederatedStore({primary:unavailable,readers:[healthy],fallback});
+  const rows=await fed.listPosts({status:'published'});
+  assert.ok(rows.some(x=>x.id==='cached'));
+});
+
+test('OpenAPI advertises the global frontend contract',()=>{
+  const spec=fs.readFileSync(new URL('../public/openapi.yaml',import.meta.url),'utf8');
+  assert.match(spec,/\/\{countryCode\}\/\{collection\}/);
+  assert.match(spec,/\/facets:/);
+  assert.match(spec,/\/locations:/);
+  assert.match(spec,/published-only global content API/i);
 });
