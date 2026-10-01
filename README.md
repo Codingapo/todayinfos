@@ -1,4 +1,4 @@
-# TodayInfo Control Center v0.8.4
+# TodayInfo Control Center v0.8.5
 
 A Node.js admin dashboard and structured publishing API for TodayInfo.
 
@@ -646,3 +646,19 @@ Direct fallback is deliberately conservative:
 This fallback also supports Demand Queue URLs on the approved DailyUpdate and ZA Bursaries domains.
 
 Source Hub continues to expose a source-specific publishing policy. The system does not use AI rewriting; narrative rewriting remains a human editorial action.
+
+
+## v0.8.5 — No-AI source policy enforcement
+
+This update keeps the v0.8.4 direct-source fallback and the earlier CEO/Import Inbox/Demand Queue repairs.
+
+TodayInfo does **not** automatically rewrite narrative source articles.
+
+- **DailyUpdate**: fetch facts, requirements and application links; a person edits the TodayInfo wording before publication.
+- **ZA Bursaries**: fetch factual funding details, dates, eligibility and application routes; narrative wording requires human review.
+- **SAnews / DSTI**: Source Hub uses **Discover 10** to create private editorial leads. It does not automatically create/publish rewritten news stories.
+- **Structured job APIs / ATS boards**: rule-based 80%+ auto-publishing can continue when the source policy allows it and all normal hard checks pass.
+
+Source policy is enforced server-side, so sending `autoPublish=true` cannot bypass a source marked manual review.
+
+The Source Hub displays the publishing mode, rights/reuse state, AI rewriting state and auto-publish state for each source.
