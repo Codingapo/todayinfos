@@ -11,6 +11,7 @@ import { ROLE_PERMISSIONS } from '../lib/rbac.mjs';
 import { config } from '../config.mjs';
 import { CONTENT_TYPE_DEFINITIONS, resolvedDefinition } from '../lib/content-types.mjs';
 import { isSafeUrl, normalizeTags } from '../lib/content-rules.mjs';
+import { normalizeGeo, normalizeClassification } from '../lib/global-content.mjs';
 
 export const adminRouter=Router();
 const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:25*1024*1024}});
@@ -28,25 +29,45 @@ function cleanTypeData(type,input={}){
   const allowed={
     news:['event_date'],announcement:['event_date'],
     bursary:['provider','opening_date','closing_date','status_override','requirements','eligibility','how_to_apply','application_url'],
+    scholarship:['provider','opening_date','closing_date','status_override','requirements','eligibility','how_to_apply','application_url'],
     job:['company','location','salary','closing_date','status_override','requirements','responsibilities','how_to_apply','application_url'],
     internship:['company','location','salary','closing_date','status_override','requirements','responsibilities','how_to_apply','application_url'],
     learnership:['company','location','salary','closing_date','status_override','requirements','responsibilities','how_to_apply','application_url'],
+    opportunity:['closing_date','status_override','requirements','how_to_apply','application_url'],
     other:['subtype'],story:[]
   }[type]||[];
   return Object.fromEntries(Object.entries(input||{}).filter(([k])=>allowed.includes(k)));
 }
 function publishProblems(post){
   const issues=[];if(!post.title?.trim())issues.push('Title is required.');if(!post.body_markdown?.trim())issues.push('Main content is required before publishing.');if(!post.tags?.length)issues.push('Add at least one tag.');
-  if(post.content_type==='bursary'){if(!post.type_data?.provider?.trim())issues.push('Bursary provider is required.');if(!post.type_data?.closing_date)issues.push('Bursary closing date is required.');}
+  if(['bursary','scholarship'].includes(post.content_type)){if(!post.type_data?.provider?.trim())issues.push('Funding provider is required.');if(!post.type_data?.closing_date)issues.push('Closing date is required.');}
   if(['job','internship','learnership'].includes(post.content_type)&&!post.type_data?.company?.trim())issues.push('Company / organisation is required.');
   return issues;
 }
+const geoSchema=z.object({
+  country_code:z.string().max(3).optional().nullable(),country_name:z.string().max(120).optional().nullable(),
+  region_code:z.string().max(30).optional().nullable(),region_name:z.string().max(120).optional().nullable(),
+  city:z.string().max(120).optional().nullable(),location:z.string().max(220).optional().nullable()
+}).optional().default({});
+const classificationSchema=z.object({
+  subcategory:z.string().max(120).optional().nullable(),opportunity_type:z.string().max(120).optional().nullable(),
+  organisation:z.string().max(180).optional().nullable(),education_level:z.array(z.string().max(100)).max(40).optional().default([]),
+  fields_of_study:z.array(z.string().max(120)).max(40).optional().default([]),job_type:z.string().max(80).optional().nullable(),
+  work_mode:z.string().max(80).optional().nullable(),salary:z.record(z.string(),z.any()).optional().default({}),
+  eligibility_tags:z.array(z.string().max(100)).max(40).optional().default([]),keywords:z.array(z.string().max(100)).max(40).optional().default([])
+}).optional().default({});
 const postSchema=z.object({
-  title:z.string().min(2).max(220),slug:z.string().max(140).optional(),content_type:z.enum(contentTypes).default('other'),summary:z.string().max(1000).optional().default(''),body_markdown:z.string().max(250000).optional().default(''),posted_date:z.string().nullable().optional(),category:z.string().max(120).optional().default(''),categories:z.array(z.string().max(100)).max(20).optional().default([]),tags:z.array(z.string().max(60)).max(30).optional().default([]),topics:z.array(topicSchema).max(10).optional().default([]),related_links:z.array(linkSchema).max(40).optional().default([]),related_ids:z.array(z.string()).max(40).optional().default([]),recommendation_ids:z.array(z.string()).max(40).optional().default([]),recommendation_links:z.array(linkSchema).max(40).optional().default([]),documents:z.array(documentSchema).max(40).optional().default([]),navigation_links:z.array(linkSchema).max(30).optional().default([]),type_data:z.record(z.string(),z.any()).optional().default({}),main_image_url:nullableUrl,seo_title:z.string().max(220).optional().default(''),seo_description:z.string().max(320).optional().default(''),status:z.enum(['draft','scheduled','published','archived','trash']).optional().default('draft'),is_trending:z.boolean().optional().default(false)
+  title:z.string().min(2).max(220),slug:z.string().max(140).optional(),content_type:z.enum(contentTypes).default('other'),summary:z.string().max(1000).optional().default(''),body_markdown:z.string().max(250000).optional().default(''),posted_date:z.string().nullable().optional(),category:z.string().max(120).optional().default(''),categories:z.array(z.string().max(100)).max(20).optional().default([]),tags:z.array(z.string().max(60)).max(30).optional().default([]),topics:z.array(topicSchema).max(10).optional().default([]),related_links:z.array(linkSchema).max(40).optional().default([]),related_ids:z.array(z.string()).max(40).optional().default([]),recommendation_ids:z.array(z.string()).max(40).optional().default([]),recommendation_links:z.array(linkSchema).max(40).optional().default([]),documents:z.array(documentSchema).max(40).optional().default([]),navigation_links:z.array(linkSchema).max(30).optional().default([]),type_data:z.record(z.string(),z.any()).optional().default({}),geo:geoSchema,classification:classificationSchema,main_image_url:nullableUrl,seo_title:z.string().max(220).optional().default(''),seo_description:z.string().max(320).optional().default(''),status:z.enum(['draft','scheduled','published','archived','trash']).optional().default('draft'),is_trending:z.boolean().optional().default(false)
 });
 function normalizePost(input){
   const topics=(input.topics||[]).map((t,i)=>({...t,id:`t${i+1}`,key:`t${i+1}`}));
-  return{...input,tags:normalizeTags(input.tags),topics,type_data:cleanTypeData(input.content_type,input.type_data)};
+  const type_data=cleanTypeData(input.content_type,input.type_data);
+  const geo=normalizeGeo(input.geo||{});
+  const classification=normalizeClassification({
+    ...(input.classification||{}),
+    organisation:input.classification?.organisation||type_data.company||type_data.provider||''
+  });
+  return{...input,tags:normalizeTags(input.tags),topics,type_data,geo,classification};
 }
 
 adminRouter.get('/dashboard',permit('dashboard.view'),async(req,res)=>ok(res,await store.dashboard()));
