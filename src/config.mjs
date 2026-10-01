@@ -25,6 +25,7 @@ export const config = {
   port: Number(process.env.PORT || 8787),
   appOrigin: process.env.APP_ORIGIN || `http://localhost:${process.env.PORT || 8787}`,
   jwtSecret,
+  internalIngestKey: process.env.TODAYINFO_INGEST_KEY || '',
 
   // Effective storage mode after validating DATABASE_URL.
   dataStore: storeResolution.mode,
