@@ -120,8 +120,8 @@ async function openFetch(){
     <label class="field wide">What do you want to fetch?<select name="preset">${presets.map(p=>`<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}</select><small>Psychometric Test remains a dedicated tag source.</small></label>
     <label class="field">Year filter<input name="year" inputmode="numeric" value="${currentYear}" placeholder="${currentYear}"><small>Clear this field to fetch every year.</small></label>
     <label class="field">How deep should we sync?<select name="maxPages"><option value="10">10 source pages</option><option value="25">25 source pages</option><option value="50">50 source pages</option><option value="100" selected>100 source pages / everything available</option></select></label>
-    <label class="field wide preview-check"><input name="publishSamples" type="checkbox" checked><span>Publish up to 3 clean preview posts after syncing<small>Only in demo/testing storage. Incomplete imports are skipped and remembered items are never republished.</small></span></label>
-    <div class="wide notice">Each source page requests up to 100 records. Existing imports are remembered by source key; reviewed, promoted and ignored states are preserved.</div>
+    <label class="field wide preview-check"><input name="autoPublish" type="checkbox" checked><span>Auto-publish clean imports scoring 80% or higher<small>Expired items, missing source links, missing required fields, or missing application routes are still blocked and left in the Import Inbox.</small></span></label>
+    <div class="wide notice">Each source page requests up to 100 records. Existing imports are remembered by source key; reviewed and promoted states are preserved. Source patterns also improve the rule-based import memory over time.</div>
     <div id="syncProgress" class="wide sync-progress hidden"><span class="sync-spinner"></span><div><strong>Syncing source…</strong><small>Large syncs can take longer. Keep this dialog open until the result appears.</small></div></div>
     <div class="form-actions"><button type="button" class="ghost" id="cancelFetch">Cancel</button><button class="primary" id="syncSubmit">Start deep sync</button></div>
   </form>`);
@@ -129,13 +129,13 @@ async function openFetch(){
   $('#fetchForm').onsubmit=async e=>{
     e.preventDefault();
     const f=new FormData(e.currentTarget),p=presets.find(x=>x.id===f.get('preset'));
-    const body={kind:p?.kind||(p?.id||'pages'),year:f.get('year')||undefined,maxPages:Number(f.get('maxPages')||100),expand:true,publishSamples:f.get('publishSamples')==='on'?3:0};
+    const body={kind:p?.kind||(p?.id||'pages'),year:f.get('year')||undefined,maxPages:Number(f.get('maxPages')||100),expand:true,autoPublish:f.get('autoPublish')==='on'};
     if(p?.tagSlug)body.tagSlug=p.tagSlug;
     const submit=$('#syncSubmit');submit.disabled=true;submit.textContent='Syncing…';$('#syncProgress').classList.remove('hidden');
     try{
       const r=await api('/imports/fetch',{method:'POST',body});
-      const samples=r.published_samples?.length||0;
-      toast(`Sync complete: ${r.inserted||0} new · ${r.changed||0} changed · ${r.unchanged||0} remembered${samples?` · ${samples} preview published`:''}`);
+      const published=r.auto_publish?.published?.length||0,skipped=r.auto_publish?.skipped?.length||0;
+      toast(`Sync complete: ${r.inserted||0} new · ${r.changed||0} changed · ${r.unchanged||0} remembered${published?` · ${published} auto-published`:''}${skipped?` · ${skipped} kept for review`:''}`);
       closeModal();await navigate('imports');
     }catch(err){
       submit.disabled=false;submit.textContent='Start deep sync';$('#syncProgress').classList.add('hidden');toast(err.message,true);

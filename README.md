@@ -1,4 +1,4 @@
-# TodayInfo Control Center v0.4
+# TodayInfo Control Center v0.4.1
 
 A Node.js admin dashboard and structured publishing API for TodayInfo.
 
@@ -369,3 +369,50 @@ migrations/005_published_artifacts.sql
 ```
 
 Do not run migrations blindly against an existing database without first comparing its schema.
+
+
+## v0.4.1 — Permanent reference seed and safe auto-publishing
+
+The researched South Africa opportunity dataset is now part of the repository under:
+
+```text
+data/seeds/south-africa-opportunities-drafts.json
+```
+
+It is loaded every time the server starts and upserted into the Import Inbox with stable keys. This gives TodayInfo a permanent 40-record reference set for rule quality and source-pattern learning without publishing those seed records blindly.
+
+Import learning is **rule-based**, not AI. Aggregate source-domain patterns are stored in:
+
+```text
+system/import-learning.json
+```
+
+through the existing R2/local fallback layer. Unchanged records are learned once per source hash.
+
+### Automatic publishing after fetch
+
+By default, a fetch can automatically publish a record only when:
+
+- quality score is **80 or higher**;
+- the source URL is valid;
+- the standard publishing checklist passes;
+- the opportunity is not expired/closed;
+- an opportunity has a usable application URL or sufficiently detailed application instructions.
+
+Anything that fails stays private in the Import Inbox.
+
+Environment controls:
+
+```env
+AUTO_PUBLISH_IMPORTS=true
+AUTO_PUBLISH_MIN_SCORE=80
+AUTO_PUBLISH_MAX_PER_FETCH=500
+```
+
+`AUTO_PUBLISH_MIN_SCORE` is clamped to a minimum of 80.
+
+Admin learning summary:
+
+```text
+GET /admin/api/imports/learning
+```

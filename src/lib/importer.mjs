@@ -2,6 +2,7 @@ import { config } from '../config.mjs';
 import { hashKey } from './utils.mjs';
 import { detectContentType, ruleDraftFromRecord, isIndexLikeRecord, contentQuality } from './content-rules.mjs';
 import { normalizeClassification, normalizeGeo } from './global-content.mjs';
+import { applyLearningHints, learningQualityBonus } from './import-learning.mjs';
 
 const MAX_SOURCE_PAGES = 100;
 const PAGE_SIZE = 100;
@@ -156,7 +157,16 @@ export async function fetchImports(options={}) {
   records.sort((a,b) => String(recordDate(b)||'').localeCompare(String(recordDate(a)||'')));
 
   const rows = records.map(record => {
-    const prepared = ruleDraftFromRecord(record);
+    let prepared = ruleDraftFromRecord(record);
+    const baseRow={
+      source_key: hashKey(record.sourceId || 'source', record.id || record.url || record.slug || record.title),
+      source_hash: hashKey(JSON.stringify(record)),
+      source_name: record.sourceName || record.sourceId || 'TodayInfo source API',
+      source_id: record.sourceId || null,
+      source_url: record.url || record.source?.canonicalUrl || record.source?.url || null,
+      source_slug: record.slug || null,
+      source_payload: record
+    };
     prepared.geo=normalizeGeo({
       country_code:options.country_code||record.country_code||record.countryCode||record.country||config.sourceDefaultCountry,
       country_name:record.country_name||record.countryName,
@@ -164,6 +174,7 @@ export async function fetchImports(options={}) {
       city:options.city||record.city,
       location:record.location
     });
+    prepared=applyLearningHints({draft:prepared,row:baseRow,profile:options.learningProfile});
     prepared.classification=normalizeClassification({
       organisation:record.organization||record.organisation||record.company||record.provider,
       subcategory:record.subcategory,
@@ -175,20 +186,16 @@ export async function fetchImports(options={}) {
       eligibility_tags:Array.isArray(record.eligibility)?record.eligibility:[]
     });
     const quality = contentQuality(prepared);
+    const bonus=learningQualityBonus(baseRow,options.learningProfile);
     return {
-      source_key: hashKey(record.sourceId || 'source', record.id || record.url || record.slug || record.title),
-      source_hash: hashKey(JSON.stringify(record)),
-      source_name: record.sourceName || record.sourceId || 'TodayInfo source API',
-      source_id: record.sourceId || null,
-      source_url: record.url || record.source?.canonicalUrl || record.source?.url || null,
-      source_slug: record.slug || null,
-      source_payload: record,
-      detected_type: detectContentType(record),
+      ...baseRow,
+      detected_type: prepared.content_type||detectContentType(record),
       prepared_draft: prepared,
       review_status: 'unreviewed',
       source_changed: false,
-      quality_score: quality.score,
+      quality_score: Math.min(100,quality.score+bonus),
       quality_issues: quality.issues,
+      learning_bonus:bonus,
       source_record_date: recordDate(record)
     };
   });
