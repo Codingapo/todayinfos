@@ -11,7 +11,8 @@ export const SOURCE_CATALOG=[
   {
     id:'dailyupdate',label:'DailyUpdate',category:'todayinfo_network',region:'South Africa',country_code:'ZA',
     content_types:['job','internship','learnership'],mode:'todayinfo_api',integration_status:'active',
-    description:'Long-form employment articles. TodayInfo rejects archive pages and extracts requirements, how-to-apply text and useful related opportunities.',
+    description:'Long-form employment articles. TodayInfo rejects archive pages and extracts structured facts, requirements, how-to-apply text and useful related opportunities.',
+    publishing_policy:{mode:'structured_facts_manual_edit',auto_rewrite:false,full_copy:false,attribution_required:true,verify_application_url:true,note:'Use extracted facts and application details; manually edit source prose before publishing.'},
     homepage:'https://dailyupdate.co.za/',aliases:['dailyupdate','daily update'],
     action:{type:'fetch',fetch:{kind:'dailyupdate/jobs',maxPages:100,expand:true,expandRelated:true,relatedLimit:150,autoPublish:true}}
   },
@@ -19,6 +20,7 @@ export const SOURCE_CATALOG=[
     id:'zabursaries',label:'ZA Bursaries',category:'todayinfo_network',region:'South Africa',country_code:'ZA',
     content_types:['bursary','scholarship'],mode:'todayinfo_api',integration_status:'active',
     description:'Structured funding articles. TodayInfo extracts eligibility, supporting documents, closing dates and application routes while using monthly listing pages as discovery indexes.',
+    publishing_policy:{mode:'structured_facts_manual_edit',auto_rewrite:false,full_copy:false,attribution_required:true,verify_application_url:true,note:'Use funding facts, dates, requirements and official application routes; manually edit prose before publishing.'},
     homepage:'https://www.zabursaries.co.za/',aliases:['zabursaries','za bursaries'],
     action:{type:'fetch',fetch:{kind:'bursaries',maxPages:100,expand:true,expandRelated:true,relatedLimit:200,autoPublish:true}}
   },
@@ -32,17 +34,17 @@ export const SOURCE_CATALOG=[
 
   {
     id:'sanews',label:'SAnews',category:'south_africa_official',region:'South Africa',country_code:'ZA',
-    content_types:['news','bursary','opportunity'],mode:'official_rss',integration_status:'active',
-    description:'Official South African Government News Agency feed. TodayInfo creates short attributed plain-English summaries in batches of up to 10.',
-    homepage:'https://www.sanews.gov.za/',aliases:['sanews','south african government news agency'],
-    action:{type:'news_batch',source:'sanews',limit:10}
+    content_types:['news','bursary','opportunity'],mode:'official_rss',integration_status:'discovery',
+    description:'Official South African Government News Agency feed for editorial discovery. TodayInfo does not automatically rewrite or publish stories.',
+    publishing_policy:{mode:'manual_editorial_summary',auto_rewrite:false,full_copy:false,attribution_required:true,verify_facts:true,note:'Create a human-edited TodayInfo summary and credit/link the original source.'},
+    homepage:'https://www.sanews.gov.za/',aliases:['sanews','south african government news agency']
   },
   {
     id:'dsti-news',label:'DSTI News Feed',category:'south_africa_official',region:'South Africa',country_code:'ZA',
-    content_types:['news','opportunity'],mode:'official_rss',integration_status:'active',
-    description:'Official Department of Science, Technology and Innovation RSS feed for news, announcements and opportunity discovery.',
-    homepage:'https://www.dsti.gov.za/',aliases:['dsti','department of science technology and innovation'],
-    action:{type:'news_batch',source:'dsti',limit:10}
+    content_types:['news','opportunity'],mode:'official_rss',integration_status:'discovery',
+    description:'Official Department of Science, Technology and Innovation feed for editorial discovery. TodayInfo does not automatically rewrite or publish stories.',
+    publishing_policy:{mode:'manual_editorial_summary',auto_rewrite:false,full_copy:false,attribution_required:true,verify_facts:true,note:'Use the source for facts and create a human-edited summary before publishing.'},
+    homepage:'https://www.dsti.gov.za/',aliases:['dsti','department of science technology and innovation']
   },
   {
     id:'dpsa',label:'DPSA Public Service Vacancy Circular',category:'south_africa_official',region:'South Africa',country_code:'ZA',
