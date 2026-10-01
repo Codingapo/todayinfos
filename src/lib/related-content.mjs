@@ -2,6 +2,30 @@ const norm=v=>String(v||'').trim().toLowerCase();
 const set=v=>new Set((Array.isArray(v)?v:[]).map(norm).filter(Boolean));
 const overlap=(a,b)=>{let n=0;for(const x of a)if(b.has(x))n++;return n};
 
+export function recommendationFamily(post={}){
+  const type=norm(post.content_type);
+  const subtype=norm(post.type_data?.subtype||post.classification?.subcategory);
+  const educationSignals=[
+    ...(post.classification?.education_level||[]),
+    ...(post.classification?.fields_of_study||[]),
+    ...(post.tags||[]),(post.category||'')
+  ].map(norm).join(' ');
+  if(['bursary','scholarship'].includes(type))return'education';
+  if(type==='other'&&/university|college|education|application guide|student|course|prospectus/.test(subtype+' '+educationSignals))return'education';
+  if(type==='opportunity'&&/student|study|education|university|college|bursar|scholar/.test(educationSignals))return'education';
+  if(['job','internship','learnership'].includes(type))return'career';
+  if(['news','announcement','story'].includes(type))return'news';
+  return type||'other';
+}
+
+export function recommendationCompatible(a={},b={}){
+  const fa=recommendationFamily(a),fb=recommendationFamily(b);
+  if(fa==='education')return fb==='education';
+  if(fa==='career')return fb==='career';
+  if(fa==='news')return fb==='news';
+  return fa===fb;
+}
+
 export function relationScore(a={},b={}){
   if(!a?.id||!b?.id||a.id===b.id)return 0;
   let score=0;
@@ -41,7 +65,7 @@ export function smartRecommendations(post={},rows=[],{limit=6}={}){
   const relatedIds=new Set((post.related_ids||[]));
   const manual=new Set(post.recommendation_ids||[]);
   return rows
-    .filter(x=>x&&x.id!==post.id&&x.status==='published'&&!x.deleted_at&&!relatedIds.has(x.id))
+    .filter(x=>x&&x.id!==post.id&&x.status==='published'&&!x.deleted_at&&!relatedIds.has(x.id)&&recommendationCompatible(post,x))
     .map(x=>({post:x,score:relationScore(post,x)+(manual.has(x.id)?1000:0)}))
     .filter(x=>x.score>=18)
     .sort((a,b)=>b.score-a.score)
