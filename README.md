@@ -226,6 +226,7 @@ Example bursary detail:
     "topics": [],
     "topic_navigation": [],
     "related_links": [],
+    "recommendation_links": [],
     "documents": [],
     "related_content": [],
     "recommendations": [],
@@ -286,7 +287,7 @@ The Import Inbox now behaves like a real sync system rather than a one-time fetc
 - Each collection page requests up to **100 records**.
 - Current-year filtering is pre-filled in the dashboard for latest content; clear it to fetch all years.
 - Re-fetching a record does **not** reset its review state.
-- Previously promoted or ignored content stays promoted/ignored.
+- Previously promoted content stays promoted; the Ignore workflow has been removed.
 - Changed source content is flagged separately for review.
 - Import records track first seen, last seen, last changed and fetch count.
 - Archive/category/tag/pagination pages are filtered from the publishable inbox.
@@ -295,3 +296,13 @@ The Import Inbox now behaves like a real sync system rather than a one-time fetc
 - The same remembered import will not be promoted twice.
 
 For PostgreSQL deployments, review and run `migrations/002_import_memory.sql` after mapping the schema to your real Supabase database.
+
+
+## v0.3.1 — Recommendation relationships
+
+- The Import Inbox no longer has an **Ignore** action.
+- Legacy ignored imports are returned to `unreviewed` by `migrations/003_recommendations.sql`.
+- Recommendations support both selected TodayInfo posts and custom readable title + URL entries.
+- When source data contains explicit related/recommended links, they are preserved during import.
+- Generic source links are only kept as recommendations when rules show they are the same content family, which avoids navigation/social/ad noise.
+- Public detail JSON exposes these custom/source recommendations as `recommendation_links` while selected TodayInfo pages remain in `recommendations`.

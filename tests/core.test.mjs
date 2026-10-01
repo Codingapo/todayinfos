@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { slugify } from '../src/lib/utils.mjs';
-import { cleanSourceText, detectContentType, calculateOpportunityStatus, ruleDraftFromRecord, isIndexLikeRecord, contentQuality } from '../src/lib/content-rules.mjs';
+import { cleanSourceText, detectContentType, calculateOpportunityStatus, ruleDraftFromRecord, isIndexLikeRecord, contentQuality, sourceRecommendations } from '../src/lib/content-rules.mjs';
 import { markdownToBlocks, renderBlocksHtml, extractInlineTags } from '../src/lib/rich-content.mjs';
 import { publicPost } from '../src/lib/serializers.mjs';
 import { ROLE_PERMISSIONS, hasPermission } from '../src/lib/rbac.mjs';
@@ -99,4 +100,48 @@ test('rule-prepared content gets useful fallback tags and quality feedback',()=>
   assert.ok(!d.categories.includes('2'));
   const q=contentQuality(d);
   assert.ok(q.score>=50);
+});
+
+
+test('source recommendations keep useful relatives and drop application/social noise',()=>{
+  const rows=sourceRecommendations({
+    title:'NSFAS Bursary 2026',
+    url:'https://source.example/nsfas-bursary-2026',
+    applicationLinks:[{url:'https://apply.example/nsfas'}],
+    relatedLinks:[
+      {title:'University funding guide',url:'https://source.example/funding-guide'},
+      {title:'Apply now',url:'https://apply.example/nsfas'}
+    ],
+    links:[
+      {title:'Facebook',url:'https://facebook.com/example'},
+      {title:'More bursaries',url:'https://source.example/bursaries/latest'}
+    ]
+  },'bursary');
+  assert.ok(rows.some(x=>x.url==='https://source.example/funding-guide'));
+  assert.ok(rows.some(x=>x.url==='https://source.example/bursaries/latest'));
+  assert.ok(!rows.some(x=>x.url==='https://apply.example/nsfas'));
+  assert.ok(!rows.some(x=>/facebook/.test(x.url)));
+});
+
+test('public detail exposes custom recommendation links',()=>{
+  const p=publicPost({
+    id:'r1',slug:'sample-news',title:'Sample News',content_type:'news',
+    summary:'Example',body_markdown:'Useful update content.',posted_date:'2026-10-01',
+    category:'News',categories:['News'],tags:['Update'],topics:[],related_links:[],
+    related_ids:[],recommendation_ids:[],
+    recommendation_links:[{title:'Official follow-up',url:'https://example.com/follow-up'}],
+    documents:[],navigation_links:[],type_data:{},status:'published',
+    created_at:'2026-10-01',updated_at:'2026-10-01'
+  });
+  assert.equal(p.recommendation_links[0].title,'Official follow-up');
+  assert.equal(p.recommendation_links[0].url,'https://example.com/follow-up');
+});
+
+test('Ignore workflow is absent from admin API and browser UI',()=>{
+  const route=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.doesNotMatch(route,/adminRouter\.delete\('\/imports\/:id'/);
+  assert.doesNotMatch(route,/review_status:z\.enum\(\[[^\]]*ignored/);
+  assert.doesNotMatch(ui,/ignore-import|ignoreImport|>Ignore</);
+  assert.match(ui,/recommendation_links:collectRepeatRows/);
 });
