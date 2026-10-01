@@ -26,7 +26,7 @@ import { applicationCandidates, buildApplicationGuide } from '../src/lib/applica
 import { plainEnglishNewsDraft } from '../src/lib/plain-content.mjs';
 import { NEWS_FEEDS } from '../src/lib/news-harvest.mjs';
 import { buildTrafficAtlas, continentForCode } from '../src/lib/geo-analytics.mjs';
-import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload } from '../src/lib/source-catalog.mjs';
+import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload, sourceUsagePolicy } from '../src/lib/source-catalog.mjs';
 import { PostgresStore } from '../src/lib/store-postgres.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
@@ -806,7 +806,7 @@ test('dashboard exposes official-news batches direct-link processing and world t
 
 test('dashboard never calls array methods on querySelector results',()=>{
   const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
-  assert.doesNotMatch(ui,/\$\([^\n;]*\)\.forEach\(/);
+  assert.doesNotMatch(ui,/(^|[^$])\$\([^\n;]*\)\.forEach\(/m);
   assert.match(ui,/\$\$\('\#nav button\[data-view\]'\)\.forEach/);
   assert.match(ui,/\$\$\('\.run-news'\)\.forEach/);
   assert.match(ui,/\$\$\('\.choose-harvest'\)\.forEach/);
@@ -863,4 +863,23 @@ test('PostgreSQL legacy import upsert only writes columns that actually exist',a
   assert.doesNotMatch(queries[0].sql,/source_hash/);
   assert.doesNotMatch(queries[0].sql,/quality_score/);
   assert.match(queries[0].sql,/source_key/);
+});
+
+
+test('source policy distinguishes reusable sources from summary-only sources',()=>{
+  assert.equal(sourceUsagePolicy('sanews').auto_publish_allowed,true);
+  assert.equal(sourceUsagePolicy('sanews').attribution_required,true);
+  assert.equal(sourceUsagePolicy('dailyupdate').auto_publish_allowed,false);
+  assert.equal(sourceUsagePolicy('dailyupdate').copy_full_text_allowed,false);
+  assert.equal(sourceUsagePolicy('zabursaries').auto_publish_allowed,false);
+  assert.equal(sourceUsagePolicy('dpsa').commercial_permission_required,true);
+  assert.equal(sourceUsagePolicy('govza').commercial_permission_required,true);
+  assert.equal(sourceUsagePolicy('unknown-source').policy_status,'unverified');
+});
+
+test('Source Hub server disables automatic publishing for restricted fetched sources',()=>{
+  const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+  assert.match(admin,/policySourceId=.*dailyupdate/);
+  assert.match(admin,/sourceUsagePolicy\(policySourceId\)\.auto_publish_allowed/);
+  assert.match(admin,/newsPolicy=sourceUsagePolicy/);
 });
