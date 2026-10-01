@@ -1,5 +1,5 @@
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
-const state={user:null,csrf:'',view:'overview',contentTypes:null,posts:[],editor:null};
+const state={user:null,csrf:'',view:'overview',contentTypes:null,constraints:null,posts:[],editor:null};
 const savedTheme=localStorage.getItem('todayinfo-theme');
 function applyTheme(theme){document.documentElement.dataset.theme=theme;localStorage.setItem('todayinfo-theme',theme);const button=$('#themeToggle');if(button){const dark=theme==='dark';button.setAttribute('aria-label',dark?'Switch to light mode':'Switch to dark mode');button.title=dark?'Switch to light mode':'Switch to dark mode';button.querySelector('span').textContent=dark?'☀':'☾';button.querySelector('.theme-label').textContent=dark?'Light mode':'Dark mode'}}
 applyTheme(savedTheme||'light');
@@ -16,7 +16,13 @@ async function request(url,{method='GET',body,auth=true}={}){
   if(auth&&state.csrf&&!['GET','HEAD'].includes(method))opts.headers['x-csrf-token']=state.csrf;
   if(body instanceof FormData)opts.body=body;else if(body!==undefined){opts.headers['content-type']='application/json';opts.body=JSON.stringify(body)}
   const res=await fetch(url,opts);let out={};try{out=await res.json()}catch{}
-  if(!res.ok){const details=out?.details?.formErrors?.join(' ')||Object.values(out?.details?.fieldErrors||{}).flat().join(' ');throw new Error([out.error||`HTTP ${res.status}`,details].filter(Boolean).join(' — '))}
+  if(!res.ok){
+    const issues=out?.details?.issues||[];
+    const legacy=out?.details?.formErrors?.join(' ')||Object.values(out?.details?.fieldErrors||{}).flat().join(' ');
+    const issueText=issues.slice(0,4).map(x=>`${x.path?x.path+': ':''}${x.message}`).join(' · ');
+    const err=new Error([out.error||`HTTP ${res.status}`,issueText||legacy].filter(Boolean).join(' — '));
+    err.status=res.status;err.details=out?.details||null;err.payload=out;throw err;
+  }
   return out.data;
 }
 const api=(path,opts)=>request(`/admin/api${path}`,opts);
@@ -39,13 +45,96 @@ $('#nav').addEventListener('click',e=>{const b=e.target.closest('button[data-vie
 $('#quickFetch').addEventListener('click',openFetch);
 $('#quickCreate').addEventListener('click',()=>openTypePicker());
 
-async function loadContentTypes(){if(!state.contentTypes)state.contentTypes=await api('/content-types')}
+async function loadContentTypes(){
+  if(state.contentTypes&&state.constraints)return;
+  const [types,constraints]=await Promise.all([
+    state.contentTypes?Promise.resolve(state.contentTypes):api('/content-types'),
+    state.constraints?Promise.resolve(state.constraints):api('/content-constraints')
+  ]);
+  state.contentTypes=types;state.constraints=constraints;
+}
 const VIEW_META={overview:['COMMAND CENTER','Overview'],imports:['CONTENT PIPELINE','Import Inbox'],demand:['AUDIENCE DEMAND','Demand Queue'],posts:['CONTENT','Content Library'],media:['FILES','Media & Documents'],analytics:['INSIGHTS','Analytics'],team:['ACCESS','Team & Roles'],settings:['SYSTEM','Settings'],audit:['SECURITY','Audit Log']};
 async function navigate(view){state.view=view;$('#sidebar').classList.remove('open');$$('#nav button[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===view));const [eye,title]=VIEW_META[view]||['TODAYINFO',view];$('#viewEyebrow').textContent=eye;$('#viewTitle').textContent=title;$('#content').innerHTML='<div class="empty">Loading…</div>';try{await renderers[view]()}catch(err){$('#content').innerHTML=`<div class="error-box">${esc(err.message)}</div>`}}
 
 function metric(label,value,note=''){return`<div class="metric"><small>${esc(label)}</small><strong>${Number(value||0).toLocaleString()}</strong>${note?`<em>${esc(note)}</em>`:''}</div>`}
 function bars(obj={}){const entries=Object.entries(obj);const max=Math.max(1,...entries.map(([,v])=>Number(v)||0));return`<div class="bar-chart">${entries.length?entries.map(([k,v])=>`<div class="bar-row"><span>${esc(k.replaceAll('_',' '))}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max(2,(Number(v)/max)*100)}%"></div></div><b>${Number(v).toLocaleString()}</b></div>`).join(''):'<div class="empty">No data yet.</div>'}</div>`}
 const badge=(text,cls='')=>`<span class="badge ${esc(cls||text)}">${esc(text)}</span>`;
+
+function editorLimits(){return state.constraints?.limits||{title:220,slug:180,summary:2000,category:160,tag:120,tags:30,seo_title:220,seo_description:1000,link_title:240,document_title:240,topic_title:240,topic_body:150000,type_text:240,type_long_text:100000,url:2048}}
+function seoGuide(){return state.constraints?.seo||{title_recommended:60,description_recommended:160}}
+const fieldLabel=path=>({
+  title:'Title',slug:'SEO-friendly slug',summary:'Short description / excerpt',category:'Category',tags:'Tags',
+  seo_title:'SEO title',seo_description:'SEO description',main_image_url:'Main image URL',body_markdown:'Page content',
+  related_links:'Related links',recommendation_links:'Recommendations',navigation_links:'Navigation links',topics:'Topics / sections'
+}[String(path||'').split('.')[0]]||String(path||'').replaceAll('_',' '));
+
+function fieldForPath(form,path=''){
+  const parts=String(path).split('.'),root=parts[0],index=Number(parts[1]);
+  if(root==='tags')return form.querySelector('[name="tags"]');
+  if(root==='related_links'&&Number.isInteger(index))return form.querySelectorAll('.related-link-row')[index]?.querySelector(parts[2]==='url'?'.rl-url':'.rl-title');
+  if(root==='recommendation_links'&&Number.isInteger(index))return form.querySelectorAll('.recommendation-link-row')[index]?.querySelector(parts[2]==='url'?'.rl-url':'.rl-title');
+  if(root==='navigation_links'&&Number.isInteger(index))return form.querySelectorAll('.nav-link-row')[index]?.querySelector(parts[2]==='url'?'.rl-url':'.rl-title');
+  if(root==='topics'&&Number.isInteger(index))return form.querySelectorAll('.topic-card')[index]?.querySelector(parts[2]==='body'?'.topic-body':'.topic-title');
+  return form.querySelector(`[name="${CSS.escape(root)}"]`);
+}
+function clearEditorValidation(form){
+  form.querySelectorAll('.field.invalid').forEach(x=>x.classList.remove('invalid'));
+  form.querySelectorAll('[aria-invalid="true"]').forEach(x=>x.removeAttribute('aria-invalid'));
+  form.querySelectorAll('.inline-field-error').forEach(x=>x.remove());
+  const box=form.querySelector('#formError');if(box){box.classList.add('hidden');box.innerHTML=''}
+}
+function markEditorField(form,path,message){
+  const el=fieldForPath(form,path);if(!el)return;
+  el.setAttribute('aria-invalid','true');const label=el.closest('.field');label?.classList.add('invalid');
+  if(label&&!label.querySelector('.inline-field-error')){
+    const error=document.createElement('small');error.className='inline-field-error';error.textContent=message;label.appendChild(error);
+  }
+}
+function showEditorValidation(form,issues=[]){
+  clearEditorValidation(form);
+  if(!issues.length)return true;
+  for(const issue of issues)markEditorField(form,issue.path,issue.message);
+  const box=form.querySelector('#formError');
+  box.innerHTML=`<strong>Please fix ${issues.length} field${issues.length===1?'':'s'} before saving.</strong><ul>${issues.map(x=>`<li><b>${esc(fieldLabel(x.path))}:</b> ${esc(x.message)}</li>`).join('')}</ul>`;
+  box.classList.remove('hidden');
+  const first=fieldForPath(form,issues[0].path);(first||box).scrollIntoView({behavior:'smooth',block:'center'});first?.focus();
+  return false;
+}
+function wireLengthCounters(root){
+  root.querySelectorAll('input[maxlength],textarea[maxlength]').forEach(el=>{
+    const label=el.closest('.field');if(!label||label.querySelector(`.field-counter[data-for="${el.name||el.className}"]`))return;
+    const counter=document.createElement('span');counter.className='field-counter';counter.dataset.for=el.name||el.className;
+    const recommended=Number(el.dataset.recommended||0);
+    const update=()=>{
+      const n=el.value.length,max=Number(el.maxLength||0);counter.textContent=`${n.toLocaleString()} / ${max.toLocaleString()}${recommended?` · ${recommended} recommended`:''}`;
+      counter.classList.toggle('near-limit',max>0&&n>=max*.85);counter.classList.toggle('over-recommended',recommended>0&&n>recommended);
+    };
+    el.addEventListener('input',update);update();label.appendChild(counter);
+  });
+}
+function updateTagPreview(form){
+  const input=form.querySelector('[name="tags"]'),preview=form.querySelector('#tagPreview');if(!input||!preview)return [];
+  const L=editorLimits(),tags=splitList(input.value),tooLong=tags.filter(t=>t.length>L.tag);
+  preview.innerHTML=tags.length?tags.map(t=>`<span class="chip ${t.length>L.tag?'chip-error':''}">#${esc(t)} <small>${t.length}</small></span>`).join(''):'<span class="muted">No tags yet.</span>';
+  return[
+    ...(tags.length>L.tags?[{path:'tags',message:`Use at most ${L.tags} tags; you currently have ${tags.length}.`}]:[]),
+    ...tooLong.map(t=>({path:'tags',message:`Tag “${t.slice(0,50)}${t.length>50?'…':''}” is ${t.length} characters; maximum is ${L.tag}.`}))
+  ];
+}
+function updateSeoPreview(form){
+  const title=form.querySelector('[name="seo_title"]')?.value.trim()||form.querySelector('[name="title"]')?.value.trim()||'Page title';
+  const description=form.querySelector('[name="seo_description"]')?.value.trim()||form.querySelector('[name="summary"]')?.value.trim()||'Add a useful description for search results.';
+  const slug=form.querySelector('[name="slug"]')?.value.trim()||'your-page-slug';
+  const box=form.querySelector('#seoPreview');if(!box)return;
+  box.innerHTML=`<small>todayinfo.com/…/${esc(slug)}</small><strong>${esc(title)}</strong><p>${esc(description.slice(0,220))}${description.length>220?'…':''}</p>`;
+}
+function clientEditorIssues(form){
+  const L=editorLimits(),issues=[...updateTagPreview(form)];
+  const check=(name,max,label)=>{const el=form.querySelector(`[name="${name}"]`);if(el&&el.value.length>max)issues.push({path:name,message:`${label} is ${el.value.length} characters; maximum is ${max}.`})};
+  check('title',L.title,'Title');check('slug',L.slug,'Slug');check('summary',L.summary,'Summary');check('category',L.category,'Category');check('seo_title',L.seo_title,'SEO title');check('seo_description',L.seo_description,'SEO description');
+  return issues;
+}
+
 
 const renderers={
   async overview(){const d=await api('/dashboard');$('#navImportCount').textContent=d.cards.raw_imports_waiting||0;$('#navDemandCount').textContent=d.cards.highest_priority||0;const totalB=(d.cards.open_bursaries||0)+(d.cards.closed_bursaries||0);const pct=totalB?Math.round(d.cards.open_bursaries/totalB*100):0;const priority=d.priority_imports||[];$('#content').innerHTML=`
