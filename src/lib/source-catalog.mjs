@@ -12,7 +12,7 @@ export const SOURCE_CATALOG=[
     id:'dailyupdate',label:'DailyUpdate',category:'todayinfo_network',region:'South Africa',country_code:'ZA',
     content_types:['job','internship','learnership'],mode:'todayinfo_api',integration_status:'active',
     description:'Long-form employment articles. TodayInfo rejects archive pages and extracts structured facts, requirements, how-to-apply text and useful related opportunities.',
-    publishing_policy:{mode:'structured_facts_manual_edit',auto_rewrite:false,full_copy:false,attribution_required:true,verify_application_url:true,note:'Use extracted facts and application details; manually edit source prose before publishing.'},
+    publishing_policy:{mode:'facts_only_manual_edit',auto_rewrite:false,full_copy:false,attribution_required:true,verify_application_url:true,rights_status:'republishing_restricted',rights_note:'DailyUpdate terms prohibit republishing, reproducing or redistributing its material. Use independently expressed facts and official application details; do not copy source prose.',note:'Use extracted facts and application details; write TodayInfo wording manually before publishing.'},
     homepage:'https://dailyupdate.co.za/',aliases:['dailyupdate','daily update'],
     action:{type:'fetch',fetch:{kind:'dailyupdate/jobs',maxPages:100,expand:true,expandRelated:true,relatedLimit:150,autoPublish:true}}
   },
@@ -20,7 +20,7 @@ export const SOURCE_CATALOG=[
     id:'zabursaries',label:'ZA Bursaries',category:'todayinfo_network',region:'South Africa',country_code:'ZA',
     content_types:['bursary','scholarship'],mode:'todayinfo_api',integration_status:'active',
     description:'Structured funding articles. TodayInfo extracts eligibility, supporting documents, closing dates and application routes while using monthly listing pages as discovery indexes.',
-    publishing_policy:{mode:'structured_facts_manual_edit',auto_rewrite:false,full_copy:false,attribution_required:true,verify_application_url:true,note:'Use funding facts, dates, requirements and official application routes; manually edit prose before publishing.'},
+    publishing_policy:{mode:'facts_only_manual_edit',auto_rewrite:false,full_copy:false,attribution_required:true,verify_application_url:true,rights_status:'permission_not_verified',rights_note:'No broad republication permission is assumed. Use factual funding details and official application routes, and write TodayInfo wording manually.',note:'Use funding facts, dates, requirements and official application routes; manually edit prose before publishing.'},
     homepage:'https://www.zabursaries.co.za/',aliases:['zabursaries','za bursaries'],
     action:{type:'fetch',fetch:{kind:'bursaries',maxPages:100,expand:true,expandRelated:true,relatedLimit:200,autoPublish:true}}
   },
@@ -36,7 +36,7 @@ export const SOURCE_CATALOG=[
     id:'sanews',label:'SAnews',category:'south_africa_official',region:'South Africa',country_code:'ZA',
     content_types:['news','bursary','opportunity'],mode:'official_rss',integration_status:'active',
     description:'Official South African Government News Agency feed for editorial discovery. TodayInfo does not automatically rewrite or publish stories.',
-    publishing_policy:{mode:'manual_editorial_summary',auto_rewrite:false,full_copy:false,attribution_required:true,verify_facts:true,note:'Create a human-edited TodayInfo summary and credit/link the original source.'},
+    publishing_policy:{mode:'manual_editorial_summary',auto_rewrite:false,full_copy:false,attribution_required:true,verify_facts:true,rights_status:'media_reuse_with_credit',rights_note:'SAnews states that media may use its stories and material at no cost when SAnews is credited.',note:'Create a human-edited TodayInfo summary and credit/link the original source.'},
     homepage:'https://www.sanews.gov.za/',aliases:['sanews','south african government news agency'],
     action:{type:'news_discovery',source:'sanews',limit:10}
   },
@@ -44,7 +44,7 @@ export const SOURCE_CATALOG=[
     id:'dsti-news',label:'DSTI News Feed',category:'south_africa_official',region:'South Africa',country_code:'ZA',
     content_types:['news','opportunity'],mode:'official_rss',integration_status:'active',
     description:'Official Department of Science, Technology and Innovation feed for editorial discovery. TodayInfo does not automatically rewrite or publish stories.',
-    publishing_policy:{mode:'manual_editorial_summary',auto_rewrite:false,full_copy:false,attribution_required:true,verify_facts:true,note:'Use the source for facts and create a human-edited summary before publishing.'},
+    publishing_policy:{mode:'manual_editorial_summary',auto_rewrite:false,full_copy:false,attribution_required:true,verify_facts:true,rights_status:'official_source_review_required',rights_note:'Use for discovery and factual verification; do not assume broad republication rights without source-specific permission.',note:'Use the source for facts and create a human-edited summary before publishing.'},
     homepage:'https://www.dsti.gov.za/',aliases:['dsti','department of science technology and innovation'],
     action:{type:'news_discovery',source:'dsti',limit:10}
   },
@@ -52,6 +52,7 @@ export const SOURCE_CATALOG=[
     id:'dpsa',label:'DPSA Public Service Vacancy Circular',category:'south_africa_official',region:'South Africa',country_code:'ZA',
     content_types:['job'],mode:'first_party',integration_status:'discovery',
     description:'Official South African public-service vacancy circulars organised by national department and province.',
+    publishing_policy:{mode:'official_facts_reference',auto_rewrite:false,full_copy:false,attribution_required:true,verify_facts:true,rights_status:'noncommercial_reference_commercial_permission',rights_note:'DPSA permits non-commercial informational/reference use; commercial reproduction requires prior written permission.'},
     homepage:'https://www.dpsa.gov.za/newsroom/psvc/',aliases:['dpsa','public service vacancy circular']
   },
   {
@@ -70,6 +71,7 @@ export const SOURCE_CATALOG=[
     id:'govza',label:'South African Government',category:'south_africa_official',region:'South Africa',country_code:'ZA',
     content_types:['job','internship','bursary','news'],mode:'first_party',integration_status:'discovery',
     description:'Official government notices and opportunity pages used as verification and discovery sources.',
+    publishing_policy:{mode:'official_facts_reference',auto_rewrite:false,full_copy:false,attribution_required:true,verify_facts:true,rights_status:'noncommercial_reference_commercial_permission',rights_note:'South African Government terms permit non-commercial informational/reference use; commercial reproduction requires prior written permission.'},
     homepage:'https://www.gov.za/',aliases:['gov.za','south african government']
   },
 
