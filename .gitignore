@@ -8,3 +8,4 @@ npm-debug.log*
 
 data/published/
 data/publication-queue/
+data/fallback-index.json
