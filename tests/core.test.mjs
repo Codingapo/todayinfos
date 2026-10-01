@@ -12,6 +12,7 @@ import { normalizeGeo, normalizeClassification, seoPath, filterPost } from '../s
 import { publicationKey, PUBLICATION_SCHEMA } from '../src/lib/publication-service.mjs';
 import { publishedObjectKey } from '../src/lib/r2.mjs';
 import { FederatedStore, availabilityError } from '../src/lib/federated-store.mjs';
+import { searchScore, trendScore, deriveVisitorSignals } from '../src/lib/ranking.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
   assert.equal(slugify('University of Limpopo — Applications 2027!'),'university-of-limpopo-applications-2027');
@@ -236,4 +237,30 @@ test('federated writes use local fallback only for availability failures',async(
   assert.equal(row._database_fallback,true);
   assert.equal(fallback.queued[0].method,'updatePost');
   assert.equal(availabilityError(Object.assign(new Error('timeout'),{code:'ETIMEDOUT'})),true);
+});
+
+
+test('structured search ranking favors titles tags organisations and locations',()=>{
+  const strong={title:'Engineering Internship Johannesburg',summary:'Graduate opportunity',tags:['Engineering'],classification:{organisation:'Example Tech',fields_of_study:['Engineering']},geo:{city:'Johannesburg'}};
+  const weak={title:'General Update',summary:'Engineering is mentioned once',tags:[],classification:{},geo:{}};
+  assert.ok(searchScore(strong,'engineering johannesburg')>searchScore(weak,'engineering johannesburg'));
+});
+
+test('trending ranking uses engagement recency and manual editorial boost',()=>{
+  const post={published_at:'2026-10-01T00:00:00Z',is_trending:false};
+  const score=trendScore(post,{view:10,read:3,application_click:2},new Date('2026-10-01T12:00:00Z'));
+  assert.ok(score>40);
+  assert.ok(trendScore({...post,is_trending:true},{},new Date('2026-10-01T12:00:00Z'))>trendScore(post,{},new Date('2026-10-01T12:00:00Z')));
+});
+
+test('visitor signals are deterministic and based on anonymous event history',()=>{
+  const signals=deriveVisitorSignals([
+    {event_type:'search',created_at:'2026-10-01T10:00:00Z',meta:{query:'internships',country_code:'ZA',region_name:'Gauteng',content_type:'internship'}},
+    {event_type:'read',created_at:'2026-10-01T09:00:00Z',meta:{country_code:'ZA',region_name:'Gauteng',content_type:'internship'}},
+    {event_type:'view',created_at:'2026-10-01T08:00:00Z',meta:{country_code:'GB',content_type:'job'}}
+  ]);
+  assert.equal(signals.country,'ZA');
+  assert.equal(signals.region,'Gauteng');
+  assert.equal(signals.content_type,'internship');
+  assert.equal(signals.query,'internships');
 });
