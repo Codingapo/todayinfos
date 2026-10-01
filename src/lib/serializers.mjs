@@ -16,6 +16,7 @@ export function publicPost(post,{compact=false}={}){
   const tags=[...new Set([...(post.tags||[]),...extractInlineTags(post.body_markdown||'')])];
   const location=compactLocation(post.geo||{});
   const classification=normalizeClassification(post.classification||{});
+  const typeData=post.type_data||{};
   const path=seoPath(post);
   const common={
     id:post.id,type:post.content_type,slug:post.slug,path,legacy_path:legacyContentPath(post),
@@ -34,11 +35,20 @@ export function publicPost(post,{compact=false}={}){
       content_type:post.content_type
     },
     source:post.source?{source_name:post.source.source_name||null,source_url:post.source.source_url||null,reviewed:true}:null,
+    application:['bursary','scholarship','job','internship','learnership','opportunity'].includes(post.content_type)?{
+      url:typeData.application_url||null,
+      verified:Boolean(typeData.application_url_verified||typeData.application_route?.verified),
+      label:'Apply on the official website',
+      route:typeData.application_route||null,
+      guide:post.publication?.application_guide?{
+        slug:post.publication.application_guide.slug||null,
+        path:post.publication.application_guide.path||null
+      }:null
+    }:null,
     tracking:{endpoint:'/api/v1/analytics/events',post_id:post.id,view:{event_type:'view',post_id:post.id},read:{event_type:'read',post_id:post.id}}
   };
   if(compact)return common;
 
-  const typeData=post.type_data||{};
   const metadata={};
   if(['bursary','scholarship'].includes(post.content_type))Object.assign(metadata,{
     provider:typeData.provider||classification.organisation||null,
