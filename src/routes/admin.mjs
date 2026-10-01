@@ -13,6 +13,8 @@ import { config } from '../config.mjs';
 import { CONTENT_TYPE_DEFINITIONS, resolvedDefinition } from '../lib/content-types.mjs';
 import { isSafeUrl, normalizeTags } from '../lib/content-rules.mjs';
 import { normalizeGeo, normalizeClassification } from '../lib/global-content.mjs';
+import { loadImportLearning, learnFromImports, publicLearningSummary } from '../lib/import-learning.mjs';
+import { autoPublishDecision } from '../lib/auto-publish.mjs';
 
 export const adminRouter=Router();
 const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:25*1024*1024}});
@@ -97,38 +99,63 @@ adminRouter.post('/imports/fetch',permit('imports.fetch'),async(req,res)=>{
     tagSlug:z.string().max(120).optional(),
     query:z.string().max(200).optional(),
     year:z.union([z.string(),z.number()]).optional(),
+    country_code:z.string().max(3).optional(),region_name:z.string().max(120).optional(),city:z.string().max(120).optional(),
     expand:z.boolean().optional().default(true),
     maxPages:z.number().int().min(1).max(100).optional().default(100),
+    autoPublish:z.boolean().optional(),
     publishSamples:z.number().int().min(0).max(5).optional().default(0)
   });
   const p=schema.safeParse(req.body);
   if(!p.success)return res.status(400).json({error:'Invalid fetch options',details:p.error.flatten()});
 
-  const sync=await fetchImports(p.data);
+  const learningBefore=await loadImportLearning();
+  const sync=await fetchImports({...p.data,learningProfile:learningBefore});
   const result=await store.upsertImports(sync.rows);
-  const published_samples=[];
+  const learningAfter=await learnFromImports(sync.rows);
 
-  if(config.demoMode && p.data.publishSamples>0){
+  const autoPublishEnabled=p.data.autoPublish ?? config.autoPublishImports;
+  const auto_published=[];const auto_publish_skipped=[];
+  if(autoPublishEnabled){
     const keys=new Set(sync.rows.map(x=>x.source_key));
     const remembered=await store.listImports({});
     const candidates=remembered
       .filter(x=>keys.has(x.source_key)&&x.review_status==='unreviewed'&&!x.promoted_post_id)
       .sort((a,b)=>Number(b.quality_score||0)-Number(a.quality_score||0));
 
-    for(const imp of candidates){
-      if(published_samples.length>=p.data.publishSamples)break;
+    for(const imp of candidates.slice(0,config.autoPublishMaxPerFetch)){
       const draft=normalizePost({...imp.prepared_draft,content_type:imp.detected_type||imp.prepared_draft?.content_type||'other'});
-      const issues=publishProblems(draft);
-      if(issues.length||Number(imp.quality_score||0)<65)continue;
+      const decision=autoPublishDecision({importRow:imp,draft,threshold:config.autoPublishMinScore,new Date()});
+      const issues=[...new Set([...publishProblems(draft),...decision.issues])];
+      if(issues.length){
+        auto_publish_skipped.push({id:imp.id,title:draft.title,score:Number(imp.quality_score||0),issues});
+        continue;
+      }
       const post=await store.promoteImport(imp.id,req.user.id);
-      const published=await store.updatePost(post.id,{status:'published'},req.user.id);
-      published_samples.push({id:published.id,title:published.title,slug:published.slug,type:published.content_type});
+      let published=await store.updatePost(post.id,{status:'published'},req.user.id);
+      published=await syncPublication(published,req.user.id);
+      auto_published.push({
+        id:published.id,title:published.title,slug:published.slug,type:published.content_type,
+        score:Number(imp.quality_score||0),publication:published.publication?.sync_status||null
+      });
     }
   }
 
-  await audit(req,'imports.fetch','source',p.data.kind,{...p.data,...result,...sync.stats,published_samples:published_samples.length});
-  ok(res,{...result,...sync.stats,published_samples,records:sync.rows.slice(0,100)});
+  await audit(req,'imports.fetch','source',p.data.kind,{
+    ...p.data,...result,...sync.stats,auto_publish_enabled:autoPublishEnabled,
+    auto_publish_threshold:config.autoPublishMinScore,auto_published:auto_published.length,
+    auto_publish_skipped:auto_publish_skipped.length
+  });
+  ok(res,{
+    ...result,...sync.stats,
+    auto_publish:{
+      enabled:autoPublishEnabled,threshold:config.autoPublishMinScore,
+      published:auto_published,skipped:auto_publish_skipped
+    },
+    learning:publicLearningSummary(learningAfter),
+    records:sync.rows.slice(0,100)
+  });
 });
+adminRouter.get('/imports/learning',permit('imports.view'),async(req,res)=>ok(res,publicLearningSummary(await loadImportLearning())));
 adminRouter.get('/imports/:id',permit('imports.view'),async(req,res)=>{const row=await store.getImport(req.params.id);if(!row)return res.status(404).json({error:'Import not found'});ok(res,row)});
 adminRouter.patch('/imports/:id',permit('imports.review'),async(req,res)=>{const schema=z.object({review_status:z.enum(['unreviewed','reviewing','promoted']).optional(),detected_type:z.enum(contentTypes).optional(),prepared_draft:postSchema.partial().optional()});const p=schema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid import update',details:p.error.flatten()});const patch={...p.data};if(patch.prepared_draft)patch.prepared_draft=normalizePost({...patch.prepared_draft,content_type:patch.prepared_draft.content_type||patch.detected_type||'other'});const row=await store.updateImport(req.params.id,patch);if(!row)return res.status(404).json({error:'Import not found'});await audit(req,'import.update','raw_import',row.id,{fields:Object.keys(patch)});ok(res,row)});
 adminRouter.post('/imports/:id/promote',permit('imports.review'),async(req,res)=>{const row=await store.promoteImport(req.params.id,req.user.id);if(!row)return res.status(404).json({error:'Import not found'});await audit(req,'import.promote','post',row.id,{source_import:req.params.id});res.status(201).json({data:row})});
