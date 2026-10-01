@@ -1,4 +1,4 @@
-# TodayInfo Control Center v0.7
+# TodayInfo Control Center v0.8
 
 A Node.js admin dashboard and structured publishing API for TodayInfo.
 
@@ -524,7 +524,7 @@ The admin library can now filter simultaneously by country, source, type, publis
 
 ## v0.7 — Categorized Source Hub and employee workspace
 
-TodayInfo now keeps a structured source catalog instead of treating every source as one generic feed. The catalog contains **28 source entries across six categories**, including exactly 20 additional researched sources beyond the original TodayInfo/source-harvest set.
+TodayInfo now keeps a structured source catalog instead of treating every source as one generic feed. The catalog contains **30 source entries across six categories**. v0.8 adds active SAnews and DSTI official-news feeds on top of the v0.7 source set.
 
 Source Hub distinguishes between **active**, **discovery**, **credentials required**, and **licence required** integrations. Active public harvest support now includes Arbeitnow, Jobicy, Remote OK, Remotive, Lever, Ashby, Greenhouse, Workable, and SmartRecruiters. Sources that require credentials or commercial/licensing setup remain visible for planning but cannot be run as though they were configured.
 
@@ -553,3 +553,79 @@ edited      -> post.update
 ```
 
 Counts are calculated by the system and are not manually editable by workers.
+
+
+## v0.8 — Content engine, verified apply links and traffic atlas
+
+This release keeps the existing v0.7 system and adds a higher-value content pipeline rather than a page-count-only scraper.
+
+### Ten-at-a-time processing
+
+Source Hub can fetch official news in batches of up to **10**. Import Inbox can also process up to **10** opportunity records at a time.
+
+```text
+POST /admin/api/harvest/news
+POST /admin/api/imports/process-batch
+```
+
+The batch processor:
+- checks candidate application URLs;
+- rejects the source article itself as an application URL;
+- follows redirects to the final public destination;
+- stores verification metadata;
+- builds plain-English application steps;
+- recalculates content quality;
+- only auto-publishes when the direct application route is verified and normal publishing checks pass.
+
+### Official news summaries
+
+Active official RSS sources:
+- SAnews / Government Communication and Information System
+- Department of Science, Technology and Innovation
+
+TodayInfo does not mirror full source articles. It stores a short attributed plain-English summary, key points, audience guidance and the original source URL.
+
+### R2 page artifacts
+
+Every published content page still writes its own JSON object through the R2/local fail-safe publication pipeline.
+
+When an opportunity contains substantive application instructions, TodayInfo also writes a separate guide artifact:
+
+```text
+published/{country}/guides/{slug}-how-to-apply.json
+```
+
+Public routes:
+
+```text
+GET /api/v1/guides
+GET /api/v1/guides/:slug
+```
+
+If the guide would be too thin, TodayInfo keeps the application guidance inside the main opportunity page instead of creating a duplicate page.
+
+### Recommendation families
+
+Automatic recommendations are now constrained by useful content families:
+- bursaries, scholarships and education resources recommend education/funding content;
+- jobs, internships and learnerships recommend career content;
+- news recommends news/editorial content.
+
+This prevents unrelated recommendations caused only by overlapping tags.
+
+### World traffic atlas
+
+Analytics now aggregates country activity into continents and exposes:
+- visitors
+- total actions
+- views
+- reads
+- searches
+- application clicks
+- downloads
+
+The CEO Analytics screen includes a clickable world traffic atlas and continent summaries.
+
+### SEO quality rule
+
+TodayInfo is designed to add user value rather than create lightly transformed copies. Extra pages should exist because they provide useful structure such as verified application routes, eligibility, application steps, source attribution, location and clear summaries.

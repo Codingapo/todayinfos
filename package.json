@@ -1,6 +1,6 @@
 {
   "name": "todayinfo-control-center",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -25,6 +25,7 @@
     "multer": "^2.0.2",
     "pg": "^8.16.3",
     "zod": "^4.1.11",
-    "dotenv": "^17.2.3"
+    "dotenv": "^17.2.3",
+    "fast-xml-parser": "^5.2.5"
   }
 }

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: TodayInfo Global Managed API
-  version: 0.7.0
+  version: 0.8.0
   description: Published-only global content API for TodayInfo. Drafts and raw imports are never returned by public content/search endpoints.
 servers:
   - url: https://todayinfos.onrender.com/api/v1
@@ -40,6 +40,29 @@ paths:
       summary: Public site configuration
       responses:
         '200': {description: Site information}
+  /guides:
+    get:
+      summary: Published plain-English application guides backed by R2/local JSON artifacts
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Limit'}
+      responses:
+        '200': {description: Application guide list}
+  /guides/{slug}:
+    get:
+      summary: One published application guide
+      parameters:
+        - {name: slug, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: Application guide
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ApplicationGuide'}
+        '404': {description: Guide not found}
   /posts:
     get:
       summary: Published content across all types
@@ -256,6 +279,22 @@ components:
         salary: {type: object, additionalProperties: true}
         eligibility_tags: {type: array, items: {type: string}}
         keywords: {type: array, items: {type: string}}
+    ApplicationGuide:
+      type: object
+      properties:
+        id: {type: string}
+        type: {type: string, const: application_guide}
+        slug: {type: string}
+        path: {type: string}
+        title: {type: string}
+        description: {type: string}
+        parent: {type: object, additionalProperties: true}
+        steps: {type: array, items: {type: string}}
+        supporting_documents: {type: array, items: {type: string}}
+        requirements: {type: string}
+        official_application_url: {type: [string, 'null']}
+        verification: {type: [object, 'null'], additionalProperties: true}
+        source: {type: [object, 'null'], additionalProperties: true}
     ContentSummary:
       type: object
       properties:

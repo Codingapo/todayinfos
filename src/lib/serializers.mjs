@@ -45,19 +45,19 @@ export function publicPost(post,{compact=false}={}){
     status:calculateOpportunityStatus(typeData),status_override:typeData.status_override||'auto',
     opening_date:typeData.opening_date||null,closing_date:typeData.closing_date||null,
     requirements:typeData.requirements||'',eligibility:typeData.eligibility||'',
-    how_to_apply:typeData.how_to_apply||'',application_url:typeData.application_url||null
+    how_to_apply:typeData.how_to_apply||'',supporting_documents:typeData.supporting_documents||'',application_url:typeData.application_url||null,application_url_verified:Boolean(typeData.application_url_verified),application_route:typeData.application_route||null,application_guide:typeData.application_guide||null
   });
   else if(['job','internship','learnership'].includes(post.content_type))Object.assign(metadata,{
     company:typeData.company||classification.organisation||null,location:typeData.location||location.location||null,
     salary:typeData.salary||null,status:calculateOpportunityStatus(typeData),status_override:typeData.status_override||'auto',
     closing_date:typeData.closing_date||null,requirements:typeData.requirements||'',
-    responsibilities:typeData.responsibilities||'',how_to_apply:typeData.how_to_apply||'',
-    application_url:typeData.application_url||null
+    responsibilities:typeData.responsibilities||'',how_to_apply:typeData.how_to_apply||'',supporting_documents:typeData.supporting_documents||'',
+    application_url:typeData.application_url||null,application_url_verified:Boolean(typeData.application_url_verified),application_route:typeData.application_route||null,application_guide:typeData.application_guide||null
   });
   else if(post.content_type==='opportunity')Object.assign(metadata,{
     status:calculateOpportunityStatus(typeData),status_override:typeData.status_override||'auto',
     closing_date:typeData.closing_date||null,requirements:typeData.requirements||'',
-    how_to_apply:typeData.how_to_apply||'',application_url:typeData.application_url||null
+    how_to_apply:typeData.how_to_apply||'',supporting_documents:typeData.supporting_documents||'',application_url:typeData.application_url||null,application_url_verified:Boolean(typeData.application_url_verified),application_route:typeData.application_route||null,application_guide:typeData.application_guide||null
   });
   else if(['news','announcement'].includes(post.content_type))Object.assign(metadata,{event_date:typeData.event_date||null});
   else Object.assign(metadata,typeData);

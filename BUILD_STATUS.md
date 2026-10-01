@@ -1,67 +1,46 @@
-# Build Status — v0.7.0 Source Catalog + Employee Workspace
+# Build Status — v0.8.0 Content Engine + Verified Apply Links
 
-This release updates TodayInfo incrementally. The v0.6 global API, 80 permanent published seed records, R2/local fail-safe publishing, demand queue, analytics, structured editor, source-aware DailyUpdate/ZA Bursaries cleaning and existing public routes remain in place.
+This release is incremental. Existing v0.7 API routes, Source Hub, employee RBAC, 80 permanent reference opportunities, R2/local fail-safe publishing, search, trending, related content, demand queue and analytics remain in place.
 
-## Source Hub v2
-- Source Hub is now category-based rather than one regional/global list.
-- 28 sources are catalogued in six groups:
-  - TodayInfo Network
-  - South Africa Official
-  - Public Job APIs
-  - Employer ATS Boards
-  - Scholarships & Funding
-  - International Organisations
-- This is exactly 20 additional researched sources beyond the original eight source/integration entries.
-- Each source declares content types, region, access/integration mode and status.
-- Status is explicit: active, discovery, credentials required or licence required.
-- Source cards show internal import/published/quality statistics only to authorized admin users.
-- Search, category and integration-status filters are available in Source Hub.
-- Public API endpoint `GET /api/v1/sources` exposes the safe catalog/capability model without internal admin counts.
+## Content engine
+- Official news is processed in batches of at most 10.
+- Active official feeds: SAnews and DSTI.
+- News output is a short attributed plain-English summary rather than a mirrored article.
+- Source URL and credit remain attached to the imported record.
+- Source Hub now contains 30 catalogued sources.
 
-## Active harvest expansion
-Existing adapters remain. New active public integrations:
-- Remotive
-- Greenhouse public Job Board API
-- Workable public careers endpoints
-- SmartRecruiters public Posting API
+## Opportunity application intelligence
+- Candidate application links are ranked from source data.
+- The source article URL is explicitly rejected as a direct application URL.
+- Candidate links are checked and redirects are followed.
+- Verified final application URLs are stored in structured metadata.
+- Application guidance is built from published requirements, how-to-apply text and supporting-document sections.
+- Ten-at-a-time opportunity processing is available in Import Inbox.
+- Opportunity batch auto-publishing requires a verified direct application route.
 
-Existing active integrations:
-- Arbeitnow
-- Jobicy
-- Remote OK
-- Lever public boards
-- Ashby public boards
+## R2 publishing
+- Main published content remains one JSON artifact per page.
+- Substantive application guides create a second R2/local JSON artifact under the guides collection.
+- Thin guides are not created.
+- R2 outage behavior is unchanged: local artifact + retry queue.
 
-Sources that require credentials or licensing remain catalogued but are not falsely presented as active.
+## Public API
+New public routes:
+- GET /api/v1/guides
+- GET /api/v1/guides/:slug
 
-## CEO + employee access
-- Owner is presented as **CEO / Owner**.
-- Apo's owner account retains full wildcard access.
-- New `content_worker` role is available.
-- Editor and Content Worker are restricted to:
-  - Import Inbox review/cleaning
-  - Content Library editing
-  - Publishing
-  - Media viewing/uploading
-- Restricted employees cannot access Overview, Source Hub, Demand Queue/source-fetch APIs, Analytics, Team, Settings or Audit.
-- Restrictions are enforced by backend RBAC in addition to role-aware dashboard navigation.
-- Only an owner can create another owner or change owner-level access.
+Existing /api/v1/meta now advertises guide storage and routes.
 
-## Employee productivity
-Productivity comes from audit events, not manually entered counters:
-- cleaned = `import.clean`
-- promoted = `import.promote`
-- published = `post.publish`
-- edited = `post.update`
-- last activity timestamp
+## Recommendations
+- Education/funding pages recommend education/funding content.
+- Career pages recommend career content.
+- News/editorial pages recommend news/editorial content.
+- Cross-family accidental recommendations are blocked.
 
-The CEO Team view shows employee output and status.
+## Analytics
+- Country analytics now include visitors, views, reads, searches, application clicks and downloads.
+- Country data is aggregated into continents.
+- CEO Analytics includes a clickable world traffic atlas.
 
-## API improvements
-- `GET /api/v1/meta` advertises source-catalog capabilities.
-- `GET /api/v1/sources` returns categorized source metadata and operational status.
-- Internal import/published source statistics stay private.
-- Existing public content/search/trending/location/filter endpoints remain backward compatible.
-
-## Quality policy
-TodayInfo still uses deterministic rules and human review rather than AI/prediction features. The 80%+ auto-publish threshold and hard safety/publishing checks remain authoritative.
+## Release gate
+The branch must pass dependency installation, source syntax checks and the complete Node test suite before merge.

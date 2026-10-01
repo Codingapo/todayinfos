@@ -4,7 +4,7 @@ import { store } from '../lib/store.mjs';
 import { publicPost } from '../lib/serializers.mjs';
 import { paginate } from '../lib/utils.mjs';
 import { GLOBAL_FILTERS, normalizeCountryCode, queryFilters } from '../lib/global-content.mjs';
-import { loadPostArtifact } from '../lib/publication-service.mjs';
+import { loadPostArtifact, loadApplicationGuideArtifact, buildApplicationGuideContent } from '../lib/publication-service.mjs';
 import { deriveVisitorSignals, rankSearch } from '../lib/ranking.mjs';
 import { smartRelated, smartRecommendations } from '../lib/related-content.mjs';
 import { clickedDiscoveryRow, normalizeTargetUrl } from '../lib/demand-priority.mjs';
@@ -53,10 +53,11 @@ publicRouter.get('/meta',(req,res)=>res.json({data:{
   filters:GLOBAL_FILTERS,
   seo_pattern:'/{country}/{collection}/{slug}',
   news_seo_pattern:'/{country}/news/{category}/{slug}',
-  storage:{public_content:'R2/local fallback',index:'database abstraction'},
+  storage:{public_content:'R2/local fallback',page_artifacts:'one JSON object per published page',application_guides:'separate R2 JSON when useful',index:'database abstraction'},
   tracking:{endpoint:'/api/v1/analytics/events',demand_events:['related_click','recommendation_click'],missing_link_behavior:'private_draft_priority_queue'},
   relations:{strategy:'deterministic-structured-similarity',signals:['manual','country','content_type','organisation','categories','tags','fields_of_study','education_level','work_mode']},
-  sources:{endpoint:'/api/v1/sources',catalogued:SOURCE_CATALOG.length,categories:SOURCE_CATEGORIES.length}
+  sources:{endpoint:'/api/v1/sources',catalogued:SOURCE_CATALOG.length,categories:SOURCE_CATEGORIES.length},
+  guides:{list:'/api/v1/guides',detail:'/api/v1/guides/{slug}',storage:'R2/local JSON artifact when application guidance is substantive'}
 }}));
 
 publicRouter.get('/sources',(req,res)=>res.json({data:{
@@ -67,6 +68,25 @@ publicRouter.get('/sources',(req,res)=>res.json({data:{
     operation:action?.type||null
   }))
 },meta:{internal_counts_hidden:true,source_catalog_version:2}}));
+
+publicRouter.get('/guides',async(req,res)=>{
+  const rows=await store.listPosts({status:'published'});
+  const guides=rows.map(buildApplicationGuideContent).filter(Boolean);
+  const payload=paginate(guides,req.query.page,req.query.limit);
+  payload.meta={...(payload.meta||{}),published_only:true,source:'application-guide-artifacts'};
+  res.json(payload);
+});
+
+publicRouter.get('/guides/:slug',async(req,res)=>{
+  const suffix='-how-to-apply';
+  const slug=String(req.params.slug||'');
+  const parentSlug=slug.endsWith(suffix)?slug.slice(0,-suffix.length):slug;
+  const row=await store.getPostBySlug(parentSlug);
+  if(!row||row.status!=='published'||row.deleted_at)return res.status(404).json({error:'Not found'});
+  const guide=await loadApplicationGuideArtifact(row);
+  if(!guide)return res.status(404).json({error:'Application guide not found'});
+  res.json({data:guide});
+});
 
 publicRouter.get('/posts',async(req,res)=>sendList(req,res));
 publicRouter.get('/pages',async(req,res)=>sendList(req,res));

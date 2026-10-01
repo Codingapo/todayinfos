@@ -143,3 +143,23 @@ html[data-theme="dark"] .recommendation-link-row{border-left-color:#66b89a}
   .team-hero{align-items:flex-start;flex-direction:column}
   .role-badge{display:none}
 }
+
+
+/* v0.8 traffic atlas + batch controls */
+.traffic-panel{margin-bottom:16px}
+.traffic-atlas{display:grid;gap:14px}
+.traffic-map{position:relative;aspect-ratio:960/430;min-height:280px;overflow:hidden;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,#eef5f3,#f8f5ee)}
+.traffic-map svg{position:absolute;inset:0;width:100%;height:100%}
+.traffic-map svg path{fill:#dce8e3;stroke:#c6d6cf;stroke-width:2}
+.traffic-dot{position:absolute;transform:translate(-50%,-50%);border:2px solid #fff;background:var(--teal);color:#fff;border-radius:50%;display:grid;place-items:center;box-shadow:0 5px 16px rgba(17,107,104,.24);padding:0;transition:.16s;z-index:2}
+.traffic-dot:hover,.traffic-dot:focus{transform:translate(-50%,-50%) scale(1.16);outline:3px solid #116b6822;z-index:3}
+.traffic-dot span{font-size:.55rem;font-weight:900;line-height:1}
+.continent-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.continent-card{border:1px solid var(--line);border-radius:13px;background:var(--surface-soft);padding:11px 12px;text-align:left;color:var(--ink)}
+.continent-card:hover{border-color:var(--teal);background:#f2faf6}
+.continent-card strong,.continent-card span{display:block}.continent-card span{margin-top:3px;color:var(--muted);font-size:.72rem}
+.traffic-detail{border:1px solid #c7e4da;border-radius:13px;background:var(--teal-soft);padding:13px 15px;color:#315e54;min-height:54px}
+.traffic-detail strong,.traffic-detail span{display:block}.traffic-detail span{margin-top:5px;font-size:.8rem;line-height:1.45}
+.import-hero>.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:760px){.continent-strip{grid-template-columns:1fr 1fr}.traffic-map{min-height:220px}}
+@media(max-width:520px){.continent-strip{grid-template-columns:1fr}.traffic-map{min-height:190px}.traffic-dot span{font-size:.48rem}}

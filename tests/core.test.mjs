@@ -20,8 +20,12 @@ import { applyLearningHints, learnIntoProfile, learningQualityBonus } from '../s
 import { sourceFamily, improveDraftForSource, isSourceIndexRecord, discoverSourceLinks } from '../src/lib/source-profiles.mjs';
 import { demandPriority, clickedDiscoveryRow } from '../src/lib/demand-priority.mjs';
 import { CONTENT_LIMITS, SEO_GUIDANCE, zodValidationDetails } from '../src/lib/content-constraints.mjs';
-import { relationScore, smartRelated } from '../src/lib/related-content.mjs';
+import { relationScore, smartRelated, recommendationFamily, recommendationCompatible } from '../src/lib/related-content.mjs';
 import { GLOBAL_HARVEST_PROVIDERS } from '../src/lib/global-harvest.mjs';
+import { applicationCandidates, buildApplicationGuide } from '../src/lib/application-intelligence.mjs';
+import { plainEnglishNewsDraft } from '../src/lib/plain-content.mjs';
+import { NEWS_FEEDS } from '../src/lib/news-harvest.mjs';
+import { buildTrafficAtlas, continentForCode } from '../src/lib/geo-analytics.mjs';
 import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload } from '../src/lib/source-catalog.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
@@ -622,10 +626,10 @@ test('PostgreSQL public filters keep parameter markers and discovery searches so
 });
 
 
-test('source catalog adds exactly twenty researched sources beyond the original eight',()=>{
+test('source catalog keeps expanding beyond the original eight',()=>{
   const original=new Set(['dailyupdate','zabursaries','psychometric-test','arbeitnow','jobicy','remoteok','lever','ashby']);
-  assert.equal(SOURCE_CATALOG.length,28);
-  assert.equal(SOURCE_CATALOG.filter(x=>!original.has(x.id)).length,20);
+  assert.equal(SOURCE_CATALOG.length,30);
+  assert.equal(SOURCE_CATALOG.filter(x=>!original.has(x.id)).length,22);
   assert.equal(SOURCE_CATEGORIES.length,6);
   assert.ok(SOURCE_CATALOG.some(x=>x.id==='eures'&&x.integration_status==='discovery'));
   assert.ok(SOURCE_CATALOG.some(x=>x.id==='usajobs'&&x.integration_status==='credentials_required'));
@@ -639,7 +643,7 @@ test('categorized Source Hub reports source health without exposing it through t
     posts:[{source:{source_name:'Remotive',source_url:'https://remotive.com/remote-jobs/x'},status:'published',deleted_at:null}],
     permanentRecords:80
   });
-  assert.equal(payload.totals.sources,28);
+  assert.equal(payload.totals.sources,30);
   assert.equal(payload.categories.length,6);
   const remotive=payload.sources.find(x=>x.id==='remotive');
   assert.equal(remotive.stats.imports,1);
@@ -702,4 +706,98 @@ test('public API advertises source catalog without public internal source counts
   assert.match(route,/source_catalog_version:2/);
   assert.match(route,/internal_counts_hidden:true/);
   assert.match(route,/endpoint:'\/api\/v1\/sources'/);
+});
+
+
+test('direct application candidate selection rejects the source article itself',()=>{
+  const row={
+    source_url:'https://publisher.example/job-story',
+    source_payload:{links:[
+      {title:'Read this story',url:'https://publisher.example/job-story'},
+      {title:'Apply on employer careers portal',url:'https://careers.example.org/apply/123'},
+      {title:'Privacy',url:'https://publisher.example/privacy'}
+    ]},
+    prepared_draft:{type_data:{application_url:'https://publisher.example/job-story'}}
+  };
+  const candidates=applicationCandidates(row);
+  assert.equal(candidates[0].url,'https://careers.example.org/apply/123');
+  assert.ok(!candidates.some(x=>x.url===row.source_url));
+});
+
+test('application guide adds useful steps without inventing source-specific requirements',()=>{
+  const guide=buildApplicationGuide({
+    title:'Example Bursary',
+    type_data:{
+      requirements:'Applicants must meet the published academic criteria.',
+      how_to_apply:'Create an account.\nComplete the online form.\nUpload the requested documents.',
+      supporting_documents:'Identity document\nAcademic record'
+    }
+  },{verified:true,final_url:'https://apply.example.org'});
+  assert.equal(guide.useful,true);
+  assert.equal(guide.official_application_url,'https://apply.example.org');
+  assert.ok(guide.steps.length>=4);
+  assert.ok(guide.supporting_documents.includes('Identity document'));
+});
+
+test('plain-English news drafts are structured attributed summaries rather than copied article pages',()=>{
+  const draft=plainEnglishNewsDraft({
+    title:'Department announces new student support programme',
+    url:'https://official.example/news/support',
+    contentText:'The department announced a new support programme for university students. The programme will begin next month. Students should check the official notice for eligibility requirements and dates.',
+    publishedAt:'2026-10-01'
+  },{label:'Official Department',country_code:'ZA'});
+  assert.equal(draft.content_type,'news');
+  assert.match(draft.body_markdown,/In simple terms/);
+  assert.match(draft.body_markdown,/Key points/);
+  assert.match(draft.body_markdown,/Official Department/);
+  assert.equal(draft.geo.country_code,'ZA');
+});
+
+test('official news engine is limited to ten-at-a-time feeds',()=>{
+  assert.ok(NEWS_FEEDS.some(x=>x.id==='sanews'));
+  assert.ok(NEWS_FEEDS.some(x=>x.id==='dsti'));
+  const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+  assert.match(admin,/\/harvest\/news/);
+  assert.match(admin,/max\(10\)/);
+  assert.match(admin,/\/imports\/process-batch/);
+  assert.match(admin,/limit:z\.number\(\)\.int\(\)\.min\(1\)\.max\(10\)/);
+});
+
+test('published opportunities can create separate R2 application-guide artifacts',()=>{
+  const pub=fs.readFileSync(new URL('../src/lib/publication-service.mjs',import.meta.url),'utf8');
+  const routes=fs.readFileSync(new URL('../src/routes/public.mjs',import.meta.url),'utf8');
+  assert.match(pub,/todayinfo\.application-guide\.v1/);
+  assert.match(pub,/collection:'guides'/);
+  assert.match(pub,/application_guide/);
+  assert.match(routes,/\/guides\/\:slug/);
+  assert.match(routes,/loadApplicationGuideArtifact/);
+});
+
+test('recommendations stay inside education career or news families',()=>{
+  assert.equal(recommendationFamily({content_type:'bursary'}),'education');
+  assert.equal(recommendationFamily({content_type:'job'}),'career');
+  assert.equal(recommendationFamily({content_type:'news'}),'news');
+  assert.equal(recommendationCompatible({content_type:'bursary'},{content_type:'scholarship'}),true);
+  assert.equal(recommendationCompatible({content_type:'bursary'},{content_type:'job'}),false);
+});
+
+test('traffic atlas aggregates countries into continents and action counts',()=>{
+  assert.equal(continentForCode('ZA'),'Africa');
+  assert.equal(continentForCode('GB'),'Europe');
+  const atlas=buildTrafficAtlas([
+    {code:'ZA',visitors:4,events:10,views:6,searches:2,application_clicks:1},
+    {code:'NG',visitors:2,events:5,views:3,searches:1,application_clicks:1},
+    {code:'GB',visitors:3,events:7,views:4,searches:2}
+  ]);
+  assert.equal(atlas.countries.length,3);
+  assert.equal(atlas.continents.find(x=>x.name==='Africa').visitors,6);
+});
+
+test('dashboard exposes official-news batches direct-link processing and world traffic atlas',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(ui,/Fetch 10 news/);
+  assert.match(ui,/Process 10/);
+  assert.match(ui,/Checking apply links/);
+  assert.match(ui,/WORLD TRAFFIC ATLAS/);
+  assert.match(ui,/application clicks/);
 });

@@ -11,13 +11,15 @@ import { sendInvite } from '../lib/resend.mjs';
 import { ROLE_PERMISSIONS, ROLE_LABELS, hasPermission } from '../lib/rbac.mjs';
 import { config } from '../config.mjs';
 import { CONTENT_TYPE_DEFINITIONS, resolvedDefinition } from '../lib/content-types.mjs';
-import { isSafeUrl, normalizeTags } from '../lib/content-rules.mjs';
+import { isSafeUrl, normalizeTags, contentQuality } from '../lib/content-rules.mjs';
 import { normalizeGeo, normalizeClassification } from '../lib/global-content.mjs';
 import { loadImportLearning, learnFromImports, publicLearningSummary } from '../lib/import-learning.mjs';
 import { autoPublishDecision } from '../lib/auto-publish.mjs';
 import { CONTENT_LIMITS, SEO_GUIDANCE, zodValidationDetails } from '../lib/content-constraints.mjs';
 import { GLOBAL_HARVEST_PROVIDERS, harvestGlobalJobs } from '../lib/global-harvest.mjs';
 import { sourceHubPayload } from '../lib/source-catalog.mjs';
+import { harvestOfficialNews } from '../lib/news-harvest.mjs';
+import { enrichApplicationImport } from '../lib/application-intelligence.mjs';
 
 export const adminRouter=Router();
 const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:25*1024*1024}});
@@ -34,12 +36,12 @@ const contentTypes=Object.keys(CONTENT_TYPE_DEFINITIONS);
 function cleanTypeData(type,input={}){
   const allowed={
     news:['event_date'],announcement:['event_date'],
-    bursary:['provider','opening_date','closing_date','status_override','requirements','eligibility','how_to_apply','application_url'],
-    scholarship:['provider','opening_date','closing_date','status_override','requirements','eligibility','how_to_apply','application_url'],
-    job:['company','location','salary','closing_date','status_override','requirements','responsibilities','how_to_apply','application_url'],
-    internship:['company','location','salary','closing_date','status_override','requirements','responsibilities','how_to_apply','application_url'],
-    learnership:['company','location','salary','closing_date','status_override','requirements','responsibilities','how_to_apply','application_url'],
-    opportunity:['closing_date','status_override','requirements','how_to_apply','application_url'],
+    bursary:['provider','opening_date','closing_date','status_override','requirements','eligibility','how_to_apply','supporting_documents','application_url','application_url_verified','application_route','application_guide'],
+    scholarship:['provider','opening_date','closing_date','status_override','requirements','eligibility','how_to_apply','supporting_documents','application_url','application_url_verified','application_route','application_guide'],
+    job:['company','location','salary','closing_date','status_override','requirements','responsibilities','how_to_apply','supporting_documents','application_url','application_url_verified','application_route','application_guide'],
+    internship:['company','location','salary','closing_date','status_override','requirements','responsibilities','how_to_apply','supporting_documents','application_url','application_url_verified','application_route','application_guide'],
+    learnership:['company','location','salary','closing_date','status_override','requirements','responsibilities','how_to_apply','supporting_documents','application_url','application_url_verified','application_route','application_guide'],
+    opportunity:['closing_date','status_override','requirements','how_to_apply','supporting_documents','application_url','application_url_verified','application_route','application_guide'],
     other:['subtype'],story:[]
   }[type]||[];
   return Object.fromEntries(Object.entries(input||{}).filter(([k])=>allowed.includes(k)));
@@ -203,6 +205,85 @@ adminRouter.post('/harvest/global',permit('imports.fetch'),async(req,res)=>{
   await audit(req,'harvest.global','source','global',{target:p.data.target,providers:p.data.providers,...harvest.stats,...stored,published:published.length,review:review.length});
   ok(res,{...harvest.stats,...stored,published,review:review.slice(0,100)});
 });
+
+adminRouter.post('/harvest/news',permit('imports.fetch'),async(req,res)=>{
+  const schema=z.object({
+    source:z.enum(['sanews','dsti']).default('sanews'),
+    limit:z.number().int().min(1).max(10).optional().default(10),
+    autoPublish:z.boolean().optional().default(true)
+  });
+  const p=schema.safeParse(req.body||{});
+  if(!p.success)return res.status(400).json({error:'Invalid news harvest options',details:p.error.flatten()});
+  const harvest=await harvestOfficialNews(p.data);
+  const stored=await store.upsertImports(harvest.rows);
+  const keys=new Set(harvest.rows.map(x=>x.source_key));
+  const remembered=await store.listImports({});
+  const published=[];const review=[];
+  if(p.data.autoPublish){
+    const candidates=remembered.filter(x=>keys.has(x.source_key)&&x.review_status==='unreviewed'&&!x.promoted_post_id)
+      .sort((a,b)=>Number(b.quality_score||0)-Number(a.quality_score||0)).slice(0,p.data.limit);
+    for(const imp of candidates){
+      const draft=normalizePost({...imp.prepared_draft,content_type:'news'});
+      const decision=autoPublishDecision({importRow:imp,draft,threshold:config.autoPublishMinScore,now:new Date()});
+      const issues=[...new Set([...publishProblems(draft),...decision.issues])];
+      if(issues.length){review.push({id:imp.id,title:draft.title,score:Number(imp.quality_score||0),issues});continue}
+      const post=await store.promoteImport(imp.id,req.user.id);
+      let live=await store.updatePost(post.id,{status:'published'},req.user.id);
+      live=await syncPublication(live,req.user.id);
+      published.push({id:live.id,title:live.title,slug:live.slug,publication:live.publication?.sync_status||null});
+      await audit(req,'post.publish','post',live.id,{via:'official-news-batch',source:p.data.source});
+    }
+  }
+  await audit(req,'harvest.news','source',p.data.source,{...harvest.stats,...stored,published:published.length,review:review.length});
+  ok(res,{...harvest.stats,...stored,published,review});
+});
+
+adminRouter.post('/imports/process-batch',permit('imports.fetch'),async(req,res)=>{
+  const schema=z.object({
+    type:z.enum(contentTypes).optional(),
+    limit:z.number().int().min(1).max(10).optional().default(10),
+    publishEligible:z.boolean().optional().default(true)
+  });
+  const p=schema.safeParse(req.body||{});
+  if(!p.success)return res.status(400).json({error:'Invalid batch options',details:p.error.flatten()});
+  let rows=await store.listImports({});
+  rows=rows.filter(x=>['unreviewed','reviewing'].includes(x.review_status)&&!x.promoted_post_id);
+  if(p.data.type)rows=rows.filter(x=>x.detected_type===p.data.type);
+  rows=rows.sort((a,b)=>Number(b.quality_score||0)-Number(a.quality_score||0)).slice(0,p.data.limit);
+  const processed=[];const published=[];
+
+  for(const imp of rows){
+    let draft=normalizePost({...imp.prepared_draft,content_type:imp.detected_type||imp.prepared_draft?.content_type||'other'});
+    let route=null;
+    const isOpportunity=['bursary','scholarship','job','internship','learnership','opportunity'].includes(draft.content_type);
+    if(isOpportunity){
+      const enriched=await enrichApplicationImport({...imp,prepared_draft:draft});
+      draft=normalizePost(enriched.draft);route=enriched.route;
+    }
+    const quality=contentQuality(draft);
+    await store.updateImport(imp.id,{prepared_draft:draft,quality_score:quality.score,quality_issues:quality.issues,review_status:'reviewing'});
+    await audit(req,'import.clean','raw_import',imp.id,{batch:true,type:draft.content_type,quality_score:quality.score,application_verified:Boolean(route?.verified)});
+    const issues=[...publishProblems(draft)];
+    if(isOpportunity&&!route?.verified)issues.push('Direct application link has not been verified.');
+    const decision=autoPublishDecision({importRow:{...imp,quality_score:quality.score},draft,threshold:config.autoPublishMinScore,now:new Date()});
+    issues.push(...decision.issues);
+    const uniqueIssues=[...new Set(issues)];
+    const result={id:imp.id,title:draft.title,type:draft.content_type,score:quality.score,application:route,issues:uniqueIssues};
+
+    if(p.data.publishEligible&&uniqueIssues.length===0){
+      const post=await store.promoteImport(imp.id,req.user.id);
+      let live=await store.updatePost(post.id,{status:'published'},req.user.id);
+      live=await syncPublication(live,req.user.id);
+      published.push({id:live.id,title:live.title,slug:live.slug,type:live.content_type,publication:live.publication});
+      result.published=true;result.post_id=live.id;
+      await audit(req,'post.publish','post',live.id,{via:'ten-item-batch',source_import:imp.id,application_verified:Boolean(route?.verified)});
+    }else result.published=false;
+    processed.push(result);
+  }
+  await audit(req,'imports.process_batch','raw_import',p.data.type||'mixed',{requested:p.data.limit,processed:processed.length,published:published.length});
+  ok(res,{requested:p.data.limit,processed,published});
+});
+
 adminRouter.get('/imports/learning',permit('imports.fetch'),async(req,res)=>ok(res,publicLearningSummary(await loadImportLearning())));
 adminRouter.get('/imports/priority',permit('imports.fetch'),async(req,res)=>ok(res,await store.priorityImports({limit:Math.min(500,Math.max(1,Number(req.query.limit)||200))})));
 adminRouter.get('/imports/:id',permit('imports.view'),async(req,res)=>{const row=await store.getImport(req.params.id);if(!row)return res.status(404).json({error:'Import not found'});ok(res,row)});

@@ -31,6 +31,20 @@ export const SOURCE_CATALOG=[
   },
 
   {
+    id:'sanews',label:'SAnews',category:'south_africa_official',region:'South Africa',country_code:'ZA',
+    content_types:['news','bursary','opportunity'],mode:'official_rss',integration_status:'active',
+    description:'Official South African Government News Agency feed. TodayInfo creates short attributed plain-English summaries in batches of up to 10.',
+    homepage:'https://www.sanews.gov.za/',aliases:['sanews','south african government news agency'],
+    action:{type:'news_batch',source:'sanews',limit:10}
+  },
+  {
+    id:'dsti-news',label:'DSTI News Feed',category:'south_africa_official',region:'South Africa',country_code:'ZA',
+    content_types:['news','opportunity'],mode:'official_rss',integration_status:'active',
+    description:'Official Department of Science, Technology and Innovation RSS feed for news, announcements and opportunity discovery.',
+    homepage:'https://www.dsti.gov.za/',aliases:['dsti','department of science technology and innovation'],
+    action:{type:'news_batch',source:'dsti',limit:10}
+  },
+  {
     id:'dpsa',label:'DPSA Public Service Vacancy Circular',category:'south_africa_official',region:'South Africa',country_code:'ZA',
     content_types:['job'],mode:'first_party',integration_status:'discovery',
     description:'Official South African public-service vacancy circulars organised by national department and province.',
