@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { store } from '../lib/store.mjs';
 import { requireAuth, requireCsrf, permit } from '../lib/auth.mjs';
-import { fetchImports } from '../lib/importer.mjs';
+import { fetchImports, probeLegacySources } from '../lib/importer.mjs';
 import { saveUpload, mediaKind, retryPublicationQueue } from '../lib/r2.mjs';
 import { publishPostArtifact, unpublishPostArtifact } from '../lib/publication-service.mjs';
 import { sendInvite } from '../lib/resend.mjs';
@@ -98,6 +98,7 @@ adminRouter.get('/sources/hub',permit('imports.fetch'),async(req,res)=>{
   const [imports,posts]=await Promise.all([store.listImports({}),store.listPosts({include_deleted:true})]);
   ok(res,sourceHubPayload({imports,posts,permanentRecords:80}));
 });
+adminRouter.get('/sources/diagnostics',permit('imports.fetch'),async(req,res)=>ok(res,await probeLegacySources()));
 adminRouter.get('/source-presets',permit('imports.fetch'),(req,res)=>ok(res,[
   {id:'pages',label:'All source pages'},{id:'bursaries',label:'ZA Bursaries'},{id:'articles',label:'Articles / news'},{id:'dailyupdate/jobs',label:'DailyUpdate jobs + related'},
   {id:'tag:psychometric-test',label:'Psychometric Test tag',kind:'tag',tagSlug:'psychometric-test'}
