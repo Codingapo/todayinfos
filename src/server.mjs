@@ -11,8 +11,22 @@ import { adminRouter } from './routes/admin.mjs';
 import { publicRouter } from './routes/public.mjs';
 import { retryPublicationQueue } from './lib/r2.mjs';
 import { store } from './lib/store.mjs';
+import { bootstrapSouthAfricaReferenceSeed } from './lib/reference-seed.mjs';
 
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
+let referenceSeedStatus={state:'pending',records:40,last_attempt_at:null,error:null};
+async function ensureReferenceSeed(){
+  referenceSeedStatus={...referenceSeedStatus,state:'loading',last_attempt_at:new Date().toISOString(),error:null};
+  try{
+    const result=await bootstrapSouthAfricaReferenceSeed(store);
+    referenceSeedStatus={state:result.deferred?'deferred':'ready',records:result.seed_records||40,last_attempt_at:new Date().toISOString(),error:result.error||null,storage:result};
+    if(!result.deferred)console.log(`Reference seed ready: ${result.seed_records} South Africa opportunities.`);
+  }catch(error){
+    referenceSeedStatus={...referenceSeedStatus,state:'deferred',error:error.message,last_attempt_at:new Date().toISOString()};
+    console.warn(`Reference seed deferred: ${error.message}`);
+  }
+}
+
 const app=express();
 app.disable('x-powered-by');
 app.set('trust proxy',1);
@@ -21,7 +35,7 @@ app.use(express.json({limit:'2mb'}));
 app.use(express.urlencoded({extended:false,limit:'2mb'}));
 app.use(cookieParser());
 
-app.get('/health',(req,res)=>res.json({status:'ok',service:'todayinfo-control-center',mode:config.dataStore,database_fallback:config.dataStoreFallback,store:store.health?.()||{mode:config.dataStore},time:new Date().toISOString()}));
+app.get('/health',(req,res)=>res.json({status:'ok',service:'todayinfo-control-center',mode:config.dataStore,database_fallback:config.dataStoreFallback,store:store.health?.()||{mode:config.dataStore},reference_seed:referenceSeedStatus,time:new Date().toISOString()}));
 app.use('/api/v1',cors({origin:'*',methods:['GET','POST','OPTIONS']}),publicRouter);
 app.use('/admin/api/auth',authRouter);
 app.use('/admin/api',adminRouter);
@@ -42,6 +56,7 @@ app.listen(config.port,()=>{
     console.warn('Demo storage is for testing and may be ephemeral on hosting platforms. Configure a real DATABASE_URL for persistent production data.');
   }
   if(config.demoMode)console.log(`DEMO MODE login: ${config.demoAdminUsername} / ${config.demoAdminPassword} (development/testing only)`);
+  ensureReferenceSeed().catch(()=>{});
 });
 
 
@@ -68,3 +83,9 @@ databaseRetryTimer.unref?.();
 setTimeout(()=>{
   if(typeof store.retryDatabaseQueue==='function')store.retryDatabaseQueue({limit:100}).catch(()=>{});
 },7000).unref?.();
+
+
+const referenceSeedTimer=setInterval(()=>{
+  if(referenceSeedStatus.state!=='ready')ensureReferenceSeed().catch(()=>{});
+},10*60*1000);
+referenceSeedTimer.unref?.();
