@@ -18,7 +18,7 @@ import { autoPublishDecision } from '../lib/auto-publish.mjs';
 import { CONTENT_LIMITS, SEO_GUIDANCE, zodValidationDetails } from '../lib/content-constraints.mjs';
 import { GLOBAL_HARVEST_PROVIDERS, harvestGlobalJobs } from '../lib/global-harvest.mjs';
 import { sourceHubPayload } from '../lib/source-catalog.mjs';
-import { harvestOfficialNews } from '../lib/news-harvest.mjs';
+import { discoverOfficialNews } from '../lib/news-harvest.mjs';
 import { enrichApplicationImport } from '../lib/application-intelligence.mjs';
 
 export const adminRouter=Router();
@@ -127,7 +127,8 @@ adminRouter.post('/imports/fetch',permit('imports.fetch'),async(req,res)=>{
   const result=await store.upsertImports(sync.rows);
   const learningAfter=await learnFromImports(sync.rows);
 
-  const autoPublishEnabled=p.data.autoPublish ?? config.autoPublishImports;
+  const directFallbackUsed=String(sync.stats?.endpointUsed||'').startsWith('direct:');
+  const autoPublishEnabled=(p.data.autoPublish ?? config.autoPublishImports)&&!directFallbackUsed;
   const auto_published=[];const auto_publish_skipped=[];
   if(autoPublishEnabled){
     const keys=new Set(sync.rows.map(x=>x.source_key));
@@ -210,33 +211,14 @@ adminRouter.post('/harvest/global',permit('imports.fetch'),async(req,res)=>{
 adminRouter.post('/harvest/news',permit('imports.fetch'),async(req,res)=>{
   const schema=z.object({
     source:z.enum(['sanews','dsti']).default('sanews'),
-    limit:z.number().int().min(1).max(10).optional().default(10),
-    autoPublish:z.boolean().optional().default(true)
+    limit:z.number().int().min(1).max(10).optional().default(10)
   });
   const p=schema.safeParse(req.body||{});
-  if(!p.success)return res.status(400).json({error:'Invalid news harvest options',details:p.error.flatten()});
-  const harvest=await harvestOfficialNews(p.data);
-  const stored=await store.upsertImports(harvest.rows);
-  const keys=new Set(harvest.rows.map(x=>x.source_key));
-  const remembered=await store.listImports({});
-  const published=[];const review=[];
-  if(p.data.autoPublish){
-    const candidates=remembered.filter(x=>keys.has(x.source_key)&&x.review_status==='unreviewed'&&!x.promoted_post_id)
-      .sort((a,b)=>Number(b.quality_score||0)-Number(a.quality_score||0)).slice(0,p.data.limit);
-    for(const imp of candidates){
-      const draft=normalizePost({...imp.prepared_draft,content_type:'news'});
-      const decision=autoPublishDecision({importRow:imp,draft,threshold:config.autoPublishMinScore,now:new Date()});
-      const issues=[...new Set([...publishProblems(draft),...decision.issues])];
-      if(issues.length){review.push({id:imp.id,title:draft.title,score:Number(imp.quality_score||0),issues});continue}
-      const post=await store.promoteImport(imp.id,req.user.id);
-      let live=await store.updatePost(post.id,{status:'published'},req.user.id);
-      live=await syncPublication(live,req.user.id);
-      published.push({id:live.id,title:live.title,slug:live.slug,publication:live.publication?.sync_status||null});
-      await audit(req,'post.publish','post',live.id,{via:'official-news-batch',source:p.data.source});
-    }
-  }
-  await audit(req,'harvest.news','source',p.data.source,{...harvest.stats,...stored,published:published.length,review:review.length});
-  ok(res,{...harvest.stats,...stored,published,review});
+  if(!p.success)return res.status(400).json({error:'Invalid news discovery options',details:p.error.flatten()});
+  const discovery=await discoverOfficialNews(p.data);
+  const stored=await store.upsertImports(discovery.rows);
+  await audit(req,'harvest.news_discovery','source',p.data.source,{...discovery.stats,...stored,auto_rewrite:false,auto_publish:false});
+  ok(res,{...discovery.stats,...stored,auto_rewrite:false,auto_publish:false,records:discovery.rows});
 });
 
 adminRouter.post('/imports/process-batch',permit('imports.fetch'),async(req,res)=>{
