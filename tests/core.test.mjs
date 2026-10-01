@@ -1095,6 +1095,25 @@ test('v0.8.5: CEO editing Import Inbox and Demand Queue controls remain intact',
 });
 
 
+test('global country names and search aliases normalize correctly',()=>{
+  assert.equal(normalizeCountryCode('Namibia'),'NA');
+  assert.equal(normalizeCountryCode('South Africa'),'ZA');
+  const filters=queryFilters({search:'software developer',countryName:'Namibia'});
+  assert.equal(filters.q,'software developer');
+  assert.equal(filters.country,'NA');
+});
+
+test('search tolerates useful multi-word queries while keeping relevance',()=>{
+  const post={
+    content_type:'job',title:'Graduate Software Developer',summary:'Entry level technology role',
+    body_markdown:'Build web applications',category:'Jobs',categories:['Jobs'],tags:['Technology'],
+    type_data:{company:'Example Tech'},geo:{country_code:'ZA',country_name:'South Africa',city:'Johannesburg'},
+    classification:{organisation:'Example Tech',fields_of_study:['Computer Science'],education_level:[],eligibility_tags:[],keywords:['graduate']}
+  };
+  assert.equal(matchesSearch(post,'software developer johannesburg technology'),true);
+  assert.equal(matchesSearch(post,'medical nursing hospital'),false);
+});
+
 test('shared token search works with country and type across storage modes',()=>{
   const post={
     content_type:'job',title:'Graduate Software Developer',summary:'Entry level role',
