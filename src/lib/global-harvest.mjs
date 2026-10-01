@@ -120,7 +120,7 @@ async function arbeitnow({target,maxAgeDays}){
     const data=await fetchJson(`https://www.arbeitnow.com/api/job-board-api?page=${page}`);
     const batch=(data.data||[]).map(j=>toImport({
       provider:'Arbeitnow',id:j.slug||j.url,title:j.title,company:j.company_name,location:j.location,description:j.description,
-      postedDate:j.created_at,applicationUrl:j.url,sourceUrl:j.url,tags:j.tags||[],jobTypes:[j.job_types||'',...(j.tags||[])],
+      postedDate:j.created_at,applicationUrl:j.url,sourceUrl:j.url,tags:j.tags||[],jobTypes:[...(Array.isArray(j.job_types)?j.job_types:[j.job_types].filter(Boolean)),...(j.tags||[])],
       remote:Boolean(j.remote),raw:j,maxAgeDays
     })).filter(Boolean);
     rows.push(...batch);
