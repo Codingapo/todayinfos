@@ -64,7 +64,10 @@ const publishable=(draft,quality,route)=>Boolean(
 
 internalRouter.get('/status',(req,res)=>res.json({data:{
   enabled:true,max_batch:{job:50,bursary:100},minimum_publish_score:config.autoPublishMinScore,
-  publishing:'verified application URL + quality gate + required structured fields'
+  publishing:'verified application URL + quality gate + required structured fields',
+  rewrite_policy:'content is converted into TodayInfo structured wording before storage; supplied rewrites are preferred',
+  growth_mode:'append-or-update by source identity; there is no fixed permanent catalog size',
+  application_link:'stored as the primary official application destination, separate from the source URL'
 }}));
 
 internalRouter.post('/batch',async(req,res)=>{
