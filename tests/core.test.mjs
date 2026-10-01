@@ -842,7 +842,7 @@ test('repair: partial import cleanup merges with the existing prepared draft',()
 });
 
 test('repair: DailyUpdate and bursary source fetches have fallback candidates',()=>{
-  assert.deepEqual(sourceEndpointCandidates('dailyupdate/jobs'),['/dailyupdate/jobs','/dailyupdate','/articles']);
+  assert.deepEqual(sourceEndpointCandidates('dailyupdate/jobs'),['/dailyupdate/jobs','/dailyupdate','/articles','/search?q=jobs']);
   assert.deepEqual(sourceEndpointCandidates('bursaries'),['/bursaries','/search?q=bursary']);
   const src=fs.readFileSync(new URL('../src/lib/importer.mjs',import.meta.url),'utf8');
   assert.match(src,/attempts=3/);
