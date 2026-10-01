@@ -1,42 +1,31 @@
-# Build Status — v0.8.5 Source Policy Stability
+# Build Status — v0.8.6 Search, CEO Controls & Private Ingestion
 
-This release is an incremental policy/stability update on top of v0.8.4. It does not remove any working TodayInfo API, R2, Import Inbox, Demand Queue, CEO editing, analytics, search, source fallback or employee features.
+This is a stability update on top of v0.8.5. Existing source-policy rules, no-AI narrative policy, Import Inbox, Demand Queue, direct DailyUpdate/ZA Bursaries fallbacks, R2 publishing, employee RBAC and analytics remain intact.
 
-## Existing repairs preserved
-- v0.8.1 CEO edit/review/promote/publish and Import Inbox repair.
-- v0.8.2 Source Hub diagnostics and API endpoint fallbacks.
-- v0.8.3 legacy Supabase raw_imports compatibility and no-cache admin assets.
-- v0.8.4 direct website fallback for DailyUpdate / ZA Bursaries and Demand Queue details.
+## Repairs
+- Fixed the remaining CEO navigation selector crash.
+- Import Inbox edit / Save cleanup / Promote / Publish controls remain wired.
+- Demand Queue Fetch & process / Review controls remain wired.
+- Search is token-based across title, summary, body, tags, organisation, location and structured fields.
+- Country + content type + search filters now use the same shared rules in PostgreSQL, demo and local fallback modes.
+- Public search supports q/query/keywords and pagination.
 
-## No AI rewriting
-- Source policy declares ai_rewriting=false.
-- SAnews / DSTI feeds are editorial discovery only: Discover 10 creates private leads.
-- The news discovery path does not generate a rewritten story body and cannot auto-publish.
+## Private ingestion
+- POST /internal/ingest/v1/batch
+- Protected by TODAYINFO_INGEST_KEY. Disabled when no key is configured.
+- Maximum 50 jobs per batch.
+- Maximum 100 bursaries per batch.
+- Requires source_url and application_url.
+- Direct application destination is verified before automatic publication.
+- Normal 80%+ publish quality gate still applies.
+- Weak/unverified new records remain draft.
+- Weak updates never downgrade an existing published page.
+- Descriptive SEO slugs include organisation/provider, title, location/country and year when available.
+- Content is rebuilt into TodayInfo's structured deterministic format; this does not add AI rewriting.
 
-## Manual-review narrative sources
-- DailyUpdate: extracted facts/application details may be used, narrative copy requires human editing.
-- ZA Bursaries: factual funding details/application routes may be used, narrative copy requires human editing.
-- Both source actions request autoPublish=false.
-- Server-side policy also blocks automatic publication if a caller sends autoPublish=true.
-
-## Structured feeds
-- Public job APIs and employer ATS feeds keep their existing deterministic 80%+ publishing path when the source policy allows auto_publish=true and normal hard publishing checks pass.
-
-## Enforcement
-Source policy is enforced in:
-1. Import Inbox source fetch auto-publishing.
-2. Global structured harvest auto-publishing.
-3. Process 10 batch publishing.
-
-Unknown source families default to manual review.
-
-## Source Hub
-Source cards show:
-- source publishing mode
-- reuse/rights status when known
-- AI rewriting status
-- auto-publish policy
-- source health diagnostics
+## Public API
+- Opportunity responses now expose a top-level application object with URL, verification state and guide reference.
+- Dynamic content is not capped at the reference-seed count. Ingestion/import/harvest can continue growing the catalog.
 
 ## Release gate
-The exact final branch must pass dependency install, JavaScript/Node syntax checks, and the full regression suite before merge.
+The exact branch must pass install, syntax checks and all tests before merge.
