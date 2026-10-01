@@ -680,7 +680,7 @@ test('worker access is enforced in backend routes and mirrored in dashboard navi
   assert.match(ui,/firstAllowedView/);
   assert.match(ui,/applyAccess/);
   assert.match(ui,/Editors and Content Workers only see Import Inbox, Content Library and Media/);
-  assert.match(ui,/\$\$\('\#nav button\[data-view\]'\)\.forEach/);
+  assert.equal((ui.match(/\$\$\('\#nav button\[data-view\]'\)\.forEach/g)||[]).length,2);
 });
 
 test('employee productivity is audit-derived and shown to the CEO',()=>{
@@ -882,4 +882,11 @@ test('Source Hub server disables automatic publishing for restricted fetched sou
   assert.match(admin,/policySourceId=.*dailyupdate/);
   assert.match(admin,/sourceUsagePolicy\(policySourceId\)\.auto_publish_allowed/);
   assert.match(admin,/newsPolicy=sourceUsagePolicy/);
+});
+
+
+test('admin assets are not cached while dashboard hotfixes deploy',()=>{
+  const server=fs.readFileSync(new URL('../src/server.mjs',import.meta.url),'utf8');
+  assert.match(server,/Cache-Control','no-store, no-cache, must-revalidate'/);
+  assert.match(server,/maxAge:0/);
 });
