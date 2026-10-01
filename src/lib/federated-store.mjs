@@ -1,4 +1,6 @@
 import { slugify } from './utils.mjs';
+import { getPublishedIndexPost, listPublishedIndex } from './published-index.mjs';
+import { rankTrending } from './ranking.mjs';
 
 function availabilityError(error){
   const code=String(error?.code||'').toUpperCase();
@@ -31,7 +33,13 @@ export class FederatedStore {
 
   async listPosts(filters={}){
     const result=await this.#publicRead('listPosts',[filters]);
-    if(result.fallback)return result.fallback;
+    if(result.fallback){
+      const r2=await listPublishedIndex(filters).catch(()=>[]);
+      const map=new Map();
+      for(const row of [...r2,...(result.fallback||[])]){const key=dedupeKey(row);const old=map.get(key);if(!old||String(row.updated_at||'')>String(old.updated_at||''))map.set(key,row)}
+      const rows=[...map.values()].sort((a,b)=>String(b.published_at||b.posted_date||b.updated_at).localeCompare(String(a.published_at||a.posted_date||a.updated_at)));
+      this.fallback.cachePosts(rows);return rows;
+    }
     const map=new Map();
     for(const r of result.successes)for(const row of r.value||[]){
       const key=dedupeKey(row);const existing=map.get(key);
@@ -45,7 +53,13 @@ export class FederatedStore {
   async trendingPosts(filters={}){
     const settled=await Promise.allSettled(this.readers.map(store=>store.trendingPosts(filters)));
     const successes=settled.filter(x=>x.status==='fulfilled');
-    if(!successes.length)return this.fallback.trendingPosts(filters);
+    if(!successes.length){
+      const local=await this.fallback.trendingPosts(filters);
+      const r2=await listPublishedIndex(filters).catch(()=>[]);
+      const merged=new Map();
+      for(const row of [...r2,...local])merged.set(dedupeKey(row),row);
+      return rankTrending([...merged.values()],{});
+    }
     const map=new Map();
     for(const result of successes)for(const row of result.value||[]){
       const key=dedupeKey(row);const existing=map.get(key);
@@ -66,7 +80,10 @@ export class FederatedStore {
 
   async getPost(id){
     const result=await this.#publicRead('getPost',[id]);
-    if(result.fallback)return result.fallback;
+    if(result.fallback){
+      const r2=await getPublishedIndexPost({id}).catch(()=>null);
+      const row=r2||result.fallback;if(row)this.fallback?.cachePost(row);return row;
+    }
     const row=result.successes.map(x=>x.value).find(Boolean)||null;
     if(row)this.fallback?.cachePost(row);
     return row;
@@ -74,7 +91,10 @@ export class FederatedStore {
 
   async getPostBySlug(slug){
     const result=await this.#publicRead('getPostBySlug',[slug]);
-    if(result.fallback)return result.fallback;
+    if(result.fallback){
+      const r2=await getPublishedIndexPost({slug}).catch(()=>null);
+      const row=r2||result.fallback;if(row)this.fallback?.cachePost(row);return row;
+    }
     const row=result.successes.map(x=>x.value).find(Boolean)||null;
     if(row)this.fallback?.cachePost(row);
     return row;
