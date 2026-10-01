@@ -1,46 +1,32 @@
-# Build Status — v0.8.1 Admin + Import Repair
+# Build Status — v0.8.4 Stability + Source Fallback
 
-This is a repair release. It keeps the v0.8 API, R2 publishing, source catalog, employee roles, demand queue, application guides, analytics and global harvesting.
+This release is a repair update on top of v0.8.3. It preserves the existing TodayInfo API, Import Inbox, Demand Queue, CEO editing, R2 publishing, analytics, Source Hub, employee roles and public routes.
 
-## Dashboard/runtime repairs
-- Fixed collection-selector runtime crashes in role-aware navigation, traffic atlas and Source Hub buttons.
-- CEO / Owner wildcard permissions remain unchanged.
-- Import Inbox Review is editable again.
-- Demand Queue Review uses the same editable Import Review.
-- Import Review can save cleanup, save-and-promote, and reopen an already promoted draft.
-- Editing one import field no longer resets unrelated prepared-draft fields.
+## Dashboard stability
+- Keeps the v0.8.1–v0.8.3 Import Inbox / Demand Queue / CEO editor fixes.
+- Owner/CEO still has full import review, promote, post edit and publish permissions.
+- Import cleanup remains editable and partial saves merge with the existing prepared draft.
+- Admin assets continue to use no-cache headers so repaired JavaScript is not hidden by stale browser cache.
 
-## Fetch repairs
-- Deep Sync defaults to all years rather than silently applying the current-year filter.
-- Source API requests retry transient failures up to three attempts.
-- DailyUpdate jobs fallback order: /dailyupdate/jobs -> /dailyupdate -> /articles.
-- ZA Bursaries fallback order: /bursaries -> /search?q=bursary.
-- The response records which source endpoint was ultimately used.
+## Jobs and bursaries source reliability
+- Existing legacy source API retries and endpoint fallbacks remain.
+- If DailyUpdate or ZA Bursaries API endpoints fail or return no records, TodayInfo can fall back to the original public websites.
+- DailyUpdate fallback discovers current vacancy/job pages and fetches individual detail pages.
+- ZA Bursaries fallback discovers current bursary/scholarship pages from homepage, bursary-news, search and monthly closing indexes.
+- Demand Queue URL processing can directly fetch DailyUpdate / ZA Bursaries detail pages when the legacy extract endpoint is unavailable.
+- Import responses expose the endpoint used, whether fallback was used, and all endpoint attempts.
 
-## Source Hub publishing policy
-- No AI rewriting is required.
-- Every source receives a publishing policy describing whether TodayInfo should:
-  - reuse with credit;
-  - create a short attributed summary;
-  - extract structured facts and link back.
-- SAnews is marked reuse-with-credit based on its published media policy.
-- gov.za and DPSA are conservatively treated as facts-and-link for a potentially commercial TodayInfo site.
-- Public job/ATS sources default to structured facts + official source/application links.
-- Official news harvesting is draft-first and does not auto-publish from Source Hub.
+## No AI rewriting
+- Narrative sources are not automatically rewritten.
+- DailyUpdate and ZA Bursaries are facts/application-data sources that require human editorial review before publication.
+- SAnews and DSTI feeds are editorial discovery sources: they create private leads, not automatically rewritten or published stories.
+- Source Hub explicitly shows AI rewriting status, auto-publish policy and source-rights status.
+- Structured public job APIs / employer ATS feeds can retain the existing rule-based 80% auto-publish path when their source policy permits it.
 
-## Verification
-The repair branch must pass:
-- npm install
-- npm run check
-- the complete Node regression test suite
-before merge to main.
+## Source-aware publication policy
+- Source policy is enforced server-side in normal fetch auto-publish, global harvest and ten-item batch processing.
+- A request with autoPublish=true cannot bypass a source marked manual-review-only.
+- Unknown source families default to manual review.
 
-
-## v0.8.3 hardening
-
-This follow-up preserves the green v0.8.2 Source Hub diagnostics and adds two production resilience protections:
-
-- PostgreSQL import operations inspect the actual `raw_imports` columns so older Supabase schemas do not blank Import Inbox or Demand Queue.
-- Admin assets use no-store/no-cache headers so a Render deployment cannot leave the browser on an older broken `app.js`.
-
-No editor, CEO permission, source fallback, Source Hub diagnostic, R2 publishing, or API feature is removed.
+## Release gate
+The branch must pass dependency installation, source/admin JavaScript syntax checks and the full regression suite before merge.
