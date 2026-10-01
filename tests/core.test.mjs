@@ -19,6 +19,7 @@ import { autoPublishDecision } from '../src/lib/auto-publish.mjs';
 import { applyLearningHints, learnIntoProfile, learningQualityBonus } from '../src/lib/import-learning.mjs';
 import { sourceFamily, improveDraftForSource, isSourceIndexRecord, discoverSourceLinks } from '../src/lib/source-profiles.mjs';
 import { demandPriority, clickedDiscoveryRow } from '../src/lib/demand-priority.mjs';
+import { CONTENT_LIMITS, SEO_GUIDANCE, zodValidationDetails } from '../src/lib/content-constraints.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
   assert.equal(slugify('University of Limpopo — Applications 2027!'),'university-of-limpopo-applications-2027');
@@ -490,4 +491,44 @@ test('dashboard exposes demand queue and richer analytics',()=>{
   assert.match(ui,/Top searches/);
   assert.match(ui,/Visitors by country/);
   assert.match(ui,/Fetch & process/);
+});
+
+
+test('editor limits are practical and no longer use the old 60/320 caps',()=>{
+  assert.ok(CONTENT_LIMITS.tag>=120);
+  assert.ok(CONTENT_LIMITS.seo_description>=1000);
+  assert.ok(CONTENT_LIMITS.summary>=2000);
+  assert.equal(SEO_GUIDANCE.description_recommended,160);
+});
+
+test('validation details preserve exact field paths for the dashboard',()=>{
+  const details=zodValidationDetails({issues:[
+    {path:['tags',2],message:'Each tag can be at most 120 characters',code:'too_big',maximum:120},
+    {path:['seo_description'],message:'SEO description can be at most 1000 characters',code:'too_big',maximum:1000}
+  ]});
+  assert.equal(details.issues[0].path,'tags.2');
+  assert.equal(details.issues[1].path,'seo_description');
+  assert.deepEqual(details.fieldErrors.tags,['Each tag can be at most 120 characters']);
+});
+
+test('dashboard editor shows counters tag validation and SEO preview instead of raw limits',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  const css=fs.readFileSync(new URL('../public/admin/styles.css',import.meta.url),'utf8');
+  const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+  assert.match(ui,/field-counter/);
+  assert.match(ui,/tagPreview/);
+  assert.match(ui,/seoPreview/);
+  assert.match(ui,/showEditorValidation/);
+  assert.doesNotMatch(ui,/SEO description<input name="seo_description" maxlength="320"/);
+  assert.match(css,/\.field\.invalid/);
+  assert.match(admin,/\/content-constraints/);
+  assert.match(admin,/Each tag can be at most/);
+  assert.match(admin,/SEO description can be at most/);
+});
+
+test('content editor disables save while submitting and restores it after errors',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(ui,/save\.disabled=true/);
+  assert.match(ui,/save\.disabled=false/);
+  assert.match(ui,/Saving…/);
 });
