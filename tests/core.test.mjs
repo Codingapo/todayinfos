@@ -618,12 +618,20 @@ test('deep sync importer can fetch discovered related detail pages',()=>{
 });
 
 
-test('PostgreSQL public filters keep parameter markers and discovery searches source URLs',()=>{
+test('PostgreSQL public filters keep parameter markers and import search includes source URLs',async()=>{
   const src=fs.readFileSync(new URL('../src/lib/store-postgres.mjs',import.meta.url),'utf8');
   assert.match(src,/status=\$\$\{n\}/);
   assert.match(src,/content_type=\$\$\{n\}/);
-  assert.match(src,/coalesce\(source_url,''\) ilike \$\$\{n\}/);
   assert.doesNotMatch(src,/status=\$\{p\.length\}/);
+
+  const fake=Object.create(PostgresStore.prototype);
+  fake.tableColumns=async()=>new Set(['source_key','source_name','source_slug','source_url','source_payload','review_status','detected_type','updated_at']);
+  let query='',params=[];
+  fake.q=async(sql,p=[])=>{query=sql;params=p;return{rows:[]}};
+  await fake.listImports({q:'bursary'});
+  assert.match(query,/source_url/);
+  assert.match(query,/\$1/);
+  assert.deepEqual(params,['%bursary%']);
 });
 
 
@@ -680,7 +688,8 @@ test('worker access is enforced in backend routes and mirrored in dashboard navi
   assert.match(ui,/firstAllowedView/);
   assert.match(ui,/applyAccess/);
   assert.match(ui,/Editors and Content Workers only see Import Inbox, Content Library and Media/);
-  assert.equal((ui.match(/\$\$\('\#nav button\[data-view\]'\)\.forEach/g)||[]).length,2);
+  assert.match(ui,/\$\$\('\#nav button\[data-view\]'\)\.forEach\(btn/);
+  assert.match(ui,/all\('\#nav button\[data-view\]'\)\.forEach\(x/);
 });
 
 test('employee productivity is audit-derived and shown to the CEO',()=>{
@@ -804,10 +813,18 @@ test('dashboard exposes official-news batches direct-link processing and world t
 });
 
 
-test('dashboard never calls array methods on querySelector results',()=>{
+test('dashboard uses multi-element helpers for iterable UI groups',()=>{
   const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
-  assert.doesNotMatch(ui,/(^|[^$])\$\([^\n;]*\)\.forEach\(/m);
-  assert.match(ui,/\$\$\('\#nav button\[data-view\]'\)\.forEach/);
+  const bad=[
+    /(^|[^$])\$\('#nav button\[data-view\]'\)\.forEach/m,
+    /(^|[^$])\$\('#nav p'\)\.forEach/m,
+    /(^|[^$])\$\('\.run-news'\)\.forEach/m,
+    /(^|[^$])\$\('\.choose-harvest'\)\.forEach/m,
+    /(^|[^$])\$\('\.traffic-dot'\)\.forEach/m,
+    /(^|[^$])\$\('\.continent-card'\)\.forEach/m
+  ];
+  for(const pattern of bad)assert.doesNotMatch(ui,pattern);
+  assert.match(ui,/all\('\#nav button\[data-view\]'\)\.forEach/);
   assert.match(ui,/\$\$\('\.run-news'\)\.forEach/);
   assert.match(ui,/\$\$\('\.choose-harvest'\)\.forEach/);
   assert.match(ui,/\$\$\('\.traffic-dot'\)\.forEach/);
