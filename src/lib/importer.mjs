@@ -4,6 +4,7 @@ import { detectContentType, ruleDraftFromRecord, isIndexLikeRecord, contentQuali
 import { normalizeClassification, normalizeGeo } from './global-content.mjs';
 import { applyLearningHints, learningQualityBonus } from './import-learning.mjs';
 import { discoverSourceLinks } from './source-profiles.mjs';
+import { directFallbackSupports, fetchDirectSourceFallback, fetchDirectSourceRecord } from './direct-source-fallback.mjs';
 
 const MAX_SOURCE_PAGES = 100;
 const PAGE_SIZE = 100;
@@ -169,13 +170,33 @@ export async function fetchImports(options={}) {
         if(current.records.length||candidate===candidates.at(-1)){result=current;usedEndpoint=candidate;break}
       }catch(error){lastError=error}
     }
+    if((!result||!result.records.length)&&directFallbackSupports(options.kind)){
+      try{
+        const direct=await fetchDirectSourceFallback(options.kind,{limit:Math.min(40,Math.max(10,maxPages))});
+        if(direct.records.length){
+          result={records:direct.records,pagesFetched:direct.stats.indexPagesOk||1};
+          usedEndpoint=`direct:${direct.stats.source}`;
+          options._directFallback=direct.stats;
+          lastError=null;
+        }
+      }catch(error){lastError=lastError||error}
+    }
     if(!result)throw lastError||new Error('Source collection could not be fetched');
     records=result.records;
     pagesFetched=result.pagesFetched;
     options._usedEndpoint=usedEndpoint;
   } else {
-    const payload = await fetchJson(`${config.sourceApiBase}${endpoint}`);
-    records = extractRecords(payload);
+    try{
+      const payload = await fetchJson(`${config.sourceApiBase}${endpoint}`);
+      records = extractRecords(payload);
+    }catch(error){
+      if(options.kind==='url'&&options.url){
+        const direct=await fetchDirectSourceRecord(options.url);
+        records=[direct];
+        options._usedEndpoint=`direct:${direct.sourceId}`;
+        options._directFallback={directFallback:true,source:direct.sourceId,detailFetched:1,detailFailed:0};
+      }else throw error;
+    }
   }
 
   if (options.kind === 'tag' && options.expand !== false) {
@@ -239,14 +260,15 @@ export async function fetchImports(options={}) {
     });
     const quality = contentQuality(prepared);
     const bonus=learningQualityBonus(baseRow,options.learningProfile);
+    const directFallback=Boolean(record.directFallback);
     return {
       ...baseRow,
       detected_type: prepared.content_type||detectContentType(record),
       prepared_draft: prepared,
       review_status: 'unreviewed',
       source_changed: false,
-      quality_score: Math.min(100,quality.score+bonus),
-      quality_issues: quality.issues,
+      quality_score: directFallback?Math.min(55,quality.score+bonus):Math.min(100,quality.score+bonus),
+      quality_issues: directFallback?[...new Set([...(quality.issues||[]),'Direct website fallback — review and edit before publishing'])]:quality.issues,
       learning_bonus:bonus,
       source_record_date: recordDate(record)
     };
@@ -294,7 +316,9 @@ export async function fetchImports(options={}) {
       skippedYear,
       pageSize: PAGE_SIZE,
       maxPages,
-      usedEndpoint:options._usedEndpoint||endpoint
+      usedEndpoint:options._usedEndpoint||endpoint,
+      directFallbackUsed:Boolean(options._directFallback?.directFallback),
+      directFallback:options._directFallback||null
     }
   };
 }
