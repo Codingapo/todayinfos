@@ -29,6 +29,7 @@ import { buildTrafficAtlas, continentForCode } from '../src/lib/geo-analytics.mj
 import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload, sourcePublishingPolicy } from '../src/lib/source-catalog.mjs';
 import { sourceEndpointCandidates, probeLegacySources } from '../src/lib/importer.mjs';
 
+import { PostgresStore } from '../src/lib/store-postgres.mjs';
 test('SEO slugs stay extension-free and readable',()=>{
   assert.equal(slugify('University of Limpopo — Applications 2027!'),'university-of-limpopo-applications-2027');
 });
@@ -618,12 +619,20 @@ test('deep sync importer can fetch discovered related detail pages',()=>{
 });
 
 
-test('PostgreSQL public filters keep parameter markers and discovery searches source URLs',()=>{
+test('PostgreSQL public filters keep parameter markers and import search includes source URLs',async()=>{
   const src=fs.readFileSync(new URL('../src/lib/store-postgres.mjs',import.meta.url),'utf8');
   assert.match(src,/status=\$\$\{n\}/);
   assert.match(src,/content_type=\$\$\{n\}/);
-  assert.match(src,/coalesce\(source_url,''\) ilike \$\$\{n\}/);
   assert.doesNotMatch(src,/status=\$\{p\.length\}/);
+
+  const fake=Object.create(PostgresStore.prototype);
+  fake.tableColumns=async()=>new Set(['source_key','source_name','source_slug','source_url','source_payload','review_status','detected_type','updated_at']);
+  let query='',params=[];
+  fake.q=async(sql,p=[])=>{query=sql;params=p;return{rows:[]}};
+  await fake.listImports({q:'bursary'});
+  assert.match(query,/source_url/);
+  assert.match(query,/\$1/);
+  assert.deepEqual(params,['%bursary%']);
 });
 
 
