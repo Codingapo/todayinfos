@@ -96,6 +96,19 @@ internalRouter.post('/batch',async(req,res)=>{
       let row=existing.find(x=>sameUrl(x.source?.source_url,prepared.source_url))||
         existing.find(x=>x.slug===draft.slug&&x.content_type===input.type&&x.geo?.country_code===draft.geo?.country_code);
 
+      const existingPublished=Boolean(row?.status==='published'&&!row?.deleted_at);
+      if(row&&existingPublished&&!goLive){
+        drafts+=1;
+        results.push({
+          ok:true,id:row.id,title:row.title,slug:row.slug,status:'published_unchanged',review_needed:true,
+          quality_score:quality.score,
+          application:{url:draft.type_data.application_url,verified:Boolean(route.verified),reason:route.reason},
+          source_url:prepared.source_url,
+          note:'Existing published page was not downgraded because the replacement did not pass the publish gate.'
+        });
+        continue;
+      }
+
       if(row){
         row=await store.updatePost(row.id,{...draft,source:draft.source,deleted_at:null},null);updated+=1;
       }else{
