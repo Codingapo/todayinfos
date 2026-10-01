@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: TodayInfo Global Managed API
-  version: 0.5.0
+  version: 0.6.0
   description: Published-only global content API for TodayInfo. Drafts and raw imports are never returned by public content/search endpoints.
 servers:
   - url: https://todayinfos.onrender.com/api/v1
@@ -244,4 +244,5 @@ components:
             related_content: {type: array, items: {$ref: '#/components/schemas/ContentSummary'}}
             recommendations: {type: array, items: {$ref: '#/components/schemas/ContentSummary'}}
             navigation: {type: object, additionalProperties: true}
+            relation_meta: {type: object, additionalProperties: true}
             application_tracking: {type: [object, 'null'], additionalProperties: true}
