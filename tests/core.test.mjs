@@ -688,8 +688,7 @@ test('worker access is enforced in backend routes and mirrored in dashboard navi
   assert.match(ui,/firstAllowedView/);
   assert.match(ui,/applyAccess/);
   assert.match(ui,/Editors and Content Workers only see Import Inbox, Content Library and Media/);
-  assert.match(ui,/\$\$\('\#nav button\[data-view\]'\)\.forEach\(btn/);
-  assert.match(ui,/all\('\#nav button\[data-view\]'\)\.forEach\(x/);
+  assert.equal((ui.match(/all\('\#nav button\[data-view\]'\)\.forEach/g)||[]).length,2);
 });
 
 test('employee productivity is audit-derived and shown to the CEO',()=>{
@@ -813,21 +812,16 @@ test('dashboard exposes official-news batches direct-link processing and world t
 });
 
 
-test('dashboard uses multi-element helpers for iterable UI groups',()=>{
+test('dashboard uses the all helper for iterable UI groups',()=>{
   const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
-  const bad=[
-    /(^|[^$])\$\('#nav button\[data-view\]'\)\.forEach/m,
-    /(^|[^$])\$\('#nav p'\)\.forEach/m,
-    /(^|[^$])\$\('\.run-news'\)\.forEach/m,
-    /(^|[^$])\$\('\.choose-harvest'\)\.forEach/m,
-    /(^|[^$])\$\('\.traffic-dot'\)\.forEach/m,
-    /(^|[^$])\$\('\.continent-card'\)\.forEach/m
-  ];
-  for(const pattern of bad)assert.doesNotMatch(ui,pattern);
-  assert.match(ui,/all\('\#nav button\[data-view\]'\)\.forEach/);
-  assert.match(ui,/\$\$\('\.run-news'\)\.forEach/);
-  assert.match(ui,/\$\$\('\.choose-harvest'\)\.forEach/);
-  assert.match(ui,/\$\$\('\.traffic-dot'\)\.forEach/);
+  assert.match(ui,/const \$=\(s,r=document\)=>r\.querySelector\(s\), all=\(s,r=document\)=>\[\.\.\.r\.querySelectorAll\(s\)\]/);
+  assert.doesNotMatch(ui,/\$\$\(/);
+  assert.equal((ui.match(/all\('\#nav button\[data-view\]'\)\.forEach/g)||[]).length,2);
+  assert.match(ui,/all\('\#nav p'\)\.forEach/);
+  assert.match(ui,/all\('\.run-news'\)\.forEach/);
+  assert.match(ui,/all\('\.choose-harvest'\)\.forEach/);
+  assert.match(ui,/all\('\.traffic-dot'\)\.forEach/);
+  assert.match(ui,/all\('\.continent-card'\)\.forEach/);
 });
 
 test('CEO owner retains all import editing promoting and publishing permissions',()=>{
