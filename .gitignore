@@ -5,3 +5,6 @@ uploads/*
 data/demo-db.json
 npm-debug.log*
 .DS_Store
+
+data/published/
+data/publication-queue/
