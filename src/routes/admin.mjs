@@ -190,8 +190,7 @@ adminRouter.post('/harvest/global',permit('imports.fetch'),async(req,res)=>{
   const keys=new Set(harvest.rows.map(x=>x.source_key));
   const remembered=await store.listImports({});
   const published=[];const review=[];
-  const newsPolicy=sourceUsagePolicy(p.data.source==='dsti'?'dsti-news':p.data.source);
-  if(p.data.autoPublish&&newsPolicy.auto_publish_allowed){
+  if(p.data.autoPublish){
     const candidates=remembered.filter(x=>keys.has(x.source_key)&&x.review_status==='unreviewed'&&!x.promoted_post_id)
       .sort((a,b)=>Number(b.quality_score||0)-Number(a.quality_score||0));
     for(const imp of candidates.slice(0,config.autoPublishMaxPerFetch)){
@@ -222,7 +221,8 @@ adminRouter.post('/harvest/news',permit('imports.fetch'),async(req,res)=>{
   const keys=new Set(harvest.rows.map(x=>x.source_key));
   const remembered=await store.listImports({});
   const published=[];const review=[];
-  if(p.data.autoPublish){
+  const newsPolicy=sourceUsagePolicy(p.data.source==='dsti'?'dsti-news':p.data.source);
+  if(p.data.autoPublish&&newsPolicy.auto_publish_allowed){
     const candidates=remembered.filter(x=>keys.has(x.source_key)&&x.review_status==='unreviewed'&&!x.promoted_post_id)
       .sort((a,b)=>Number(b.quality_score||0)-Number(a.quality_score||0)).slice(0,p.data.limit);
     for(const imp of candidates){
