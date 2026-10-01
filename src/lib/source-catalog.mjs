@@ -11,14 +11,14 @@ export const SOURCE_CATALOG=[
   {
     id:'dailyupdate',label:'DailyUpdate',category:'todayinfo_network',region:'South Africa',country_code:'ZA',
     content_types:['job','internship','learnership'],mode:'todayinfo_api',integration_status:'active',
-    description:'Long-form employment articles. TodayInfo rejects archive pages and extracts requirements, how-to-apply text and useful related opportunities.',
+    description:'Long-form employment articles. TodayInfo rejects archive pages and extracts requirements, how-to-apply text and useful related opportunities. If the legacy source API is unavailable, a metadata-and-links-only direct fallback can create private review leads.',
     homepage:'https://dailyupdate.co.za/',aliases:['dailyupdate','daily update'],
     action:{type:'fetch',fetch:{kind:'dailyupdate/jobs',maxPages:100,expand:true,expandRelated:true,relatedLimit:150,autoPublish:true}}
   },
   {
     id:'zabursaries',label:'ZA Bursaries',category:'todayinfo_network',region:'South Africa',country_code:'ZA',
     content_types:['bursary','scholarship'],mode:'todayinfo_api',integration_status:'active',
-    description:'Structured funding articles. TodayInfo extracts eligibility, supporting documents, closing dates and application routes while using monthly listing pages as discovery indexes.',
+    description:'Structured funding articles. TodayInfo extracts eligibility, supporting documents, closing dates and application routes while using monthly listing pages as discovery indexes. If the legacy source API is unavailable, a metadata-and-links-only direct fallback can create private review leads.',
     homepage:'https://www.zabursaries.co.za/',aliases:['zabursaries','za bursaries'],
     action:{type:'fetch',fetch:{kind:'bursaries',maxPages:100,expand:true,expandRelated:true,relatedLimit:200,autoPublish:true}}
   },
