@@ -1,46 +1,36 @@
-# Build Status — v0.8.0 Content Engine + Verified Apply Links
+# Build Status — v0.8.1 Admin + Import Repair
 
-This release is incremental. Existing v0.7 API routes, Source Hub, employee RBAC, 80 permanent reference opportunities, R2/local fail-safe publishing, search, trending, related content, demand queue and analytics remain in place.
+This is a repair release. It keeps the v0.8 API, R2 publishing, source catalog, employee roles, demand queue, application guides, analytics and global harvesting.
 
-## Content engine
-- Official news is processed in batches of at most 10.
-- Active official feeds: SAnews and DSTI.
-- News output is a short attributed plain-English summary rather than a mirrored article.
-- Source URL and credit remain attached to the imported record.
-- Source Hub now contains 30 catalogued sources.
+## Dashboard/runtime repairs
+- Fixed collection-selector runtime crashes in role-aware navigation, traffic atlas and Source Hub buttons.
+- CEO / Owner wildcard permissions remain unchanged.
+- Import Inbox Review is editable again.
+- Demand Queue Review uses the same editable Import Review.
+- Import Review can save cleanup, save-and-promote, and reopen an already promoted draft.
+- Editing one import field no longer resets unrelated prepared-draft fields.
 
-## Opportunity application intelligence
-- Candidate application links are ranked from source data.
-- The source article URL is explicitly rejected as a direct application URL.
-- Candidate links are checked and redirects are followed.
-- Verified final application URLs are stored in structured metadata.
-- Application guidance is built from published requirements, how-to-apply text and supporting-document sections.
-- Ten-at-a-time opportunity processing is available in Import Inbox.
-- Opportunity batch auto-publishing requires a verified direct application route.
+## Fetch repairs
+- Deep Sync defaults to all years rather than silently applying the current-year filter.
+- Source API requests retry transient failures up to three attempts.
+- DailyUpdate jobs fallback order: /dailyupdate/jobs -> /dailyupdate -> /articles.
+- ZA Bursaries fallback order: /bursaries -> /search?q=bursary.
+- The response records which source endpoint was ultimately used.
 
-## R2 publishing
-- Main published content remains one JSON artifact per page.
-- Substantive application guides create a second R2/local JSON artifact under the guides collection.
-- Thin guides are not created.
-- R2 outage behavior is unchanged: local artifact + retry queue.
+## Source Hub publishing policy
+- No AI rewriting is required.
+- Every source receives a publishing policy describing whether TodayInfo should:
+  - reuse with credit;
+  - create a short attributed summary;
+  - extract structured facts and link back.
+- SAnews is marked reuse-with-credit based on its published media policy.
+- gov.za and DPSA are conservatively treated as facts-and-link for a potentially commercial TodayInfo site.
+- Public job/ATS sources default to structured facts + official source/application links.
+- Official news harvesting is draft-first and does not auto-publish from Source Hub.
 
-## Public API
-New public routes:
-- GET /api/v1/guides
-- GET /api/v1/guides/:slug
-
-Existing /api/v1/meta now advertises guide storage and routes.
-
-## Recommendations
-- Education/funding pages recommend education/funding content.
-- Career pages recommend career content.
-- News/editorial pages recommend news/editorial content.
-- Cross-family accidental recommendations are blocked.
-
-## Analytics
-- Country analytics now include visitors, views, reads, searches, application clicks and downloads.
-- Country data is aggregated into continents.
-- CEO Analytics includes a clickable world traffic atlas.
-
-## Release gate
-The branch must pass dependency installation, source syntax checks and the complete Node test suite before merge.
+## Verification
+The repair branch must pass:
+- npm install
+- npm run check
+- the complete Node regression test suite
+before merge to main.
