@@ -127,7 +127,9 @@ adminRouter.post('/imports/fetch',permit('imports.fetch'),async(req,res)=>{
   const result=await store.upsertImports(sync.rows);
   const learningAfter=await learnFromImports(sync.rows);
 
-  const autoPublishEnabled=p.data.autoPublish ?? config.autoPublishImports;
+  const autoPublishRequested=p.data.autoPublish ?? config.autoPublishImports;
+  const autoPublishEnabled=autoPublishRequested&&!sync.stats.directFallbackUsed;
+  const autoPublishDisabledReason=sync.stats.directFallbackUsed?'direct-website-fallback-needs-human-review':null;
   const auto_published=[];const auto_publish_skipped=[];
   if(autoPublishEnabled){
     const keys=new Set(sync.rows.map(x=>x.source_key));
@@ -155,14 +157,14 @@ adminRouter.post('/imports/fetch',permit('imports.fetch'),async(req,res)=>{
   }
 
   await audit(req,'imports.fetch','source',p.data.kind,{
-    ...p.data,...result,...sync.stats,auto_publish_enabled:autoPublishEnabled,
+    ...p.data,...result,...sync.stats,auto_publish_requested:autoPublishRequested,auto_publish_enabled:autoPublishEnabled,auto_publish_disabled_reason:autoPublishDisabledReason,
     auto_publish_threshold:config.autoPublishMinScore,auto_published:auto_published.length,
     auto_publish_skipped:auto_publish_skipped.length
   });
   ok(res,{
     ...result,...sync.stats,
     auto_publish:{
-      enabled:autoPublishEnabled,threshold:config.autoPublishMinScore,
+      requested:autoPublishRequested,enabled:autoPublishEnabled,disabled_reason:autoPublishDisabledReason,threshold:config.autoPublishMinScore,
       published:auto_published,skipped:auto_publish_skipped
     },
     learning:publicLearningSummary(learningAfter),

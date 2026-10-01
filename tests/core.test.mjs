@@ -27,7 +27,8 @@ import { plainEnglishNewsDraft } from '../src/lib/plain-content.mjs';
 import { NEWS_FEEDS } from '../src/lib/news-harvest.mjs';
 import { buildTrafficAtlas, continentForCode } from '../src/lib/geo-analytics.mjs';
 import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload, sourcePublishingPolicy } from '../src/lib/source-catalog.mjs';
-import { sourceEndpointCandidates, probeLegacySources } from '../src/lib/importer.mjs';
+import { parseDirectAnchors, fetchDirectSourceRecord, fetchDirectSourceFallback, directFallbackSupports } from '../src/lib/direct-source-fallback.mjs';
+import { fetchImports, sourceEndpointCandidates, probeLegacySources } from '../src/lib/importer.mjs';
 
 import { PostgresStore } from '../src/lib/store-postgres.mjs';
 test('SEO slugs stay extension-free and readable',()=>{
@@ -969,4 +970,76 @@ test('v0.8.3: admin assets cannot keep stale repaired JavaScript',()=>{
   const server=fs.readFileSync(new URL('../src/server.mjs',import.meta.url),'utf8');
   assert.match(server,/maxAge:0/);
   assert.match(server,/no-store, no-cache, must-revalidate/);
+});
+
+
+test('v0.8.4: direct legacy fallback parses only metadata and useful links',async()=>{
+  const original=globalThis.fetch;
+  const html=`<!doctype html><html><head>
+    <title>Example Engineering Bursary 2027</title>
+    <meta name="description" content="Example Fund is inviting students to apply for its 2027 engineering bursary.">
+    <link rel="canonical" href="https://www.zabursaries.co.za/example-engineering-bursary/">
+  </head><body>
+    <h1>Example Engineering Bursary 2027</h1>
+    <article><p>This long article text must not become the fallback draft body.</p></article>
+    <a href="https://apply.example.org/bursary">Apply for the bursary</a>
+    <a href="/another-bursary/">Another Science Bursary 2027</a>
+  </body></html>`;
+  globalThis.fetch=async()=>new Response(html,{status:200,headers:{'content-type':'text/html; charset=utf-8'}});
+  try{
+    const anchors=parseDirectAnchors(html,'https://www.zabursaries.co.za/example-engineering-bursary/');
+    assert.ok(anchors.some(x=>x.url==='https://apply.example.org/bursary'));
+    const row=await fetchDirectSourceRecord('https://www.zabursaries.co.za/example-engineering-bursary/');
+    assert.equal(row.sourceId,'zabursaries');
+    assert.equal(row.directFallback,true);
+    assert.equal(row.contentText,'Example Fund is inviting students to apply for its 2027 engineering bursary.');
+    assert.ok(!row.contentText.includes('long article text'));
+    assert.equal(row.applicationLinks[0].url,'https://apply.example.org/bursary');
+  }finally{globalThis.fetch=original}
+});
+
+test('v0.8.4: source importer falls back to ZA Bursaries website and keeps results private-quality',async()=>{
+  const original=globalThis.fetch;
+  const indexHtml=`<html><body><a href="/government-bursaries-south-africa/example-bursary/">Example Municipality Bursary 2027</a></body></html>`;
+  const detailHtml=`<html><head><meta name="description" content="Example Municipality bursary opportunity for 2027 studies."><link rel="canonical" href="https://www.zabursaries.co.za/government-bursaries-south-africa/example-bursary/"></head><body><h1>Example Municipality Bursary 2027</h1><a href="https://apply.example.gov.za/form">Application form</a></body></html>`;
+  globalThis.fetch=async url=>{
+    const u=String(url);
+    if(u.startsWith('https://todayinfo-zpshgscq.manus.space/api/v1/')){
+      return new Response(JSON.stringify({data:{records:[]},meta:{pagination:{totalPages:1}}}),{status:200,headers:{'content-type':'application/json'}});
+    }
+    if(u.includes('example-bursary'))return new Response(detailHtml,{status:200,headers:{'content-type':'text/html'}});
+    if(u.startsWith('https://www.zabursaries.co.za/'))return new Response(indexHtml,{status:200,headers:{'content-type':'text/html'}});
+    throw new Error('Unexpected URL '+u);
+  };
+  try{
+    assert.equal(directFallbackSupports('bursaries'),true);
+    const direct=await fetchDirectSourceFallback('bursaries',{limit:5});
+    assert.equal(direct.records.length,1);
+    const out=await fetchImports({kind:'bursaries',maxPages:1,expand:false,expandRelated:false});
+    assert.equal(out.stats.directFallbackUsed,true);
+    assert.equal(out.stats.usedEndpoint,'direct:zabursaries');
+    assert.ok(out.rows.length>=1);
+    const row=out.rows.find(x=>x.source_id==='zabursaries');
+    assert.ok(row);
+    assert.ok(Number(row.quality_score)<=55);
+    assert.ok((row.quality_issues||[]).some(x=>/manual review|review and edit/i.test(x)));
+  }finally{globalThis.fetch=original}
+});
+
+test('v0.8.4: direct website fallback can never auto-publish from the import fetch route',()=>{
+  const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+  assert.match(admin,/autoPublishRequested/);
+  assert.match(admin,/autoPublishRequested&&!sync\.stats\.directFallbackUsed/);
+  assert.match(admin,/direct-website-fallback-needs-human-review/);
+});
+
+test('v0.8.4: Demand Queue and Source Hub explain direct fallback review behavior',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  const importer=fs.readFileSync(new URL('../src/lib/importer.mjs',import.meta.url),'utf8');
+  assert.match(ui,/direct website fallback used — review required/);
+  assert.match(ui,/Fetched directly from the source website into Import Inbox/);
+  assert.match(ui,/manual review required/);
+  assert.match(importer,/fetchDirectSourceFallback/);
+  assert.match(importer,/fetchDirectSourceRecord/);
+  assert.match(importer,/Direct website fallback — review and edit before publishing/);
 });
