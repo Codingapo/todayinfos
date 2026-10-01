@@ -10,6 +10,7 @@ import { authRouter } from './routes/auth.mjs';
 import { adminRouter } from './routes/admin.mjs';
 import { publicRouter } from './routes/public.mjs';
 import { retryPublicationQueue } from './lib/r2.mjs';
+import { store } from './lib/store.mjs';
 
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
@@ -20,7 +21,7 @@ app.use(express.json({limit:'2mb'}));
 app.use(express.urlencoded({extended:false,limit:'2mb'}));
 app.use(cookieParser());
 
-app.get('/health',(req,res)=>res.json({status:'ok',service:'todayinfo-control-center',mode:config.dataStore,database_fallback:config.dataStoreFallback,time:new Date().toISOString()}));
+app.get('/health',(req,res)=>res.json({status:'ok',service:'todayinfo-control-center',mode:config.dataStore,database_fallback:config.dataStoreFallback,store:store.health?.()||{mode:config.dataStore},time:new Date().toISOString()}));
 app.use('/api/v1',cors({origin:'*',methods:['GET','POST','OPTIONS']}),publicRouter);
 app.use('/admin/api/auth',authRouter);
 app.use('/admin/api',adminRouter);
@@ -54,3 +55,16 @@ publicationRetryTimer.unref?.();
 setTimeout(()=>{
   retryPublicationQueue({limit:100}).catch(()=>{});
 },5000).unref?.();
+
+
+const databaseRetryTimer=setInterval(()=>{
+  if(typeof store.retryDatabaseQueue!=='function')return;
+  store.retryDatabaseQueue({limit:100}).then(result=>{
+    if(result.synced)console.log(`Database retry synced ${result.synced} queued operation(s).`);
+  }).catch(error=>console.warn(`Database retry failed: ${error.message}`));
+},5*60*1000);
+databaseRetryTimer.unref?.();
+
+setTimeout(()=>{
+  if(typeof store.retryDatabaseQueue==='function')store.retryDatabaseQueue({limit:100}).catch(()=>{});
+},7000).unref?.();
