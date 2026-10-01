@@ -16,6 +16,7 @@ import { normalizeGeo, normalizeClassification } from '../lib/global-content.mjs
 import { loadImportLearning, learnFromImports, publicLearningSummary } from '../lib/import-learning.mjs';
 import { autoPublishDecision } from '../lib/auto-publish.mjs';
 import { CONTENT_LIMITS, SEO_GUIDANCE, zodValidationDetails } from '../lib/content-constraints.mjs';
+import { GLOBAL_HARVEST_PROVIDERS, harvestGlobalJobs } from '../lib/global-harvest.mjs';
 
 export const adminRouter=Router();
 const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:25*1024*1024}});
