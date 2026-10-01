@@ -34,17 +34,19 @@ export const SOURCE_CATALOG=[
 
   {
     id:'sanews',label:'SAnews',category:'south_africa_official',region:'South Africa',country_code:'ZA',
-    content_types:['news','bursary','opportunity'],mode:'official_rss',integration_status:'discovery',
+    content_types:['news','bursary','opportunity'],mode:'official_rss',integration_status:'active',
     description:'Official South African Government News Agency feed for editorial discovery. TodayInfo does not automatically rewrite or publish stories.',
     publishing_policy:{mode:'manual_editorial_summary',auto_rewrite:false,full_copy:false,attribution_required:true,verify_facts:true,note:'Create a human-edited TodayInfo summary and credit/link the original source.'},
-    homepage:'https://www.sanews.gov.za/',aliases:['sanews','south african government news agency']
+    homepage:'https://www.sanews.gov.za/',aliases:['sanews','south african government news agency'],
+    action:{type:'news_discovery',source:'sanews',limit:10}
   },
   {
     id:'dsti-news',label:'DSTI News Feed',category:'south_africa_official',region:'South Africa',country_code:'ZA',
-    content_types:['news','opportunity'],mode:'official_rss',integration_status:'discovery',
+    content_types:['news','opportunity'],mode:'official_rss',integration_status:'active',
     description:'Official Department of Science, Technology and Innovation feed for editorial discovery. TodayInfo does not automatically rewrite or publish stories.',
     publishing_policy:{mode:'manual_editorial_summary',auto_rewrite:false,full_copy:false,attribution_required:true,verify_facts:true,note:'Use the source for facts and create a human-edited summary before publishing.'},
-    homepage:'https://www.dsti.gov.za/',aliases:['dsti','department of science technology and innovation']
+    homepage:'https://www.dsti.gov.za/',aliases:['dsti','department of science technology and innovation'],
+    action:{type:'news_discovery',source:'dsti',limit:10}
   },
   {
     id:'dpsa',label:'DPSA Public Service Vacancy Circular',category:'south_africa_official',region:'South Africa',country_code:'ZA',
