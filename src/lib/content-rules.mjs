@@ -168,7 +168,9 @@ export function ruleDraftFromRecord(record={}) {
     title,slug:slugify(record.slug||title),content_type,summary,body_markdown:content,
     posted_date:record.publishedAt||record.modifiedAt||record.posted_date||null,
     category:categories[0]||titleCaseType(content_type),categories,tags,
-    topics,related_links:[],related_ids:[],recommendation_ids:[],recommendation_links:sourceRecommendations(record,content_type),documents:[],navigation_links:[],
+    topics,related_links:[],related_ids:[],recommendation_ids:[],
+    recommendation_links:sourceRecommendations(record,content_type),
+    documents:[],navigation_links:[],
     main_image_url:firstImage(record),seo_title:title,seo_description:summary,type_data,
     is_trending:false,status:'draft'
   };
