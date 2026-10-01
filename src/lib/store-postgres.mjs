@@ -129,7 +129,21 @@ export class PostgresStore{
   }
 
   async recordEvent(i){return(await this.q(`insert into analytics_events(visitor_id,event_type,post_id,meta) values($1,$2,$3,$4::jsonb) returning *`,[i.visitor_id||null,i.event_type,i.post_id||null,json(i.meta||{})])).rows[0]}
-  async analyticsSummary(){const totals=(await this.q(`select event_type,count(*)::int n from analytics_events group by event_type`)).rows;const daily=(await this.q(`select created_at::date date,count(*)::int total from analytics_events where created_at>=current_date-interval '30 days' group by 1 order by 1`)).rows;const u=(await this.q(`select count(distinct visitor_id)::int n from analytics_events`)).rows[0].n;const mix=(await this.q(`select coalesce(p.content_type,'other') content_type,count(*)::int n from analytics_events a left join posts p on p.id=a.post_id where a.event_type='view' group by 1`)).rows;return{totals:Object.fromEntries(totals.map(x=>[x.event_type,x.n])),daily,unique_visitors:u,views_by_content_type:Object.fromEntries(mix.map(x=>[x.content_type,x.n]))}}
+  async analyticsSummary(){
+    const totals=(await this.q(`select event_type,count(*)::int n from analytics_events group by event_type`)).rows;
+    const daily=(await this.q(`select created_at::date date,count(*)::int total from analytics_events where created_at>=current_date-interval '30 days' group by 1 order by 1`)).rows;
+    const u=(await this.q(`select count(distinct visitor_id)::int n from analytics_events`)).rows[0].n;
+    const mix=(await this.q(`select coalesce(p.content_type,a.meta->>'content_type','other') content_type,count(*)::int n from analytics_events a left join posts p on p.id=a.post_id where a.event_type='view' group by 1`)).rows;
+    const countries=(await this.q(`select upper(meta->>'country_code') name,count(distinct visitor_id)::int visitors,count(*)::int events from analytics_events where coalesce(meta->>'country_code','')<>'' group by 1 order by visitors desc,events desc limit 100`)).rows;
+    const regions=(await this.q(`select meta->>'region_name' name,count(distinct visitor_id)::int visitors,count(*)::int events from analytics_events where coalesce(meta->>'region_name','')<>'' group by 1 order by visitors desc,events desc limit 100`)).rows;
+    const searches=(await this.q(`select lower(meta->>'query') query,count(*)::int count from analytics_events where event_type='search' and coalesce(meta->>'query','')<>'' group by 1 order by count desc limit 100`)).rows;
+    const popular=(await this.q(`select p.id,p.title,p.slug,p.content_type,p.geo,count(*) filter(where a.event_type='view')::int views,count(*) filter(where a.event_type='read')::int reads,count(*) filter(where a.event_type='application_click')::int application_clicks from posts p join analytics_events a on a.post_id=p.id where p.status='published' and p.deleted_at is null group by p.id order by views desc,reads desc limit 50`)).rows;
+    return{
+      totals:Object.fromEntries(totals.map(x=>[x.event_type,x.n])),daily,unique_visitors:u,
+      views_by_content_type:Object.fromEntries(mix.map(x=>[x.content_type,x.n])),
+      visitors_by_country:countries,visitors_by_region:regions,top_searches:searches,popular_content:popular
+    }
+  }
 
   async settings(){const rows=(await this.q('select key,value from site_settings')).rows;return Object.fromEntries(rows.map(r=>[r.key,r.value?.value??r.value]))}
   async updateSettings(p){for(const[k,v]of Object.entries(p))await this.q(`insert into site_settings(key,value) values($1,$2::jsonb) on conflict(key) do update set value=excluded.value,updated_at=now()`,[k,json({value:v})]);return this.settings()}
