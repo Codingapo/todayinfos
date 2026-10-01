@@ -92,11 +92,11 @@ async function syncPublication(row,actor){
 adminRouter.get('/dashboard',permit('dashboard.view'),async(req,res)=>ok(res,await store.dashboard()));
 adminRouter.get('/content-types',permit('posts.view'),(req,res)=>ok(res,Object.fromEntries(contentTypes.map(t=>[t,resolvedDefinition(t)]))));
 adminRouter.get('/content-constraints',permit('posts.view'),(req,res)=>ok(res,{limits:CONTENT_LIMITS,seo:SEO_GUIDANCE}));
-adminRouter.get('/sources/hub',permit('imports.view'),async(req,res)=>{
+adminRouter.get('/sources/hub',permit('imports.fetch'),async(req,res)=>{
   const [imports,posts]=await Promise.all([store.listImports({}),store.listPosts({include_deleted:true})]);
   ok(res,sourceHubPayload({imports,posts,permanentRecords:80}));
 });
-adminRouter.get('/source-presets',permit('imports.view'),(req,res)=>ok(res,[
+adminRouter.get('/source-presets',permit('imports.fetch'),(req,res)=>ok(res,[
   {id:'pages',label:'All source pages'},{id:'bursaries',label:'ZA Bursaries'},{id:'articles',label:'Articles / news'},{id:'dailyupdate/jobs',label:'DailyUpdate jobs + related'},
   {id:'tag:psychometric-test',label:'Psychometric Test tag',kind:'tag',tagSlug:'psychometric-test'}
 ]));
@@ -203,8 +203,8 @@ adminRouter.post('/harvest/global',permit('imports.fetch'),async(req,res)=>{
   await audit(req,'harvest.global','source','global',{target:p.data.target,providers:p.data.providers,...harvest.stats,...stored,published:published.length,review:review.length});
   ok(res,{...harvest.stats,...stored,published,review:review.slice(0,100)});
 });
-adminRouter.get('/imports/learning',permit('imports.view'),async(req,res)=>ok(res,publicLearningSummary(await loadImportLearning())));
-adminRouter.get('/imports/priority',permit('imports.view'),async(req,res)=>ok(res,await store.priorityImports({limit:Math.min(500,Math.max(1,Number(req.query.limit)||200))})));
+adminRouter.get('/imports/learning',permit('imports.fetch'),async(req,res)=>ok(res,publicLearningSummary(await loadImportLearning())));
+adminRouter.get('/imports/priority',permit('imports.fetch'),async(req,res)=>ok(res,await store.priorityImports({limit:Math.min(500,Math.max(1,Number(req.query.limit)||200))})));
 adminRouter.get('/imports/:id',permit('imports.view'),async(req,res)=>{const row=await store.getImport(req.params.id);if(!row)return res.status(404).json({error:'Import not found'});ok(res,row)});
 adminRouter.patch('/imports/:id',permit('imports.review'),async(req,res)=>{const schema=z.object({review_status:z.enum(['unreviewed','reviewing','promoted']).optional(),detected_type:z.enum(contentTypes).optional(),prepared_draft:postSchema.partial().optional()});const p=schema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid import update',details:p.error.flatten()});const patch={...p.data};if(patch.prepared_draft)patch.prepared_draft=normalizePost({...patch.prepared_draft,content_type:patch.prepared_draft.content_type||patch.detected_type||'other'});const row=await store.updateImport(req.params.id,patch);if(!row)return res.status(404).json({error:'Import not found'});await audit(req,'import.update','raw_import',row.id,{fields:Object.keys(patch)});if(patch.prepared_draft)await audit(req,'import.clean','raw_import',row.id,{fields:Object.keys(patch.prepared_draft||{})});ok(res,row)});
 adminRouter.post('/imports/:id/promote',permit('imports.review'),async(req,res)=>{const row=await store.promoteImport(req.params.id,req.user.id);if(!row)return res.status(404).json({error:'Import not found'});await audit(req,'import.promote','post',row.id,{source_import:req.params.id});res.status(201).json({data:row})});
