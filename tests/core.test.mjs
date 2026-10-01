@@ -14,6 +14,9 @@ import { publishedObjectKey } from '../src/lib/r2.mjs';
 import { PUBLISHED_INDEX_KEY, PUBLISHED_INDEX_SCHEMA } from '../src/lib/published-index.mjs';
 import { FederatedStore, availabilityError } from '../src/lib/federated-store.mjs';
 import { searchScore, trendScore, deriveVisitorSignals } from '../src/lib/ranking.mjs';
+import { loadSouthAfricaReferenceSeed } from '../src/lib/reference-seed.mjs';
+import { autoPublishDecision } from '../src/lib/auto-publish.mjs';
+import { applyLearningHints, learnIntoProfile, learningQualityBonus } from '../src/lib/import-learning.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
   assert.equal(slugify('University of Limpopo — Applications 2027!'),'university-of-limpopo-applications-2027');
@@ -311,4 +314,73 @@ test('OpenAPI advertises the global frontend contract',()=>{
   assert.match(spec,/\/facets:/);
   assert.match(spec,/\/locations:/);
   assert.match(spec,/published-only global content API/i);
+});
+
+
+test('permanent South Africa reference seed contains all 40 researched records',()=>{
+  const seed=loadSouthAfricaReferenceSeed();
+  assert.equal(seed.rows.length,40);
+  assert.equal(seed.rows.filter(x=>x.detected_type==='job').length,20);
+  assert.equal(seed.rows.filter(x=>x.detected_type==='bursary').length,20);
+  assert.match(seed.metadata.publishing_note,/draft-only/i);
+  assert.ok(seed.rows.filter(x=>x.quality_score>=80).length>=30);
+});
+
+test('import learning memory does not double-count the same fetched version',()=>{
+  const row={
+    source_key:'example:1',source_hash:'hash-a',source_url:'https://example.org/jobs/1',
+    detected_type:'job',quality_score:90,prepared_draft:{content_type:'job',geo:{country_code:'ZA'}}
+  };
+  const once=learnIntoProfile(null,[row]);
+  const twice=learnIntoProfile(once,[row]);
+  assert.equal(once.records_seen,1);
+  assert.equal(twice.records_seen,1);
+  assert.equal(twice.sources['example.org'].count,1);
+});
+
+test('learned source patterns can improve unknown classification without overriding clear records',()=>{
+  const rows=[1,2,3].map(n=>({
+    source_key:`learn:${n}`,source_hash:`h${n}`,source_url:`https://learn.example/item-${n}`,
+    detected_type:'bursary',quality_score:90,prepared_draft:{content_type:'bursary',geo:{country_code:'ZA'}}
+  }));
+  const profile=learnIntoProfile(null,rows);
+  const draft=applyLearningHints({
+    draft:{content_type:'other',geo:{}},
+    row:{source_url:'https://learn.example/new-item'},
+    profile
+  });
+  assert.equal(draft.content_type,'bursary');
+  assert.equal(draft.geo.country_code,'ZA');
+  assert.ok(learningQualityBonus({source_url:'https://learn.example/new-item'},profile)>0);
+});
+
+test('80-percent active import can auto-publish when hard checks pass',()=>{
+  const draft={
+    title:'Example Job',content_type:'job',body_markdown:'Useful details '.repeat(30),tags:['Jobs'],
+    type_data:{company:'Example Org',closing_date:'2026-10-30',status_override:'open',how_to_apply:'Apply using the official employer instructions shown on the source page.'}
+  };
+  const decision=autoPublishDecision({
+    importRow:{quality_score:80,source_url:'https://example.org/job'},
+    draft,threshold:80,now:new Date('2026-10-01T12:00:00Z')
+  });
+  assert.equal(decision.eligible,true);
+});
+
+test('high-quality expired opportunity is never auto-published',()=>{
+  const draft={
+    title:'Expired Bursary',content_type:'bursary',body_markdown:'Useful details '.repeat(30),tags:['Bursaries'],
+    type_data:{provider:'Example Fund',closing_date:'2026-08-31',status_override:'auto',how_to_apply:'Apply through the official funding portal with the required documents.'}
+  };
+  const decision=autoPublishDecision({
+    importRow:{quality_score:95,source_url:'https://example.org/bursary'},
+    draft,threshold:80,now:new Date('2026-10-01T12:00:00Z')
+  });
+  assert.equal(decision.eligible,false);
+  assert.ok(decision.issues.some(x=>/passed|closed/i.test(x)));
+});
+
+test('Import Inbox UI advertises the 80-percent auto-publish rule',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(ui,/Auto-publish clean imports scoring 80% or higher/);
+  assert.doesNotMatch(ui,/Publish up to 3 clean preview posts/);
 });
