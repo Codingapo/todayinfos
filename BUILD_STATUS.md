@@ -1,46 +1,51 @@
-# Build Status — v0.8.0 Content Engine + Verified Apply Links
+# Build Status — v0.8.1 Stability Repair
 
-This release is incremental. Existing v0.7 API routes, Source Hub, employee RBAC, 80 permanent reference opportunities, R2/local fail-safe publishing, search, trending, related content, demand queue and analytics remain in place.
+This is a repair release. No existing TodayInfo feature is intentionally removed, and no AI rewriting feature is introduced.
 
-## Content engine
-- Official news is processed in batches of at most 10.
-- Active official feeds: SAnews and DSTI.
-- News output is a short attributed plain-English summary rather than a mirrored article.
-- Source URL and credit remain attached to the imported record.
-- Source Hub now contains 30 catalogued sources.
+## Admin dashboard repair
+- Fixed collection-selector regressions that could crash the dashboard after Apo/CEO login.
+- Fixed navigation selector regression.
+- Fixed Source Hub news/harvest selector regressions.
+- Fixed traffic-atlas selector regressions.
+- Added visible handling for unhandled dashboard promise errors.
+- Import Inbox Review and Promote remain available to the CEO.
+- Promotion now reliably opens the structured editor after the draft is created.
+- Content Library Edit reliably waits for the post before opening the editor.
+- Owner/CEO retains wildcard RBAC and full edit/publish/delete access.
 
-## Opportunity application intelligence
-- Candidate application links are ranked from source data.
-- The source article URL is explicitly rejected as a direct application URL.
-- Candidate links are checked and redirects are followed.
-- Verified final application URLs are stored in structured metadata.
-- Application guidance is built from published requirements, how-to-apply text and supporting-document sections.
-- Ten-at-a-time opportunity processing is available in Import Inbox.
-- Opportunity batch auto-publishing requires a verified direct application route.
+## Import Inbox + Demand Queue
+- Import Inbox keeps the existing Review → Promote → Edit → Publish workflow.
+- Demand Queue remains a CEO/source-management workflow.
+- Deep Sync year filter now defaults to blank so current and future opportunities are not accidentally excluded.
+- Existing review state, source memory and 80%+ publishing checks remain in place.
 
-## R2 publishing
-- Main published content remains one JSON artifact per page.
-- Substantive application guides create a second R2/local JSON artifact under the guides collection.
-- Thin guides are not created.
-- R2 outage behavior is unchanged: local artifact + retry queue.
+## Jobs and bursaries source resilience
+- Dedicated source collection endpoints remain the first choice.
+- ZA Bursaries fallback: `/bursaries` → `/search?q=bursary`.
+- DailyUpdate jobs fallback: `/dailyupdate/jobs` → `/dailyupdate` → `/search?q=jobs`.
+- Fetch responses report `endpointUsed`, `endpointFallbackUsed` and all endpoint attempts.
+- Source Hub includes a diagnostics endpoint to check:
+  - TodayInfo source API bursaries
+  - TodayInfo source API DailyUpdate jobs
+  - ZA Bursaries website
+  - DailyUpdate vacancies website
 
-## Public API
-New public routes:
-- GET /api/v1/guides
-- GET /api/v1/guides/:slug
+## Source Hub editorial policy
+Each source now exposes an explicit policy describing:
+- what factual/structured information may be published;
+- how source information should be paraphrased in simple TodayInfo wording;
+- what must be verified before publication;
+- what should not be copied or published.
 
-Existing /api/v1/meta now advertises guide storage and routes.
+Restricted/licensed sources remain catalog-only until access conditions are configured.
 
-## Recommendations
-- Education/funding pages recommend education/funding content.
-- Career pages recommend career content.
-- News/editorial pages recommend news/editorial content.
-- Cross-family accidental recommendations are blocked.
-
-## Analytics
-- Country analytics now include visitors, views, reads, searches, application clicks and downloads.
-- Country data is aggregated into continents.
-- CEO Analytics includes a clickable world traffic atlas.
-
-## Release gate
-The branch must pass dependency installation, source syntax checks and the complete Node test suite before merge.
+## Regression coverage
+Tests protect:
+- CEO owner wildcard permissions;
+- Import Review/Promote/Edit/Publish controls;
+- Demand Queue CEO access;
+- selector crash regressions;
+- blank-by-default Deep Sync year filter;
+- real bursary endpoint fallback behavior;
+- source editorial policies;
+- Source Hub diagnostics.
