@@ -1,34 +1,49 @@
-# Build Status — v0.5.1 Dashboard Validation UX
+# Build Status — v0.6.0 Source Hub + Global Harvest
 
-This release improves the TodayInfo dashboard editor and fixes confusing content-validation errors such as:
+This release expands TodayInfo incrementally. Existing public API routes, publishing rules, R2/local fail-safe behavior, analytics, demand queue, and structured editor remain in place.
 
-- `Too big: expected string to have <=60 characters`
-- `Too big: expected string to have <=320 characters`
+## Permanent content
+- South Africa verified reference dataset: 40 records.
+- Africa verified reference dataset: 40 records across Kenya, Nigeria, Ghana, Uganda, Tanzania, Zambia, Zimbabwe and Botswana.
+- Total permanent bootstrap: 80 records.
+- Reference records are deduplicated by source URL / country / slug and published on startup.
+- Published JSON artifacts remain synchronized through the normal R2/local publication pipeline.
 
-## Validation improvements
-- Tag length increased from 60 to 120 characters per tag.
-- SEO description storage increased from 320 to 1,000 characters.
-- Summary limit increased to 2,000 characters.
-- Category and slug limits were made more practical.
-- Related-link, document and topic titles use centralized limits.
-- Backend validation now returns exact field paths.
-- Important Zod messages now use readable field names instead of raw “Too big” messages.
+## Source Hub
+- New dashboard Source Hub with separate controls for DailyUpdate, ZA Bursaries, Psychometric Test and global feeds.
+- DailyUpdate / ZA Bursaries can fetch useful related detail pages, not only index/archive pages.
+- Related-page expansion is capped and deduplicated.
+- Existing 80%+ safe auto-publish gate remains the final authority.
 
-## Dashboard editor improvements
-- Live character counters for limited fields.
-- Recommended SEO lengths are shown separately from hard storage limits.
-- SEO search-result preview updates while typing.
-- Tags are rendered as live chips with per-tag character counts.
-- Oversized tags are highlighted before Save.
-- Invalid fields are outlined and receive inline error messages.
-- A validation summary lists every field that needs attention.
-- The first invalid field is automatically focused.
-- Save buttons show `Saving…` / `Creating…` and are disabled during submission.
-- Dynamic content-type fields and newly added topics/links receive the same live limits.
-- Document names are validated before upload.
+## Smart related content
+- Public detail responses calculate related content deterministically.
+- Signals: manual relation, country, content type, organisation, categories, tags, fields of study, education level and work mode.
+- Manual relationships receive priority.
+- Related content is generated from published content only.
+- No AI/prediction feature is used.
 
-## API
-- New admin endpoint: `GET /admin/api/content-constraints`.
-- The dashboard consumes limits from the backend so client/server validation stays aligned.
+## Global Harvest
+- Public adapters: Arbeitnow, Jobicy and Remote OK.
+- Configurable public-board adapters: Lever and Ashby.
+- Harvest target can be up to 5,000 records per admin run.
+- Obvious placeholders/non-job pages are rejected.
+- Recent-age filtering is supported.
+- Provider attribution and canonical/source URLs are retained.
+- Harvest snapshots are saved through R2/local fallback.
+- Harvested records enter the Import Inbox, are deduplicated, and only auto-publish when they pass TodayInfo's normal cleanliness + hard publishing checks.
 
-No public API behavior, AI features, prediction features, or published-content structure was removed.
+## Dashboard
+- New Source Hub navigation.
+- Carefully designed source cards, provider controls and harvest progress/result states.
+- Content Library filters now combine:
+  - search
+  - country
+  - content type
+  - publishing status
+  - opportunity status
+  - source
+  - sort order
+- Responsive desktop/tablet/mobile styling added.
+
+## Important data-quality policy
+TodayInfo does not invent job listings to reach a target count. Large harvests must come from real public source feeds or public ATS boards and retain attribution. Stale, incomplete or low-quality records remain private for review.
