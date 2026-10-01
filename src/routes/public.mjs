@@ -56,7 +56,8 @@ publicRouter.get('/meta',(req,res)=>res.json({data:{
   storage:{public_content:'R2/local fallback',page_artifacts:'one JSON object per published page',application_guides:'separate R2 JSON when useful',index:'database abstraction'},
   tracking:{endpoint:'/api/v1/analytics/events',demand_events:['related_click','recommendation_click'],missing_link_behavior:'private_draft_priority_queue'},
   relations:{strategy:'deterministic-structured-similarity',signals:['manual','country','content_type','organisation','categories','tags','fields_of_study','education_level','work_mode']},
-  sources:{endpoint:'/api/v1/sources',catalogued:SOURCE_CATALOG.length,categories:SOURCE_CATEGORIES.length}
+  sources:{endpoint:'/api/v1/sources',catalogued:SOURCE_CATALOG.length,categories:SOURCE_CATEGORIES.length},
+  guides:{list:'/api/v1/guides',detail:'/api/v1/guides/{slug}',storage:'R2/local JSON artifact when application guidance is substantive'}
 }}));
 
 publicRouter.get('/sources',(req,res)=>res.json({data:{
