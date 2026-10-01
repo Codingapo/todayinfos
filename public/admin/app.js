@@ -314,7 +314,7 @@ async function openFetch(){
   const currentYear=new Date().getFullYear();
   modal('Deep sync TodayInfo source','IMPORT SOURCE',`<form id="fetchForm" class="form-grid">
     <label class="field wide">What do you want to fetch?<select name="preset">${presets.map(p=>`<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}</select><small>Psychometric Test remains a dedicated tag source.</small></label>
-    <label class="field">Year filter<input name="year" inputmode="numeric" value="${currentYear}" placeholder="${currentYear}"><small>Clear this field to fetch every year.</small></label>
+    <label class="field">Year filter (optional)<input name="year" inputmode="numeric" value="" placeholder="${currentYear}"><small>Leave blank for the latest available records. Enter a year only when you want to restrict the source.</small></label>
     <label class="field">How deep should we sync?<select name="maxPages"><option value="10">10 source pages</option><option value="25">25 source pages</option><option value="50">50 source pages</option><option value="100" selected>100 source pages / everything available</option></select></label>
     <label class="field wide preview-check"><input name="expandRelated" type="checkbox" checked><span>Follow useful related opportunity pages<small>TodayInfo will fetch related DailyUpdate/ZA Bursaries detail pages instead of storing only the directory/index page.</small></span></label><label class="field wide preview-check"><input name="autoPublish" type="checkbox" checked><span>Auto-publish clean imports scoring 80% or higher<small>Expired items, missing source links, missing required fields, or missing application routes are still blocked and left in the Import Inbox.</small></span></label>
     <div class="wide notice">Each source page requests up to 100 records. Existing imports are remembered by source key; reviewed and promoted states are preserved. Source patterns also improve the rule-based import memory over time.</div>
@@ -331,7 +331,7 @@ async function openFetch(){
     try{
       const r=await api('/imports/fetch',{method:'POST',body});
       const published=r.auto_publish?.published?.length||0,skipped=r.auto_publish?.skipped?.length||0;
-      toast(`Sync complete: ${r.inserted||0} new · ${r.changed||0} changed · ${r.unchanged||0} remembered${published?` · ${published} auto-published`:''}${skipped?` · ${skipped} kept for review`:''}`);
+      toast(`Sync complete: ${r.inserted||0} new · ${r.changed||0} changed · ${r.unchanged||0} remembered${r.yearFallbackUsed?' · year filter had no matches, latest available used':''}${published?` · ${published} auto-published`:''}${skipped?` · ${skipped} kept for review`:''}`);
       closeModal();await navigate('imports');
     }catch(err){
       submit.disabled=false;submit.textContent='Start deep sync';$('#syncProgress').classList.add('hidden');toast(err.message,true);
