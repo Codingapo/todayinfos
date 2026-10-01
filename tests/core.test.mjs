@@ -674,7 +674,8 @@ test('worker access is enforced in backend routes and mirrored in dashboard navi
   assert.match(ui,/VIEW_PERMISSION/);
   assert.match(ui,/firstAllowedView/);
   assert.match(ui,/applyAccess/);
-  assert.match(ui,/Editor and Content Workers only see Import Inbox, Content Library and Media/);
+  assert.match(ui,/Editors and Content Workers only see Import Inbox, Content Library and Media/);
+  assert.match(ui,/\$\$\('\#nav button\[data-view\]'\)\.forEach/);
 });
 
 test('employee productivity is audit-derived and shown to the CEO',()=>{
