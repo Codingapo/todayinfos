@@ -42,9 +42,12 @@ export function detectContentType(record={}) {
   if (/\b(job|jobs|vacanc(y|ies)|hiring|career opportunity|recruitment|positions? available)\b/.test(text)) return 'job';
   if (/\bintern(ship|ships)\b|graduate programme|graduate program/.test(text)) return 'internship';
   if (/\blearnerships?\b|apprenticeship/.test(text)) return 'learnership';
-  if (/\bbursar(y|ies)\b|funding opportunity|scholarship/.test(text)) return 'bursary';
+  if (/\bscholarships?\b|scholarship programme|scholarship program/.test(text)) return 'scholarship';
+  if (/\bbursar(y|ies)\b|funding opportunity/.test(text)) return 'bursary';
   if (declared==='job') return 'job';
   if (declared==='bursary') return 'bursary';
+  if (declared==='scholarship') return 'scholarship';
+  if (declared==='opportunity') return 'opportunity';
   if (declared==='article'||/\b(news|announcement|update|notice)\b/.test(text)) return 'news';
   return 'other';
 }
@@ -65,7 +68,7 @@ export function isSafeUrl(value,{allowRelative=true}={}) {
 }
 const safeList=(arr=[])=>[...new Set((Array.isArray(arr)?arr:[]).map(x=>String(x||'').replace(/^#/,'').trim()).filter(Boolean))].slice(0,40);
 const cleanCategories=(arr=[])=>safeList(arr).filter(x=>!/^(?:\d+|page\s*\d+)$/i.test(x) && !/^https?:/i.test(x));
-const titleCaseType=t=>({bursary:'Bursaries',job:'Jobs',internship:'Internships',learnership:'Learnerships',news:'News',announcement:'Announcements',story:'Stories'}[t]||'TodayInfo');
+const titleCaseType=t=>({bursary:'Bursaries',scholarship:'Scholarships',job:'Jobs',internship:'Internships',learnership:'Learnerships',opportunity:'Opportunities',news:'News',announcement:'Announcements',story:'Stories'}[t]||'TodayInfo');
 
 const explicitRelations=(record={})=>[
   ...(Array.isArray(record.relatedLinks)?record.relatedLinks:[]),
@@ -136,7 +139,7 @@ export function ruleDraftFromRecord(record={}) {
   const tags=safeList([...(record.tags||[]),...categories,titleCaseType(content_type),...(year?[year]:[])]);
   const type_data={};
 
-  if(content_type==='bursary') {
+  if(content_type==='bursary'||content_type==='scholarship') {
     type_data.provider=record.organization||record.provider||'';
     type_data.opening_date=record.openingDate||record.opening_date||null;
     type_data.closing_date=record.closingDate||record.closing_date||null;
@@ -153,6 +156,12 @@ export function ruleDraftFromRecord(record={}) {
     type_data.status_override='auto';
     type_data.requirements=Array.isArray(record.requirements)?record.requirements.join('\n'):String(record.requirements||'');
     type_data.responsibilities=Array.isArray(record.responsibilities)?record.responsibilities.join('\n'):String(record.responsibilities||'');
+    type_data.how_to_apply=String(record.howToApply||record.how_to_apply||'');
+    type_data.application_url=firstUrl(record);
+  } else if(content_type==='opportunity') {
+    type_data.closing_date=record.closingDate||record.closing_date||null;
+    type_data.status_override='auto';
+    type_data.requirements=Array.isArray(record.requirements)?record.requirements.join('\n'):String(record.requirements||'');
     type_data.how_to_apply=String(record.howToApply||record.how_to_apply||'');
     type_data.application_url=firstUrl(record);
   } else if(content_type==='news') {
@@ -186,7 +195,7 @@ export function contentQuality(draft={}) {
   if(draft.posted_date) score+=8; else issues.push('Posted date missing');
   if(draft.main_image_url) score+=7; else issues.push('Main image missing');
 
-  if(draft.content_type==='bursary') {
+  if(['bursary','scholarship'].includes(draft.content_type)) {
     if(draft.type_data?.provider) score+=10; else issues.push('Provider missing');
     if(draft.type_data?.closing_date) score+=10; else issues.push('Closing date missing');
     if(draft.type_data?.application_url) score+=5; else issues.push('Application link missing');
