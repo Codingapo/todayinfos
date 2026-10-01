@@ -210,7 +210,7 @@ adminRouter.post('/harvest/news',permit('imports.fetch'),async(req,res)=>{
   const schema=z.object({
     source:z.enum(['sanews','dsti']).default('sanews'),
     limit:z.number().int().min(1).max(10).optional().default(10),
-    autoPublish:z.boolean().optional().default(true)
+    autoPublish:z.boolean().optional().default(false)
   });
   const p=schema.safeParse(req.body||{});
   if(!p.success)return res.status(400).json({error:'Invalid news harvest options',details:p.error.flatten()});
