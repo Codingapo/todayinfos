@@ -166,21 +166,36 @@ export async function fetchImports(options={}) {
   }
 
   const rawRecords = records.length;
-  const discoveredLinks=discoverSourceLinks(records);
-  const fullUrls=new Set(records.map(r=>String(r.url||r.source?.canonicalUrl||r.source?.url||'').replace(/\/$/,'')).filter(Boolean));
-  const seen = new Set();
+  const sourceRecords=[...records];
+  const discoveredLinks=discoverSourceLinks(sourceRecords);
+  const fullUrls=new Set(sourceRecords.map(r=>String(r.url||r.source?.canonicalUrl||r.source?.url||'').replace(/\/$/,'')).filter(Boolean));
   let duplicates = 0;
   let skippedIndexPages = 0;
   let skippedYear = 0;
+  let yearFallbackUsed=false;
 
-  records = records.filter(record => {
-    const key = record.url || record.id || `${record.sourceId || ''}:${record.slug || ''}:${record.title || ''}`;
-    if (seen.has(key)) { duplicates += 1; return false; }
-    seen.add(key);
-    if (!includesYear(record, options.year)) { skippedYear += 1; return false; }
-    if (isIndexLikeRecord(record)) { skippedIndexPages += 1; return false; }
-    return true;
-  });
+  const selectRecords=(applyYear=true)=>{
+    const seen=new Set();let localDuplicates=0,localIndex=0,localYear=0;
+    const selected=sourceRecords.filter(record=>{
+      const key=record.url||record.id||`${record.sourceId||''}:${record.slug||''}:${record.title||''}`;
+      if(seen.has(key)){localDuplicates+=1;return false}
+      seen.add(key);
+      if(applyYear&&options.year&&!includesYear(record,options.year)){localYear+=1;return false}
+      if(isIndexLikeRecord(record)){localIndex+=1;return false}
+      return true;
+    });
+    return{selected,localDuplicates,localIndex,localYear};
+  };
+
+  let selection=selectRecords(true);
+  if(!selection.selected.length&&options.year&&rawRecords>0&&options.fallbackLatest!==false){
+    const fallback=selectRecords(false);
+    if(fallback.selected.length){selection=fallback;yearFallbackUsed=true}
+  }
+  records=selection.selected;
+  duplicates=selection.localDuplicates;
+  skippedIndexPages=selection.localIndex;
+  skippedYear=yearFallbackUsed?0:selection.localYear;
 
   records.sort((a,b) => String(recordDate(b)||'').localeCompare(String(recordDate(a)||'')));
 
@@ -268,6 +283,8 @@ export async function fetchImports(options={}) {
       duplicates,
       skippedIndexPages,
       skippedYear,
+      requestedYear: options.year||null,
+      yearFallbackUsed,
       pageSize: PAGE_SIZE,
       maxPages
     }
