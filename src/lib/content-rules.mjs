@@ -67,6 +67,64 @@ const safeList=(arr=[])=>[...new Set((Array.isArray(arr)?arr:[]).map(x=>String(x
 const cleanCategories=(arr=[])=>safeList(arr).filter(x=>!/^(?:\d+|page\s*\d+)$/i.test(x) && !/^https?:/i.test(x));
 const titleCaseType=t=>({bursary:'Bursaries',job:'Jobs',internship:'Internships',learnership:'Learnerships',news:'News',announcement:'Announcements',story:'Stories'}[t]||'TodayInfo');
 
+const explicitRelations=(record={})=>[
+  ...(Array.isArray(record.relatedLinks)?record.relatedLinks:[]),
+  ...(Array.isArray(record.recommendations)?record.recommendations:[]),
+  ...(Array.isArray(record.relatedContent)?record.relatedContent:[]),
+  ...(Array.isArray(record.related)?record.related:[])
+];
+const genericRelations=(record={})=>Array.isArray(record.links)?record.links:[];
+
+function relationTitle(item={}) {
+  return String(item?.title||item?.text||item?.label||item?.name||'').replace(/\s+/g,' ').trim();
+}
+function relationUrl(item={}) {
+  return String(item?.url||item?.href||item?.link||'').trim();
+}
+function relationLooksUseful(title,url,contentType='other') {
+  const hay=\`${title} ${url}\`.toLowerCase();
+  if(!title || !isSafeUrl(url)) return false;
+  if(/facebook|twitter|instagram|linkedin|whatsapp|youtube|tiktok|mailto:|tel:/i.test(hay)) return false;
+  if(/privacy|terms|cookie|contact|about us|login|register|newsletter|advertis|sponsor/i.test(hay)) return false;
+  if(/\/(tag|category|author|page)\/|\/feed\/?$/i.test(url)) return false;
+  if(/^(home|next|previous|read more|more posts?)$/i.test(title)) return false;
+  const families={
+    bursary:/bursar|scholarship|funding|nsfas|study/i,
+    job:/\bjob|vacanc|career|hiring|recruit/i,
+    internship:/intern|graduate programme|graduate program/i,
+    learnership:/learnership|apprentice/i,
+    news:/news|update|announcement|notice|application/i
+  };
+  const family=families[contentType];
+  if(family && family.test(hay)) return true;
+  return /related|recommended|similar|also read|you may like/i.test(hay);
+}
+
+export function sourceRecommendations(record={},contentType=detectContentType(record)) {
+  const self=String(record.url||record.source?.canonicalUrl||record.source?.url||'').replace(/\/$/,'');
+  const application=firstUrl(record);
+  const seen=new Set();
+  const out=[];
+  const add=(item,{explicit=false}={})=>{
+    const title=relationTitle(item);
+    const url=relationUrl(item);
+    const key=url.replace(/\/$/,'');
+    if(!key || key===self || key===String(application||'').replace(/\/$/,'')) return;
+    if(!title || !isSafeUrl(url)) return;
+    const hay=\`${title} ${url}\`.toLowerCase();
+    if(/facebook|twitter|instagram|linkedin|whatsapp|youtube|tiktok|mailto:|tel:/i.test(hay)) return;
+    if(/privacy|terms|cookie|contact|about us|login|register|newsletter|advertis|sponsor/i.test(hay)) return;
+    if(/\/(tag|category|author|page)\/|\/feed\/?$/i.test(url)) return;
+    if(!explicit && !relationLooksUseful(title,url,contentType)) return;
+    if(seen.has(key)) return;
+    seen.add(key);
+    out.push({title,url,type:explicit?'source_related':'source_recommendation'});
+  };
+  for(const item of explicitRelations(record)){ add(item,{explicit:true}); if(out.length>=20) break; }
+  if(out.length<20) for(const item of genericRelations(record)){ add(item); if(out.length>=20) break; }
+  return out;
+}
+
 export function ruleDraftFromRecord(record={}) {
   const content_type=detectContentType(record);
   const title=String(record.title||record.name||'Untitled import').replace(/\s+/g,' ').trim();
@@ -110,7 +168,7 @@ export function ruleDraftFromRecord(record={}) {
     title,slug:slugify(record.slug||title),content_type,summary,body_markdown:content,
     posted_date:record.publishedAt||record.modifiedAt||record.posted_date||null,
     category:categories[0]||titleCaseType(content_type),categories,tags,
-    topics,related_links:[],related_ids:[],recommendation_ids:[],documents:[],navigation_links:[],
+    topics,related_links:[],related_ids:[],recommendation_ids:[],recommendation_links:sourceRecommendations(record,content_type),documents:[],navigation_links:[],
     main_image_url:firstImage(record),seo_title:title,seo_description:summary,type_data,
     is_trending:false,status:'draft'
   };
