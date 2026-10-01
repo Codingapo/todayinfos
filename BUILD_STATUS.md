@@ -1,46 +1,36 @@
-# Build Status — v0.4.0 Global API
+# Build Status — v0.4.1 Reference Seed + Rule Learning + Auto-Publish
 
-TodayInfo now has a global, published-content-first API architecture while preserving the existing API and dashboard behavior.
+This release extends the v0.4 global API without reintroducing AI or prediction features.
 
-## Global content
-- Structured country, region/state/province, city and location fields.
-- Structured classification: organisation, subcategory, opportunity type, education level, fields of study, job type, work mode, salary/stipend, eligibility tags and keywords.
-- Added Scholarship and general Opportunity content types.
-- Country-aware SEO paths such as `/za/bursaries/slug`, `/gb/jobs/slug`, and descriptive news paths.
-- Existing non-country routes remain supported.
+## Permanent reference seed
+- The uploaded **South Africa Jobs and Bursaries — Verified Opportunity Drafts** dataset is stored in the repository.
+- It contains 40 reference records: 20 jobs and 20 bursaries.
+- It is loaded on every server start and upserted into the Import Inbox using stable source keys.
+- Re-running the server does not create duplicate reference imports.
+- The reference records remain draft/review material by default because the source dataset explicitly marks them draft-only.
 
-## Search and discovery
-- Public search remains published-only.
-- Global filters support country, region, city, category, subcategory, organisation, education level, field of study, job type, work mode, salary, stipend, eligibility, status and date ranges.
-- Structured search relevance scores.
-- Filter facets and location hierarchy endpoints for future frontend controls.
+## Rule-based learning memory
+- Import learning is deterministic, not AI.
+- The system remembers aggregate source-domain quality, dominant content type, dominant country, and type quality statistics.
+- Learning is deduplicated by source key + source hash so repeated unchanged fetches do not inflate confidence.
+- The learning profile is persisted through R2/local fallback at `system/import-learning.json`.
+- When a source has a strong learned pattern, future ambiguous imports can receive a small classification/country hint and up to a 5-point quality bonus.
+- Hard publishing checks always override learned hints.
 
-## Trending and personalization
-- Trending uses published content only.
-- Deterministic ranking uses recent views, reads, application clicks, downloads, related/recommendation clicks, recency and optional editorial trending flag.
-- Global, country and region trending endpoints.
-- Anonymous visitor personalization is rule-based from that visitor's own recent searches/engagement and location signals.
-- No AI or prediction features.
+## 80%+ automatic publishing
+- Fetching imports now defaults to automatic publishing when quality is **80% or higher**.
+- The threshold cannot be configured below 80.
+- Eligible imports must also pass hard publishing checks.
+- Expired/closed opportunities are blocked even if their score is high.
+- A valid source URL is required.
+- Opportunity content requires a usable application URL or detailed application instructions.
+- Bursaries/scholarships still require provider + closing date.
+- Failed items stay in the Import Inbox for review.
+- Auto-published posts are synchronized to the same JSON/R2/local publication system introduced in v0.4.
 
-## Storage and resilience
-- Published detail pages are emitted as individual JSON artifacts.
-- Local artifact is written first; R2 is synchronized immediately when configured.
-- Failed R2 writes are queued and retried automatically.
-- An R2 published manifest supports search/discovery even when databases are unavailable.
-- Publication metadata is tracked in the database.
-- Multiple PostgreSQL/Supabase databases are supported through `DATABASE_URLS` and numbered URLs.
-- Public reads federate and deduplicate across databases.
-- Local published index is maintained as a database fail-safe.
-- Availability-related database writes can queue locally for retry.
-- Existing signed admin sessions can continue during a temporary primary DB outage; new logins still require the primary admin database.
+## Dashboard
+- Deep Sync now clearly states the 80%+ auto-publish rule.
+- The fetch result reports auto-published and review-kept counts.
+- `GET /admin/api/imports/learning` exposes a safe aggregate view of the rule-learning memory.
 
-## Analytics
-- Anonymous events can include country/region/city signals.
-- Analytics API can report visitors by country/region, popular searches, content mix and popular published content.
-- No raw IP address is stored by this implementation.
-
-## Migrations
-- `004_global_content.sql`
-- `005_published_artifacts.sql`
-
-The frontend has intentionally not been redesigned in this release; the API contract is the priority.
+No frontend redesign was made beyond the Import Inbox wording needed to describe this behavior.
