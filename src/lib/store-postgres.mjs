@@ -3,6 +3,7 @@ import { id, slugify, uniqueSlug } from './utils.mjs';
 import { calculateOpportunityStatus } from './content-rules.mjs';
 import { filterPost, normalizeCountryCode } from './global-content.mjs';
 import { rankTrending } from './ranking.mjs';
+import { demandPriority, normalizeTargetUrl } from './demand-priority.mjs';
 const {Pool}=pg;
 const json=v=>v==null?null:JSON.stringify(v);
 const JSON_FIELDS=new Set(['source_payload','prepared_draft','topics','related_links','recommendation_links','documents','navigation_links','type_data','geo','classification','publication','source']);
@@ -27,7 +28,9 @@ export class PostgresStore{
     const viewMix=(await this.q(`select coalesce(p.content_type,'other') content_type,count(*)::int n from analytics_events a left join posts p on p.id=a.post_id where a.event_type='view' and a.created_at>=current_date group by 1`)).rows;
     const top=(await this.q(`select p.id,p.title,p.slug,p.content_type,count(*) filter(where a.event_type='view')::int views,count(*) filter(where a.event_type='read')::int reads from posts p left join analytics_events a on a.post_id=p.id where p.status='published' and p.deleted_at is null group by p.id order by views desc limit 8`)).rows;
     const activity=(await this.q(`select * from audit_logs order by created_at desc limit 12`)).rows;
-    return{cards:{open_bursaries:openB,closed_bursaries:closedB,published_posts:posts.length,visitors_today:visits.visitors,reads_today:visits.reads,raw_imports_waiting:waiting},content_mix:mix,views_by_type:Object.fromEntries(viewMix.map(x=>[x.content_type,x.n])),top_posts:top,recent_activity:activity}
+    const todayEvents=(await this.q(`select event_type,count(*)::int n from analytics_events where created_at>=current_date group by event_type`)).rows;const today=Object.fromEntries(todayEvents.map(x=>[x.event_type,x.n]));
+    const priority=await this.priorityImports({limit:8});
+    return{cards:{open_bursaries:openB,closed_bursaries:closedB,published_posts:posts.length,visitors_today:visits.visitors,reads_today:visits.reads,searches_today:today.search||0,application_clicks_today:today.application_click||0,related_clicks_today:(today.related_click||0)+(today.recommendation_click||0),highest_priority:priority.filter(x=>x.priority==='highest').length,raw_imports_waiting:waiting},content_mix:mix,views_by_type:Object.fromEntries(viewMix.map(x=>[x.content_type,x.n])),priority_imports:priority,top_posts:top,recent_activity:activity}
   }
 
   async upsertImports(rows){
@@ -56,6 +59,14 @@ export class PostgresStore{
     return{inserted,changed,unchanged,total:rows.length};
   }
   async listImports(f={}){const p=[];const w=[];if(f.status){p.push(f.status);w.push(`review_status=$${p.length}`)}if(f.type){p.push(f.type);w.push(`detected_type=$${p.length}`)}if(f.q){p.push(`%${f.q}%`);w.push(`(coalesce(source_name,'') ilike $${p.length} or coalesce(source_slug,'') ilike $${p.length} or source_payload::text ilike $${p.length})`)}return(await this.q(`select * from raw_imports ${w.length?'where '+w.join(' and '):''} order by coalesce(source_record_date,last_seen_at,updated_at) desc limit 5000`,p)).rows}
+  async priorityImports({limit=100}={}){
+    const imports=(await this.q(`select * from raw_imports where review_status in ('unreviewed','reviewing') order by coalesce(source_record_date,last_seen_at,updated_at) desc limit 5000`)).rows;
+    const clicks=(await this.q(`select meta->>'target_url' target_url,count(*)::int clicks,max(created_at) last_clicked_at from analytics_events where event_type in ('related_click','recommendation_click') and coalesce(meta->>'target_url','')<>'' group by 1`)).rows;
+    const byUrl=new Map(clicks.map(x=>[normalizeTargetUrl(x.target_url),x]));
+    return imports.map(row=>{const c=byUrl.get(normalizeTargetUrl(row.source_url))||{};return{...row,...demandPriority({clicks:c.clicks||0,fetchCount:row.fetch_count,quality:row.quality_score,sourceChanged:row.source_changed,lastClickedAt:c.last_clicked_at||null})}})
+      .sort((a,b)=>b.priority_score-a.priority_score||String(b.last_seen_at||b.updated_at||'').localeCompare(String(a.last_seen_at||a.updated_at||'')))
+      .slice(0,Math.min(500,Math.max(1,Number(limit)||100)));
+  }
   async getImport(id){return(await this.q('select * from raw_imports where id=$1',[id])).rows[0]||null}
   async updateImport(id,p){const allowed=new Set(['review_status','detected_type','prepared_draft','promoted_post_id','source_changed']);const keys=Object.keys(p).filter(k=>allowed.has(k));if(!keys.length)return this.getImport(id);const vals=keys.map(k=>JSON_FIELDS.has(k)?json(p[k]):p[k]);const sets=keys.map((k,n)=>`${k}=$${n+2}${JSON_FIELDS.has(k)?'::jsonb':''}`).join(',');return(await this.q(`update raw_imports set ${sets},updated_at=now() where id=$1 returning *`,[id,...vals])).rows[0]||null}
 
@@ -116,7 +127,7 @@ export class PostgresStore{
       json(i.source||null),i.status||'draft',Boolean(i.is_trending),actor
     ])).rows[0]
   }
-  async updatePost(id,p,actor){const allowed=new Set(['title','slug','content_type','summary','body_markdown','posted_date','category','categories','tags','topics','related_links','related_ids','recommendation_ids','recommendation_links','documents','navigation_links','type_data','geo','classification','publication','main_image_url','seo_title','seo_description','status','is_trending','deleted_at']);const patch={...p};const old=await this.getPost(id);if(!old)return null;if(patch.slug&&patch.slug!==old.slug){patch.slug=await this.#uniqueSlug(patch.slug,id);await this.q(`insert into redirects(from_slug,to_slug) values($1,$2) on conflict(from_slug) do update set to_slug=excluded.to_slug`,[old.slug,patch.slug])}const keys=Object.keys(patch).filter(k=>allowed.has(k));if(!keys.length)return old;await this.q(`insert into post_revisions(post_id,snapshot,actor_id) values($1,$2::jsonb,$3)`,[id,json(old),actor]);const vals=keys.map(k=>JSON_FIELDS.has(k)?json(patch[k]):patch[k]);const sets=keys.map((k,n)=>`${k}=$${n+2}${JSON_FIELDS.has(k)?'::jsonb':''}`).join(',');return(await this.q(`update posts set ${sets},updated_by=$${keys.length+2},updated_at=now(),published_at=case when status='published' and published_at is null then now() else published_at end where id=$1 returning *`,[id,...vals,actor])).rows[0]||null}
+  async updatePost(id,p,actor){const allowed=new Set(['title','slug','content_type','summary','body_markdown','posted_date','category','categories','tags','topics','related_links','related_ids','recommendation_ids','recommendation_links','documents','navigation_links','type_data','geo','classification','publication','main_image_url','seo_title','seo_description','source','status','is_trending','deleted_at']);const patch={...p};const old=await this.getPost(id);if(!old)return null;if(patch.slug&&patch.slug!==old.slug){patch.slug=await this.#uniqueSlug(patch.slug,id);await this.q(`insert into redirects(from_slug,to_slug) values($1,$2) on conflict(from_slug) do update set to_slug=excluded.to_slug`,[old.slug,patch.slug])}const keys=Object.keys(patch).filter(k=>allowed.has(k));if(!keys.length)return old;await this.q(`insert into post_revisions(post_id,snapshot,actor_id) values($1,$2::jsonb,$3)`,[id,json(old),actor]);const vals=keys.map(k=>JSON_FIELDS.has(k)?json(patch[k]):patch[k]);const sets=keys.map((k,n)=>`${k}=$${n+2}${JSON_FIELDS.has(k)?'::jsonb':''}`).join(',');return(await this.q(`update posts set ${sets},updated_by=$${keys.length+2},updated_at=now(),published_at=case when status='published' and published_at is null then now() else published_at end where id=$1 returning *`,[id,...vals,actor])).rows[0]||null}
   async trashPost(id,a){return this.updatePost(id,{deleted_at:new Date().toISOString(),status:'trash'},a)}
   async restorePost(id,a){return this.updatePost(id,{deleted_at:null,status:'draft'},a)}
   async revisions(id){return(await this.q('select * from post_revisions where post_id=$1 order by created_at desc',[id])).rows}

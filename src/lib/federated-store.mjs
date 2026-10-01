@@ -206,6 +206,7 @@ export class FederatedStore {
   updateUser(...a){return this.#primary('updateUser',a)}
   upsertImports(...a){return this.#primary('upsertImports',a)}
   listImports(...a){return this.#primary('listImports',a)}
+  priorityImports(...a){return this.#primary('priorityImports',a)}
   getImport(...a){return this.#primary('getImport',a)}
   updateImport(...a){return this.#primary('updateImport',a)}
   promoteImport(...a){return this.#primary('promoteImport',a)}

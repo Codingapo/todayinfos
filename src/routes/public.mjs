@@ -6,6 +6,7 @@ import { paginate } from '../lib/utils.mjs';
 import { GLOBAL_FILTERS, normalizeCountryCode, queryFilters } from '../lib/global-content.mjs';
 import { loadPostArtifact } from '../lib/publication-service.mjs';
 import { deriveVisitorSignals, rankSearch } from '../lib/ranking.mjs';
+import { clickedDiscoveryRow, normalizeTargetUrl } from '../lib/demand-priority.mjs';
 
 export const publicRouter=Router();
 
@@ -50,7 +51,8 @@ publicRouter.get('/meta',(req,res)=>res.json({data:{
   filters:GLOBAL_FILTERS,
   seo_pattern:'/{country}/{collection}/{slug}',
   news_seo_pattern:'/{country}/news/{category}/{slug}',
-  storage:{public_content:'R2/local fallback',index:'database abstraction'}
+  storage:{public_content:'R2/local fallback',index:'database abstraction'},
+  tracking:{endpoint:'/api/v1/analytics/events',demand_events:['related_click','recommendation_click'],missing_link_behavior:'private_draft_priority_queue'}
 }}));
 
 publicRouter.get('/posts',async(req,res)=>sendList(req,res));
@@ -202,7 +204,26 @@ publicRouter.post('/analytics/events',async(req,res)=>{
       meta.city=meta.city||post.geo?.city||null;
     }
   }
-  await store.recordEvent({...p.data,meta});res.status(202).json({data:{accepted:true}});
+  await store.recordEvent({...p.data,meta});
+  let demand_tracked=false;
+  if(['related_click','recommendation_click'].includes(p.data.event_type)&&meta.target_url){
+    const target=normalizeTargetUrl(meta.target_url);
+    let external=false;try{external=Boolean(target)&&new URL(target).hostname!==req.hostname}catch{}
+    if(external){
+      try{
+        const existing=(await store.listImports({q:target})).find(x=>normalizeTargetUrl(x.source_url)===target);
+        if(!existing){
+          const row=clickedDiscoveryRow({
+            url:target,title:meta.target_title||meta.link_title||'',
+            suggestedType:meta.target_type||meta.content_type||'other',
+            sourcePostId:p.data.post_id||null,sourceTitle:meta.source_title||''
+          });
+          if(row){await store.upsertImports([row]);demand_tracked=true}
+        }else demand_tracked=true;
+      }catch{}
+    }
+  }
+  res.status(202).json({data:{accepted:true,demand_tracked}});
 });
 publicRouter.get('/crawl/status',(req,res)=>res.json({data:{state:'managed',publicCountsHidden:true,message:'Raw crawler/index statistics are private to TodayInfo administrators.'}}));
 publicRouter.get('/redirect/:slug',async(req,res)=>{

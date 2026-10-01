@@ -1,4 +1,4 @@
-# TodayInfo Control Center v0.4.1
+# TodayInfo Control Center v0.5
 
 A Node.js admin dashboard and structured publishing API for TodayInfo.
 
@@ -416,3 +416,45 @@ Admin learning summary:
 ```text
 GET /admin/api/imports/learning
 ```
+
+
+## v0.5 — Demand-aware discovery and source-specific extraction
+
+TodayInfo now treats DailyUpdate and ZA Bursaries as different source families instead of cleaning both with one generic rule set.
+
+DailyUpdate article pages are cleaned as opportunity articles, while archive/pagination pages are discovery maps. ZA Bursaries detail pages are parsed around their recurring eligibility, application, supporting-document and closing-date sections; monthly closing-date pages are discovery maps.
+
+### Missing-content demand queue
+
+Useful links discovered from source pages are retained privately as draft leads. Public related/recommendation links include an analytics payload the frontend can POST to:
+
+```text
+POST /api/v1/analytics/events
+```
+
+Example:
+
+```json
+{
+  "visitor_id": "anonymous-browser-id",
+  "event_type": "recommendation_click",
+  "post_id": "published-post-id",
+  "meta": {
+    "target_url": "https://source.example/opportunity",
+    "target_title": "Example Opportunity",
+    "target_type": "bursary"
+  }
+}
+```
+
+If that external target is not already known, TodayInfo stores it privately as a discovery draft. Any clicked missing target becomes **highest priority** in:
+
+```text
+GET /admin/api/imports/priority
+```
+
+The dashboard Demand Queue can then fetch that URL using the existing source extractor. Clean content still passes through the 80%+ auto-publish threshold and hard publishing checks.
+
+### Reference content
+
+The permanent 40-record South Africa reference dataset is now guaranteed to be published at startup and synchronized through the JSON/R2/local publication pipeline. Unchanged reference posts are not rewritten on every restart.

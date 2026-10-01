@@ -95,9 +95,10 @@ adminRouter.get('/source-presets',permit('imports.view'),(req,res)=>ok(res,[
 adminRouter.get('/imports',permit('imports.view'),async(req,res)=>ok(res,await store.listImports({status:req.query.status,type:req.query.type,q:req.query.q})));
 adminRouter.post('/imports/fetch',permit('imports.fetch'),async(req,res)=>{
   const schema=z.object({
-    kind:z.enum(['pages','bursaries','articles','dailyupdate','dailyupdate/jobs','tag','search']).default('pages'),
+    kind:z.enum(['pages','bursaries','articles','dailyupdate','dailyupdate/jobs','tag','search','url']).default('pages'),
     tagSlug:z.string().max(120).optional(),
     query:z.string().max(200).optional(),
+    url:z.string().url().max(2048).optional(),
     year:z.union([z.string(),z.number()]).optional(),
     country_code:z.string().max(3).optional(),region_name:z.string().max(120).optional(),city:z.string().max(120).optional(),
     expand:z.boolean().optional().default(true),
@@ -156,6 +157,7 @@ adminRouter.post('/imports/fetch',permit('imports.fetch'),async(req,res)=>{
   });
 });
 adminRouter.get('/imports/learning',permit('imports.view'),async(req,res)=>ok(res,publicLearningSummary(await loadImportLearning())));
+adminRouter.get('/imports/priority',permit('imports.view'),async(req,res)=>ok(res,await store.priorityImports({limit:Math.min(500,Math.max(1,Number(req.query.limit)||200))})));
 adminRouter.get('/imports/:id',permit('imports.view'),async(req,res)=>{const row=await store.getImport(req.params.id);if(!row)return res.status(404).json({error:'Import not found'});ok(res,row)});
 adminRouter.patch('/imports/:id',permit('imports.review'),async(req,res)=>{const schema=z.object({review_status:z.enum(['unreviewed','reviewing','promoted']).optional(),detected_type:z.enum(contentTypes).optional(),prepared_draft:postSchema.partial().optional()});const p=schema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid import update',details:p.error.flatten()});const patch={...p.data};if(patch.prepared_draft)patch.prepared_draft=normalizePost({...patch.prepared_draft,content_type:patch.prepared_draft.content_type||patch.detected_type||'other'});const row=await store.updateImport(req.params.id,patch);if(!row)return res.status(404).json({error:'Import not found'});await audit(req,'import.update','raw_import',row.id,{fields:Object.keys(patch)});ok(res,row)});
 adminRouter.post('/imports/:id/promote',permit('imports.review'),async(req,res)=>{const row=await store.promoteImport(req.params.id,req.user.id);if(!row)return res.status(404).json({error:'Import not found'});await audit(req,'import.promote','post',row.id,{source_import:req.params.id});res.status(201).json({data:row})});

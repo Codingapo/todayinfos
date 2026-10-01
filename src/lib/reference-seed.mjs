@@ -4,6 +4,7 @@ import { contentQuality } from './content-rules.mjs';
 import { hashKey } from './utils.mjs';
 import { normalizeClassification, normalizeGeo } from './global-content.mjs';
 import { learnFromImports } from './import-learning.mjs';
+import { publishPostArtifact } from './publication-service.mjs';
 
 export const SOUTH_AFRICA_SEED_PATH=path.resolve('data','seeds','south-africa-opportunities-drafts.json');
 
@@ -85,14 +86,56 @@ export async function bootstrapSouthAfricaReferenceSeed(store){
   const seed=loadSouthAfricaReferenceSeed();
   const learning=await learnFromImports(seed.rows);
   let storage={inserted:0,changed:0,unchanged:0,total:seed.rows.length,deferred:false};
+  let published={created:0,updated:0,unchanged:0,artifacts:0,failed:0,total:seed.rows.length};
   try{
     storage=await store.upsertImports(seed.rows);
+    const imports=await store.listImports({});
+    const byKey=new Map(imports.map(x=>[x.source_key,x]));
+    const posts=await store.listPosts({include_deleted:true});
+    const bySlug=new Map(posts.map(x=>[x.slug,x]));
+
+    for(const item of seed.rows){
+      try{
+        const draft=item.prepared_draft;
+        const imp=byKey.get(item.source_key);
+        const source={source_name:item.source_name,source_id:item.source_id,source_url:item.source_url,source_slug:item.source_slug,source_hash:item.source_hash,raw_import_id:imp?.id||null,reference_seed:true,verified_dataset:true};
+        let post=bySlug.get(draft.slug)||null;
+        const publicPatch={
+          title:draft.title,slug:draft.slug,content_type:draft.content_type,summary:draft.summary,body_markdown:draft.body_markdown,
+          posted_date:draft.posted_date,category:draft.category,categories:draft.categories,tags:draft.tags,topics:draft.topics,
+          related_links:draft.related_links,related_ids:draft.related_ids,recommendation_ids:draft.recommendation_ids,
+          recommendation_links:draft.recommendation_links,documents:draft.documents,navigation_links:draft.navigation_links,
+          type_data:draft.type_data,geo:draft.geo,classification:draft.classification,main_image_url:draft.main_image_url,
+          seo_title:draft.seo_title,seo_description:draft.seo_description,is_trending:draft.is_trending,status:'published',deleted_at:null
+        };
+        const unchanged=Boolean(post&&post.status==='published'&&!post.deleted_at&&post.source?.reference_seed&&post.source?.source_hash===item.source_hash);
+        if(unchanged){
+          published.unchanged+=1;
+        }else if(post){
+          post=await store.updatePost(post.id,{...publicPatch,source},null);
+          published.updated+=1;
+        }else{
+          post=await store.createPost({...publicPatch,source},null);
+          published.created+=1;
+          bySlug.set(post.slug,post);
+        }
+        if(!unchanged){
+          const publication=await publishPostArtifact(store,post);
+          post=await store.updatePost(post.id,{publication},null)||{...post,publication};
+          published.artifacts+=1;
+        }
+        if(imp)await store.updateImport(imp.id,{review_status:'promoted',promoted_post_id:post.id,source_changed:false});
+      }catch(error){
+        published.failed+=1;
+      }
+    }
   }catch(error){
     storage={inserted:0,changed:0,unchanged:0,total:seed.rows.length,deferred:true,error:error.message};
   }
   return {
     ...storage,
     seed_records:seed.rows.length,
+    seed_published:published,
     dataset_title:seed.metadata.dataset_title,
     researched_on:seed.metadata.researched_on,
     learning_records_seen:learning.records_seen||0

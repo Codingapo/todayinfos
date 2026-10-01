@@ -8,6 +8,7 @@ const legacyContentPath=post=>{
   return `/${root}/${post.slug}`;
 };
 const cleanLink=x=>({title:String(x?.title||'').trim(),url:String(x?.url||'').trim(),type:x?.type||'link',icon:x?.icon||null});
+const trackedLink=(x,eventType,post)=>{const link=cleanLink(x);return{...link,tracking:{event_type:eventType,post_id:post.id,target_url:link.url,target_title:link.title,target_type:x?.content_type||x?.type_hint||null}}};
 const topicPayload=t=>{const blocks=markdownToBlocks(t.body||'');return{id:t.id||t.key,key:t.key||t.id,title:t.title||'',body:{markdown:t.body||'',blocks,html:renderBlocksHtml(blocks)},links:(t.links||[]).map(cleanLink),images:t.images||[],documents:t.documents||[]}};
 
 export function publicPost(post,{compact=false}={}){
@@ -32,7 +33,8 @@ export function publicPost(post,{compact=false}={}){
       country_code:location.country.code,
       content_type:post.content_type
     },
-    source:post.source?{source_name:post.source.source_name||null,source_url:post.source.source_url||null,reviewed:true}:null
+    source:post.source?{source_name:post.source.source_name||null,source_url:post.source.source_url||null,reviewed:true}:null,
+    tracking:{endpoint:'/api/v1/analytics/events',post_id:post.id,view:{event_type:'view',post_id:post.id},read:{event_type:'read',post_id:post.id}}
   };
   if(compact)return common;
 
@@ -86,13 +88,14 @@ export function publicPost(post,{compact=false}={}){
       id:t.id||t.key||`t${i+1}`,key:t.key||t.id||`t${i+1}`,
       title:t.title||`Section ${i+1}`,anchor:`#${t.key||t.id||`t${i+1}`}`
     })),
-    related_links:(post.related_links||[]).map(cleanLink),
-    recommendation_links:(post.recommendation_links||[]).map(cleanLink),
+    related_links:(post.related_links||[]).map(x=>trackedLink(x,'related_click',post)),
+    recommendation_links:(post.recommendation_links||[]).map(x=>trackedLink(x,'recommendation_click',post)),
     documents:(post.documents||[]).map(d=>({
       title:d.title||'Download file',url:d.url,type:d.type||'document',
       mime_type:d.mime_type||null,size_bytes:d.size_bytes||null
     })),
     navigation:{breadcrumbs,links:(post.navigation_links||[]).map(cleanLink)},
+    application_tracking:metadata.application_url?{event_type:'application_click',post_id:post.id,target_url:metadata.application_url}:null,
     related_content:[],recommendations:[]
   };
 }

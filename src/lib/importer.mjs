@@ -1,15 +1,17 @@
 import { config } from '../config.mjs';
-import { hashKey } from './utils.mjs';
+import { hashKey, slugify } from './utils.mjs';
 import { detectContentType, ruleDraftFromRecord, isIndexLikeRecord, contentQuality } from './content-rules.mjs';
 import { normalizeClassification, normalizeGeo } from './global-content.mjs';
 import { applyLearningHints, learningQualityBonus } from './import-learning.mjs';
+import { discoverSourceLinks } from './source-profiles.mjs';
 
 const MAX_SOURCE_PAGES = 100;
 const PAGE_SIZE = 100;
 
-const endpointFor = ({ kind, tagSlug, query }) => {
+const endpointFor = ({ kind, tagSlug, query, url }) => {
   if (kind === 'tag') return `/tags/${encodeURIComponent(tagSlug || 'psychometric-test')}`;
   if (kind === 'search') return `/search?q=${encodeURIComponent(query || '')}`;
+  if (kind === 'url') return `/extract?url=${encodeURIComponent(url || '')}`;
   const allowed = new Set(['pages','bursaries','articles','dailyupdate','dailyupdate/jobs']);
   return `/${allowed.has(kind) ? kind : 'pages'}`;
 };
@@ -140,6 +142,8 @@ export async function fetchImports(options={}) {
   }
 
   const rawRecords = records.length;
+  const discoveredLinks=discoverSourceLinks(records);
+  const fullUrls=new Set(records.map(r=>String(r.url||r.source?.canonicalUrl||r.source?.url||'').replace(/\/$/,'')).filter(Boolean));
   const seen = new Set();
   let duplicates = 0;
   let skippedIndexPages = 0;
@@ -200,12 +204,40 @@ export async function fetchImports(options={}) {
     };
   });
 
+  const discoveryRows=discoveredLinks
+    .filter(item=>!fullUrls.has(String(item.url||'').replace(/\/$/,'')))
+    .map(item=>{
+      const contentType=item.suggested_type||'other';
+      const title=String(item.title||'Discovered opportunity').replace(/\s+/g,' ').trim();
+      const prepared_draft={
+        title,slug:slugify(title),content_type:contentType,summary:'',body_markdown:'',posted_date:null,
+        category:contentType==='bursary'||contentType==='scholarship'?'Bursaries':contentType==='internship'?'Internships':contentType==='learnership'?'Learnerships':'Jobs',
+        categories:['South Africa'],tags:['South Africa','Discovered',contentType],
+        topics:[],related_links:[],related_ids:[],recommendation_ids:[],recommendation_links:[],documents:[],navigation_links:[],
+        type_data:{status_override:'unknown'},geo:normalizeGeo({country_code:config.sourceDefaultCountry}),
+        classification:normalizeClassification({opportunity_type:contentType}),
+        main_image_url:null,seo_title:title,seo_description:'',is_trending:false,status:'draft',
+        discovery:{reason:item.reason,source_family:item.source_family,discovered_from:item.discovered_from,target_url:item.url}
+      };
+      return {
+        source_key:`discovery:${hashKey(item.url)}`,
+        source_hash:hashKey(item.url,title,item.discovered_from||''),
+        source_name:`${item.source_family} discovery`,
+        source_id:null,source_url:item.url,source_slug:slugify(title),
+        source_payload:{...item,discovery:true},
+        detected_type:contentType,prepared_draft,review_status:'unreviewed',source_changed:false,
+        quality_score:10,quality_issues:['Discovered link — fetch the detail page before publishing'],learning_bonus:0,source_record_date:null
+      };
+    });
+
+
   return {
-    rows,
+    rows:[...rows,...discoveryRows],
     stats: {
       pagesFetched,
       rawRecords,
       keptRecords: rows.length,
+      discoveredDrafts: discoveryRows.length,
       duplicates,
       skippedIndexPages,
       skippedYear,
