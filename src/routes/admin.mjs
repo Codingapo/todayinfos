@@ -17,7 +17,7 @@ import { loadImportLearning, learnFromImports, publicLearningSummary } from '../
 import { autoPublishDecision } from '../lib/auto-publish.mjs';
 import { CONTENT_LIMITS, SEO_GUIDANCE, zodValidationDetails } from '../lib/content-constraints.mjs';
 import { GLOBAL_HARVEST_PROVIDERS, harvestGlobalJobs } from '../lib/global-harvest.mjs';
-import { sourceHubPayload } from '../lib/source-catalog.mjs';
+import { sourceHubPayload, sourceUsagePolicy } from '../lib/source-catalog.mjs';
 import { harvestOfficialNews } from '../lib/news-harvest.mjs';
 import { enrichApplicationImport } from '../lib/application-intelligence.mjs';
 
@@ -126,7 +126,9 @@ adminRouter.post('/imports/fetch',permit('imports.fetch'),async(req,res)=>{
   const result=await store.upsertImports(sync.rows);
   const learningAfter=await learnFromImports(sync.rows);
 
-  const autoPublishEnabled=p.data.autoPublish ?? config.autoPublishImports;
+  const policySourceId=p.data.kind==='dailyupdate/jobs'||p.data.kind==='dailyupdate'?'dailyupdate':p.data.kind==='bursaries'?'zabursaries':null;
+  const requestedAutoPublish=p.data.autoPublish ?? config.autoPublishImports;
+  const autoPublishEnabled=requestedAutoPublish && (!policySourceId || sourceUsagePolicy(policySourceId).auto_publish_allowed);
   const auto_published=[];const auto_publish_skipped=[];
   if(autoPublishEnabled){
     const keys=new Set(sync.rows.map(x=>x.source_key));
@@ -188,7 +190,8 @@ adminRouter.post('/harvest/global',permit('imports.fetch'),async(req,res)=>{
   const keys=new Set(harvest.rows.map(x=>x.source_key));
   const remembered=await store.listImports({});
   const published=[];const review=[];
-  if(p.data.autoPublish){
+  const newsPolicy=sourceUsagePolicy(p.data.source==='dsti'?'dsti-news':p.data.source);
+  if(p.data.autoPublish&&newsPolicy.auto_publish_allowed){
     const candidates=remembered.filter(x=>keys.has(x.source_key)&&x.review_status==='unreviewed'&&!x.promoted_post_id)
       .sort((a,b)=>Number(b.quality_score||0)-Number(a.quality_score||0));
     for(const imp of candidates.slice(0,config.autoPublishMaxPerFetch)){
