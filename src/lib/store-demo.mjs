@@ -132,7 +132,19 @@ export class DemoStore{
   }
 
   async recordEvent(i){const row={id:id(),...i,created_at:nowIso()};this.db.analytics.push(row);if(this.db.analytics.length>50000)this.db.analytics=this.db.analytics.slice(-50000);this.#save();return row}
-  async analyticsSummary(){const e=this.db.analytics;const totals={};for(const x of e)totals[x.event_type]=(totals[x.event_type]||0)+1;const days={};for(const x of e){const d=x.created_at.slice(0,10);days[d]=(days[d]||0)+1}const byContent={};for(const x of e.filter(v=>v.event_type==='view')){const p=this.db.posts.find(p=>p.id===x.post_id);const t=p?.content_type||'other';byContent[t]=(byContent[t]||0)+1}return{totals,daily:Object.entries(days).sort().slice(-30).map(([date,total])=>({date,total})),unique_visitors:new Set(e.map(x=>x.visitor_id).filter(Boolean)).size,views_by_content_type:byContent}}
+  async analyticsSummary(){
+    const e=this.db.analytics;const totals={},days={},byContent={},countries={},regions={},searches={};
+    for(const x of e){
+      totals[x.event_type]=(totals[x.event_type]||0)+1;
+      const d=String(x.created_at||'').slice(0,10);if(d)days[d]=(days[d]||0)+1;
+      const cc=x.meta?.country_code||x.meta?.country;if(cc)countries[cc]=(countries[cc]||0)+1;
+      const rg=x.meta?.region_name||x.meta?.region;if(rg)regions[rg]=(regions[rg]||0)+1;
+      if(x.event_type==='search'&&x.meta?.query){const q=String(x.meta.query).toLowerCase();searches[q]=(searches[q]||0)+1}
+      if(x.event_type==='view'){const p=this.db.posts.find(p=>p.id===x.post_id);const t=p?.content_type||x.meta?.content_type||'other';byContent[t]=(byContent[t]||0)+1}
+    }
+    const topEntries=o=>Object.entries(o).map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count).slice(0,50);
+    return{totals,daily:Object.entries(days).sort().slice(-30).map(([date,total])=>({date,total})),unique_visitors:new Set(e.map(x=>x.visitor_id).filter(Boolean)).size,views_by_content_type:byContent,visitors_by_country:topEntries(countries),visitors_by_region:topEntries(regions),top_searches:topEntries(searches)}
+  }
 
   async settings(){return this.db.settings}
   async updateSettings(p){Object.assign(this.db.settings,p);this.#save();return this.db.settings}
