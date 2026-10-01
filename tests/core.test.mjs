@@ -612,6 +612,6 @@ test('PostgreSQL public filters keep parameter markers and discovery searches so
   const src=fs.readFileSync(new URL('../src/lib/store-postgres.mjs',import.meta.url),'utf8');
   assert.match(src,/status=\$\$\{n\}/);
   assert.match(src,/content_type=\$\$\{n\}/);
-  assert.match(src,/coalesce\(source_url,''\) ilike \$\$\{p\.length\}/);
+  assert.match(src,/coalesce\(source_url,''\) ilike \$\$\{n\}/);
   assert.doesNotMatch(src,/status=\$\{p\.length\}/);
 });
