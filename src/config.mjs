@@ -1,13 +1,40 @@
+import { resolveStoreMode } from './lib/database-config.mjs';
+
+const envFlag = (name) => {
+  const raw = process.env[name];
+  if (raw == null || String(raw).trim() === '') return null;
+  return String(raw).trim().toLowerCase() !== 'false';
+};
+
+// DATA_STORE is the preferred setting. DEMO_MODE remains supported for older deployments:
+// - DEMO_MODE=true forces demo mode.
+// - DEMO_MODE=false means "do not force demo" and lets DATA_STORE/auto decide.
+const legacyDemo = envFlag('DEMO_MODE');
+const requestedDataStore = legacyDemo === true
+  ? 'demo'
+  : (process.env.DATA_STORE || 'auto');
+
+const databaseUrl = process.env.DATABASE_URL || '';
+const storeResolution = resolveStoreMode({ requestedMode: requestedDataStore, databaseUrl });
+const jwtSecret = process.env.JWT_SECRET || 'todayinfo-dev-only-change-me';
+const nodeEnv = process.env.NODE_ENV || 'development';
+
 export const config = {
-  nodeEnv: process.env.NODE_ENV || 'development',
+  nodeEnv,
   port: Number(process.env.PORT || 8787),
   appOrigin: process.env.APP_ORIGIN || `http://localhost:${process.env.PORT || 8787}`,
-  jwtSecret: process.env.JWT_SECRET || 'todayinfo-dev-only-change-me',
-  demoMode: String(process.env.DEMO_MODE ?? 'true').toLowerCase() !== 'false',
+  jwtSecret,
+
+  // Effective storage mode after validating DATABASE_URL.
+  dataStore: storeResolution.mode,
+  dataStoreFallback: storeResolution.fallback,
+  databaseDiagnostic: storeResolution.database,
+  demoMode: storeResolution.mode === 'demo',
   demoAdminUsername: process.env.DEMO_ADMIN_USERNAME || 'apo',
   demoAdminPassword: process.env.DEMO_ADMIN_PASSWORD || 'admin',
+
   sourceApiBase: (process.env.SOURCE_API_BASE || 'https://todayinfo-zpshgscq.manus.space/api/v1').replace(/\/$/, ''),
-  databaseUrl: process.env.DATABASE_URL || '',
+  databaseUrl,
   databaseSsl: String(process.env.DATABASE_SSL ?? 'true').toLowerCase() !== 'false',
   supabase: {
     url: (process.env.SUPABASE_URL1 || '').replace(/\/$/, ''),
@@ -25,9 +52,10 @@ export const config = {
   resendFrom: process.env.RESEND_FROM || 'TodayInfo <noreply@example.com>'
 };
 
-if (config.nodeEnv === 'production' && config.jwtSecret.includes('dev-only')) {
-  throw new Error('JWT_SECRET must be set in production.');
-}
-if (config.nodeEnv === 'production' && config.demoMode) {
-  throw new Error('DEMO_MODE must be false in production.');
+const insecureJwt = !jwtSecret ||
+  jwtSecret === 'todayinfo-dev-only-change-me' ||
+  jwtSecret === 'replace-with-a-long-random-secret';
+
+if (config.nodeEnv === 'production' && insecureJwt) {
+  throw new Error('JWT_SECRET must be replaced with a long random secret in production.');
 }

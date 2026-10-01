@@ -6,6 +6,7 @@ import { markdownToBlocks, renderBlocksHtml, extractInlineTags } from '../src/li
 import { publicPost } from '../src/lib/serializers.mjs';
 import { ROLE_PERMISSIONS, hasPermission } from '../src/lib/rbac.mjs';
 import { resolvedDefinition } from '../src/lib/content-types.mjs';
+import { inspectDatabaseUrl, resolveStoreMode } from '../src/lib/database-config.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
   assert.equal(slugify('University of Limpopo — Applications 2027!'),'university-of-limpopo-applications-2027');
@@ -13,7 +14,6 @@ test('SEO slugs stay extension-free and readable',()=>{
 
 test('rule-based classifier distinguishes bursary and job content',()=>{
   assert.equal(detectContentType({title:'SPAR Hiring 2026: Apply for vacancies',pageType:'bursary'}),'job');
-  // A declared source type remains a useful source hint, but obvious job wording can be represented by actual job pages.
   assert.equal(detectContentType({title:'Eskom Job Vacancies 2026',pageType:'article',categories:['Vacancies']}),'job');
   assert.equal(detectContentType({title:'Psychometric Tests for Bursary Applications',pageType:'article',tags:['psychometric-test']}),'bursary');
 });
@@ -69,4 +69,17 @@ test('permissions contain no removed AI/customer-care/university-manager roles',
   assert.equal('university_manager' in ROLE_PERMISSIONS,false);
   assert.equal(hasPermission('editor','posts.edit'),true);
   assert.equal(hasPermission('editor','ai.use'),false);
+});
+
+test('database configuration rejects the literal placeholder host and auto-falls back safely',()=>{
+  const bad='postgresql://postgres:password@host:5432/postgres';
+  assert.deepEqual(inspectDatabaseUrl(bad),{valid:false,reason:'placeholder-host',host:'host'});
+  assert.equal(resolveStoreMode({requestedMode:'auto',databaseUrl:bad}).mode,'demo');
+  assert.throws(()=>resolveStoreMode({requestedMode:'postgres',databaseUrl:bad}),/valid DATABASE_URL/);
+});
+
+test('database configuration selects postgres only for a real-looking postgres URL',()=>{
+  const good='postgresql://postgres:secret@db.example.supabase.co:5432/postgres';
+  assert.equal(inspectDatabaseUrl(good).valid,true);
+  assert.equal(resolveStoreMode({requestedMode:'auto',databaseUrl:good}).mode,'postgres');
 });
