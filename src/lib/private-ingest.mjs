@@ -23,7 +23,11 @@ export function descriptiveOpportunitySlug(item={},type='job',countryCode=''){
 }
 
 function standardBody(item,type){
-  const description=clean(item.rewritten_body||item.rewritten_content||item.description||item.summary||'');
+  const rewritten=clean(item.rewritten_body||item.rewritten_content||'');
+  const org=clean(item.company||item.organisation||item.organization||item.provider||'');
+  const title=clean(item.title||item.job_title||item.name||type);
+  const place=clean(item.location||item.city||'');
+  const description=rewritten||(type==='bursary'?`${org||'The provider'} is offering the ${title}. This TodayInfo page organises the main eligibility, documents, dates and application steps in a simpler format.`:`${org||'The organisation'} is accepting applications for ${title}${place?` in ${place}`:''}. This TodayInfo page organises the main role, requirements and application steps in a simpler format.`);
   const requirements=list(item.requirements);
   const responsibilities=list(item.responsibilities);
   const eligibility=list(item.eligibility);
@@ -58,7 +62,11 @@ export function preparePrivateIngestItem(item={},{
   });
   const organisation=clean(item.company||item.organisation||item.organization||item.provider||'');
   const title=clean(item.title||item.job_title||item.name||'');
-  const summary=clean(item.rewritten_summary||item.summary||item.description||'').split(/(?<=[.!?])\s+/).slice(0,2).join(' ').slice(0,420);
+  const summary=clean(item.rewritten_summary||(
+    contentType==='bursary'
+      ?`${organisation||'The provider'} is offering the ${title}. See the main eligibility, closing date and verified application link.`
+      :`${organisation||'The organisation'} is recruiting for ${title}${item.location?` in ${clean(item.location)}`:''}. See the main requirements and verified application link.`
+  )).slice(0,420);
   const applicationUrl=clean(item.application_url||item.apply_url||item.applicationLink||'');
   const sourceUrl=clean(item.source_url||item.sourceUrl||item.url||'');
   const requirements=list(item.requirements).join('\n');
