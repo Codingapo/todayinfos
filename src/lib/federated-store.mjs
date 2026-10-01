@@ -45,6 +45,14 @@ export class FederatedStore {
       const key=dedupeKey(row);const existing=map.get(key);
       if(!existing||String(row.updated_at||'')>String(existing.updated_at||''))map.set(key,row);
     }
+    if(result.failed>0){
+      const local=await this.fallback.listPosts(filters).catch(()=>[]);
+      const r2=await listPublishedIndex(filters).catch(()=>[]);
+      for(const row of [...r2,...local]){
+        const key=dedupeKey(row);const existing=map.get(key);
+        if(!existing||String(row.updated_at||'')>String(existing.updated_at||''))map.set(key,row);
+      }
+    }
     const rows=[...map.values()].sort((a,b)=>String(b.published_at||b.posted_date||b.updated_at).localeCompare(String(a.published_at||a.posted_date||a.updated_at)));
     this.fallback?.cachePosts(rows);
     return rows;
@@ -65,6 +73,14 @@ export class FederatedStore {
       const key=dedupeKey(row);const existing=map.get(key);
       if(!existing||Number(row.trending_score||0)>Number(existing.trending_score||0))map.set(key,row);
     }
+    if(settled.some(x=>x.status==='rejected')){
+      const local=await this.fallback.trendingPosts(filters).catch(()=>[]);
+      const r2=rankTrending(await listPublishedIndex(filters).catch(()=>[]),{});
+      for(const row of [...r2,...local]){
+        const key=dedupeKey(row);const existing=map.get(key);
+        if(!existing||Number(row.trending_score||0)>Number(existing.trending_score||0))map.set(key,row);
+      }
+    }
     const rows=[...map.values()].sort((a,b)=>Number(b.trending_score||0)-Number(a.trending_score||0));
     this.fallback.cachePosts(rows);return rows;
   }
@@ -84,7 +100,8 @@ export class FederatedStore {
       const r2=await getPublishedIndexPost({id}).catch(()=>null);
       const row=r2||result.fallback;if(row)this.fallback?.cachePost(row);return row;
     }
-    const row=result.successes.map(x=>x.value).find(Boolean)||null;
+    let row=result.successes.map(x=>x.value).find(Boolean)||null;
+    if(!row&&result.failed>0)row=await getPublishedIndexPost({id}).catch(()=>null)||await this.fallback.getPost(id);
     if(row)this.fallback?.cachePost(row);
     return row;
   }
@@ -95,7 +112,8 @@ export class FederatedStore {
       const r2=await getPublishedIndexPost({slug}).catch(()=>null);
       const row=r2||result.fallback;if(row)this.fallback?.cachePost(row);return row;
     }
-    const row=result.successes.map(x=>x.value).find(Boolean)||null;
+    let row=result.successes.map(x=>x.value).find(Boolean)||null;
+    if(!row&&result.failed>0)row=await getPublishedIndexPost({slug}).catch(()=>null)||await this.fallback.getPostBySlug(slug);
     if(row)this.fallback?.cachePost(row);
     return row;
   }
