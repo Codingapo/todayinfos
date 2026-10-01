@@ -16,6 +16,17 @@ const endpointFor = ({ kind, tagSlug, query, url }) => {
   return `/${allowed.has(kind) ? kind : 'pages'}`;
 };
 
+const endpointCandidates = options => {
+  const primary=endpointFor(options);
+  const fallbacks={
+    bursaries:['/search?q=bursary'],
+    articles:['/search?q=news'],
+    dailyupdate:['/search?q=jobs'],
+    'dailyupdate/jobs':['/dailyupdate','/search?q=jobs']
+  };
+  return [...new Set([primary,...(fallbacks[options.kind]||[])])];
+};
+
 function extractRecords(payload) {
   const data = payload?.data;
   if (Array.isArray(data)) return data;
@@ -85,7 +96,7 @@ async function fetchCollection(endpoint, maxPages) {
     }
   }
 
-  return { records: all, pagesFetched };
+  return { records: all, pagesFetched, endpoint };
 }
 
 async function expandTagRecords(records, tagSlug) {
@@ -140,18 +151,32 @@ async function expandRelatedRecords(records,limit=100){
 
 export async function fetchImports(options={}) {
   const endpoint = endpointFor(options);
+  const candidates=endpointCandidates(options);
   const isCollection = ['pages','bursaries','articles','dailyupdate','dailyupdate/jobs'].includes(options.kind);
   const maxPages = Math.min(MAX_SOURCE_PAGES, Math.max(1, Number(options.maxPages || MAX_SOURCE_PAGES)));
   let records = [];
   let pagesFetched = 1;
+  let endpointUsed=endpoint;
+  const endpointAttempts=[];
 
   if (isCollection) {
-    const result = await fetchCollection(endpoint,maxPages);
-    records = result.records;
-    pagesFetched = result.pagesFetched;
+    let lastError=null;
+    for(const candidate of candidates){
+      try{
+        const result=await fetchCollection(candidate,maxPages);
+        records=result.records;pagesFetched=result.pagesFetched;endpointUsed=candidate;
+        endpointAttempts.push({endpoint:candidate,ok:true,records:records.length});
+        lastError=null;break;
+      }catch(error){
+        lastError=error;
+        endpointAttempts.push({endpoint:candidate,ok:false,error:error.message});
+      }
+    }
+    if(lastError)throw new Error(`Unable to fetch ${options.kind||'source'} data. Tried ${candidates.join(', ')}. Last error: ${lastError.message}`);
   } else {
     const payload = await fetchJson(`${config.sourceApiBase}${endpoint}`);
     records = extractRecords(payload);
+    endpointAttempts.push({endpoint,ok:true,records:records.length});
   }
 
   if (options.kind === 'tag' && options.expand !== false) {
@@ -259,6 +284,9 @@ export async function fetchImports(options={}) {
     rows:[...rows,...discoveryRows],
     stats: {
       pagesFetched,
+      endpointUsed,
+      endpointFallbackUsed:endpointUsed!==endpoint,
+      endpointAttempts,
       rawRecords,
       keptRecords: rows.length,
       discoveredDrafts: discoveryRows.length,
@@ -271,5 +299,34 @@ export async function fetchImports(options={}) {
       pageSize: PAGE_SIZE,
       maxPages
     }
+  };
+}
+
+
+async function probeUrl(url,{accept='application/json'}={}){
+  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),12000);
+  try{
+    const res=await fetch(url,{headers:{accept,'user-agent':'TodayInfo-Source-Health/0.8.1'},signal:controller.signal});
+    return{url,ok:res.ok,status:res.status,content_type:res.headers.get('content-type')||null};
+  }catch(error){return{url,ok:false,status:null,error:error.message}}
+  finally{clearTimeout(timer)}
+}
+
+export async function probeLegacySources(){
+  const checks=await Promise.all([
+    probeUrl(`${config.sourceApiBase}/bursaries?page=1&limit=1`),
+    probeUrl(`${config.sourceApiBase}/dailyupdate/jobs?page=1&limit=1`),
+    probeUrl('https://www.zabursaries.co.za/',{accept:'text/html'}),
+    probeUrl('https://dailyupdate.co.za/category/vacancies/',{accept:'text/html'})
+  ]);
+  return{
+    checked_at:new Date().toISOString(),
+    source_api_base:config.sourceApiBase,
+    checks:[
+      {id:'source-api-bursaries',label:'TodayInfo source API · bursaries',...checks[0]},
+      {id:'source-api-dailyupdate',label:'TodayInfo source API · DailyUpdate jobs',...checks[1]},
+      {id:'zabursaries-web',label:'ZA Bursaries website',...checks[2]},
+      {id:'dailyupdate-web',label:'DailyUpdate vacancies website',...checks[3]}
+    ]
   };
 }
