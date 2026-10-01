@@ -34,20 +34,35 @@ const includesYear = (record, year) => {
 const recordDate = (r={}) =>
   r.modifiedAt || r.updatedAt || r.publishedAt || r.posted_date || r.closingDate || r.openingDate || null;
 
-async function fetchJson(url) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30000);
-  try {
-    const res = await fetch(url, {
-      headers: { accept: 'application/json', 'user-agent': 'TodayInfo-Control-Center/0.3' },
-      signal: controller.signal
-    });
-    if (!res.ok) throw new Error(`Source API returned HTTP ${res.status}`);
-    return await res.json();
-  } finally {
-    clearTimeout(timer);
+async function fetchJson(url,{attempts=3}={}) {
+  let lastError=null;
+  for(let attempt=1;attempt<=attempts;attempt+=1){
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),30000);
+    try{
+      const res=await fetch(url,{
+        headers:{accept:'application/json','user-agent':'TodayInfo-Control-Center/0.8.1'},
+        signal:controller.signal
+      });
+      if(res.ok)return await res.json();
+      const error=new Error(`Source API returned HTTP ${res.status}`);
+      error.status=res.status;
+      if(![408,425,429,500,502,503,504].includes(res.status))throw error;
+      lastError=error;
+    }catch(error){
+      lastError=error;
+      if(attempt>=attempts)break;
+    }finally{clearTimeout(timer)}
+    await new Promise(resolve=>setTimeout(resolve,Math.min(1500,250*attempt)));
   }
+  throw lastError||new Error('Source API request failed');
 }
+
+export const sourceEndpointCandidates=kind=>{
+  if(kind==='dailyupdate/jobs')return['/dailyupdate/jobs','/dailyupdate','/articles'];
+  if(kind==='bursaries')return['/bursaries','/search?q=bursary'];
+  return[endpointFor({kind})];
+};
 
 async function fetchCollection(endpoint, maxPages) {
   const sep = endpoint.includes('?') ? '&' : '?';
@@ -146,9 +161,18 @@ export async function fetchImports(options={}) {
   let pagesFetched = 1;
 
   if (isCollection) {
-    const result = await fetchCollection(endpoint,maxPages);
-    records = result.records;
-    pagesFetched = result.pagesFetched;
+    const candidates=sourceEndpointCandidates(options.kind);
+    let lastError=null,result=null,usedEndpoint=endpoint;
+    for(const candidate of candidates){
+      try{
+        const current=await fetchCollection(candidate,maxPages);
+        if(current.records.length||candidate===candidates.at(-1)){result=current;usedEndpoint=candidate;break}
+      }catch(error){lastError=error}
+    }
+    if(!result)throw lastError||new Error('Source collection could not be fetched');
+    records=result.records;
+    pagesFetched=result.pagesFetched;
+    options._usedEndpoint=usedEndpoint;
   } else {
     const payload = await fetchJson(`${config.sourceApiBase}${endpoint}`);
     records = extractRecords(payload);
@@ -269,7 +293,8 @@ export async function fetchImports(options={}) {
       skippedIndexPages,
       skippedYear,
       pageSize: PAGE_SIZE,
-      maxPages
+      maxPages,
+      usedEndpoint:options._usedEndpoint||endpoint
     }
   };
 }

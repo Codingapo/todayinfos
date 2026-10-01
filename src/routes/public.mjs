@@ -8,7 +8,7 @@ import { loadPostArtifact, loadApplicationGuideArtifact, buildApplicationGuideCo
 import { deriveVisitorSignals, rankSearch } from '../lib/ranking.mjs';
 import { smartRelated, smartRecommendations } from '../lib/related-content.mjs';
 import { clickedDiscoveryRow, normalizeTargetUrl } from '../lib/demand-priority.mjs';
-import { SOURCE_CATEGORIES, SOURCE_CATALOG } from '../lib/source-catalog.mjs';
+import { SOURCE_CATEGORIES, SOURCE_CATALOG, sourcePublishingPolicy } from '../lib/source-catalog.mjs';
 
 export const publicRouter=Router();
 
@@ -64,6 +64,7 @@ publicRouter.get('/sources',(req,res)=>res.json({data:{
   categories:SOURCE_CATEGORIES,
   sources:SOURCE_CATALOG.map(({aliases,action,...source})=>({
     ...source,
+    publishing_policy:sourcePublishingPolicy(source),
     operational:Boolean(action),
     operation:action?.type||null
   }))
