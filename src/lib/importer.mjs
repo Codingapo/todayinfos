@@ -4,6 +4,7 @@ import { detectContentType, ruleDraftFromRecord, isIndexLikeRecord, contentQuali
 import { normalizeClassification, normalizeGeo } from './global-content.mjs';
 import { applyLearningHints, learningQualityBonus } from './import-learning.mjs';
 import { discoverSourceLinks } from './source-profiles.mjs';
+import { fetchDirectSourceFallback, fetchDirectUrlFallback } from './direct-source-fallback.mjs';
 
 const MAX_SOURCE_PAGES = 100;
 const PAGE_SIZE = 100;
@@ -59,7 +60,7 @@ async function fetchJson(url,{attempts=3}={}) {
 }
 
 export const sourceEndpointCandidates=kind=>{
-  if(kind==='dailyupdate/jobs')return['/dailyupdate/jobs','/dailyupdate','/articles','/search?q=jobs'];
+  if(kind==='dailyupdate/jobs'||kind==='dailyupdate')return['/dailyupdate/jobs','/dailyupdate','/articles','/search?q=jobs'];
   if(kind==='bursaries')return['/bursaries','/search?q=bursary'];
   return[endpointFor({kind})];
 };
