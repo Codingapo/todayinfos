@@ -114,6 +114,8 @@ adminRouter.post('/imports/fetch',permit('imports.fetch'),async(req,res)=>{
     year:z.union([z.string(),z.number()]).optional(),
     country_code:z.string().max(3).optional(),region_name:z.string().max(120).optional(),city:z.string().max(120).optional(),
     expand:z.boolean().optional().default(true),
+    expandRelated:z.boolean().optional().default(false),
+    relatedLimit:z.number().int().min(1).max(250).optional().default(100),
     maxPages:z.number().int().min(1).max(100).optional().default(100),
     autoPublish:z.boolean().optional(),
     publishSamples:z.number().int().min(0).max(5).optional().default(0)
