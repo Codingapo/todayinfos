@@ -35,6 +35,7 @@ export const config = {
   demoAdminPassword: process.env.DEMO_ADMIN_PASSWORD || 'admin',
 
   sourceApiBase: (process.env.SOURCE_API_BASE || 'https://todayinfo-zpshgscq.manus.space/api/v1').replace(/\/$/, ''),
+  sourceDefaultCountry: process.env.SOURCE_DEFAULT_COUNTRY || 'ZA',
   databaseUrl,
   databaseUrls,
   databaseSsl: String(process.env.DATABASE_SSL ?? 'true').toLowerCase() !== 'false',
