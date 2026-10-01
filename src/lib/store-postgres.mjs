@@ -2,6 +2,7 @@ import pg from 'pg';
 import { id, slugify, uniqueSlug } from './utils.mjs';
 import { calculateOpportunityStatus } from './content-rules.mjs';
 import { filterPost, normalizeCountryCode } from './global-content.mjs';
+import { rankTrending } from './ranking.mjs';
 const {Pool}=pg;
 const json=v=>v==null?null:JSON.stringify(v);
 const JSON_FIELDS=new Set(['source_payload','prepared_draft','topics','related_links','recommendation_links','documents','navigation_links','type_data','geo','classification','publication','source']);
@@ -86,6 +87,15 @@ export class PostgresStore{
     if(f.opportunity_status)rows=rows.filter(row=>calculateOpportunityStatus(row.type_data||{})===f.opportunity_status);
     return rows;
   }
+  async trendingPosts(f={}){
+    const rows=await this.listPosts({...f,status:'published'});
+    if(!rows.length)return [];
+    const ids=rows.map(x=>x.id);
+    const events=(await this.q(`select post_id,event_type,count(*)::int n from analytics_events where post_id=any($1::uuid[]) and created_at>=now()-interval '14 days' group by post_id,event_type`,[ids])).rows;
+    const counts={};for(const e of events){counts[e.post_id]||={};counts[e.post_id][e.event_type]=e.n}
+    return rankTrending(rows,counts);
+  }
+  async visitorEvents(visitorId,limit=200){return(await this.q(`select * from analytics_events where visitor_id=$1 order by created_at desc limit $2`,[visitorId,Math.min(500,Math.max(1,Number(limit)||200))])).rows}
   async getPost(id){return(await this.q('select * from posts where id=$1',[id])).rows[0]||null}
   async getPostBySlug(slug){return(await this.q(`select * from posts where slug=$1 and status='published' and deleted_at is null limit 1`,[slug])).rows[0]||null}
   async createPost(i,actor){
