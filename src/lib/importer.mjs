@@ -4,6 +4,7 @@ import { detectContentType, ruleDraftFromRecord, isIndexLikeRecord, contentQuali
 import { normalizeClassification, normalizeGeo } from './global-content.mjs';
 import { applyLearningHints, learningQualityBonus } from './import-learning.mjs';
 import { discoverSourceLinks } from './source-profiles.mjs';
+import { fetchDirectSourceFallback } from './direct-source-fallback.mjs';
 
 const MAX_SOURCE_PAGES = 100;
 const PAGE_SIZE = 100;
@@ -161,9 +162,14 @@ export async function fetchImports(options={}) {
 
   if (isCollection) {
     let lastError=null;
+    const requireRecords=['bursaries','dailyupdate','dailyupdate/jobs'].includes(options.kind);
     for(const candidate of candidates){
       try{
         const result=await fetchCollection(candidate,maxPages);
+        if(requireRecords&&!result.records.length){
+          endpointAttempts.push({endpoint:candidate,ok:false,records:0,error:'No records returned'});
+          continue;
+        }
         records=result.records;pagesFetched=result.pagesFetched;endpointUsed=candidate;
         endpointAttempts.push({endpoint:candidate,ok:true,records:records.length});
         lastError=null;break;
@@ -172,7 +178,19 @@ export async function fetchImports(options={}) {
         endpointAttempts.push({endpoint:candidate,ok:false,error:error.message});
       }
     }
-    if(lastError)throw new Error(`Unable to fetch ${options.kind||'source'} data. Tried ${candidates.join(', ')}. Last error: ${lastError.message}`);
+    if(!records.length&&requireRecords){
+      try{
+        const direct=await fetchDirectSourceFallback(options.kind,{maxPages,year:options.year});
+        if(direct?.records?.length){
+          records=direct.records;pagesFetched=direct.stats?.listingPages||1;endpointUsed=`direct:${options.kind}`;
+          endpointAttempts.push({endpoint:endpointUsed,ok:true,records:records.length,...direct.stats});
+          lastError=null;
+        }else endpointAttempts.push({endpoint:`direct:${options.kind}`,ok:false,records:0,error:'No direct-source records found'});
+      }catch(error){
+        lastError=error;endpointAttempts.push({endpoint:`direct:${options.kind}`,ok:false,error:error.message});
+      }
+    }
+    if(!records.length&&lastError)throw new Error(`Unable to fetch ${options.kind||'source'} data. Tried API and direct website fallbacks. Last error: ${lastError.message}`);
   } else {
     const payload = await fetchJson(`${config.sourceApiBase}${endpoint}`);
     records = extractRecords(payload);
