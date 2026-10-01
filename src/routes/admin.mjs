@@ -142,6 +142,8 @@ adminRouter.post('/posts/:id/restore',permit('posts.edit'),async(req,res)=>{cons
 adminRouter.get('/posts/:id/revisions',permit('posts.view'),async(req,res)=>ok(res,await store.revisions(req.params.id)));
 
 adminRouter.post('/sync/publications',permit('posts.publish'),async(req,res)=>{const result=await retryPublicationQueue({limit:250});await audit(req,'publications.sync','system','r2',result);ok(res,result)});
+adminRouter.post('/sync/databases',permit('posts.publish'),async(req,res)=>{if(typeof store.retryDatabaseQueue!=='function')return ok(res,{processed:0,synced:0,failed:0,remaining:0,mode:'single-store'});const result=await store.retryDatabaseQueue({limit:250});await audit(req,'databases.sync','system','database',result);ok(res,result)});
+adminRouter.get('/sync/status',permit('dashboard.view'),async(req,res)=>ok(res,{store:store.health?.()||{mode:config.dataStore}}));
 
 adminRouter.get('/analytics',permit('analytics.view'),async(req,res)=>ok(res,await store.analyticsSummary()));
 adminRouter.get('/team',permit('team.view'),async(req,res)=>ok(res,await store.listUsers()));
