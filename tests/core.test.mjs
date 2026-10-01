@@ -28,6 +28,7 @@ import { NEWS_FEEDS } from '../src/lib/news-harvest.mjs';
 import { buildTrafficAtlas, continentForCode } from '../src/lib/geo-analytics.mjs';
 import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload, sourcePublishingPolicy } from '../src/lib/source-catalog.mjs';
 import { sourceEndpointCandidates } from '../src/lib/importer.mjs';
+import { PostgresStore } from '../src/lib/store-postgres.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
   assert.equal(slugify('University of Limpopo — Applications 2027!'),'university-of-limpopo-applications-2027');
@@ -884,4 +885,58 @@ test('repair: CEO Owner still has full edit review promote and publish permissio
   assert.equal(hasPermission('owner','posts.view'),true);
   assert.equal(hasPermission('owner','posts.edit'),true);
   assert.equal(hasPermission('owner','posts.publish'),true);
+});
+
+
+test('hardening: legacy raw_imports schemas still render Import Inbox searches',async()=>{
+  const fake=Object.create(PostgresStore.prototype);
+  fake.tableColumns=async()=>new Set([
+    'id','source_key','source_name','source_url','source_payload',
+    'detected_type','prepared_draft','review_status','created_at','updated_at'
+  ]);
+  let query='',params=[];
+  fake.q=async(sql,p=[])=>{query=sql;params=p;return{rows:[]}};
+  await fake.listImports({q:'bursary'});
+  assert.match(query,/source_url/);
+  assert.match(query,/order by coalesce\(updated_at,created_at\) desc/);
+  assert.doesNotMatch(query,/source_record_date/);
+  assert.doesNotMatch(query,/last_seen_at/);
+  assert.deepEqual(params,['%bursary%']);
+});
+
+test('hardening: legacy import upsert writes only columns that exist',async()=>{
+  const fake=Object.create(PostgresStore.prototype);
+  fake.tableColumns=async()=>new Set([
+    'id','source_key','source_name','source_url','source_payload',
+    'detected_type','prepared_draft','review_status','created_at','updated_at'
+  ]);
+  const queries=[];
+  fake.q=async(sql,params=[])=>{queries.push({sql,params});return{rows:[{inserted:true}]}};
+  const result=await fake.upsertImports([{
+    source_key:'legacy:test',source_name:'Legacy Source',source_url:'https://example.com/item',
+    source_payload:{title:'Item'},detected_type:'bursary',
+    prepared_draft:{title:'Item'},review_status:'unreviewed',
+    source_hash:'new-column',quality_score:99
+  }]);
+  assert.equal(result.inserted,1);
+  assert.equal(result.legacy_schema,true);
+  assert.doesNotMatch(queries[0].sql,/source_hash/);
+  assert.doesNotMatch(queries[0].sql,/quality_score/);
+  assert.match(queries[0].sql,/source_key/);
+});
+
+test('hardening: Demand Queue survives unavailable analytics click aggregation',async()=>{
+  const fake=Object.create(PostgresStore.prototype);
+  fake.listImports=async()=>[{id:'1',source_url:'https://example.com/item',review_status:'unreviewed',quality_score:80,fetch_count:1,updated_at:'2026-10-01'}];
+  fake.q=async()=>{throw new Error('analytics table temporarily unavailable')};
+  const rows=await fake.priorityImports({limit:10});
+  assert.equal(rows.length,1);
+  assert.equal(rows[0].source_url,'https://example.com/item');
+  assert.ok(rows[0].priority);
+});
+
+test('hardening: admin assets are no-store after deployment',()=>{
+  const server=fs.readFileSync(new URL('../src/server.mjs',import.meta.url),'utf8');
+  assert.match(server,/maxAge:0/);
+  assert.match(server,/no-store, no-cache, must-revalidate/);
 });
