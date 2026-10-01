@@ -13,6 +13,16 @@ const COUNTRY_ALIASES = new Map([
   ['sweden','SE'],['se','SE'],['norway','NO'],['no','NO'],['denmark','DK'],['dk','DK'],['switzerland','CH'],['ch','CH']
 ]);
 
+const ISO2_CODES = 'AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW'.split(' ');
+
+try {
+  const regionNames=new Intl.DisplayNames(['en'],{type:'region'});
+  for(const code of ISO2_CODES){
+    const name=regionNames.of(code);
+    if(name&&name!==code)COUNTRY_ALIASES.set(String(name).toLowerCase(),code);
+  }
+} catch {}
+
 const COUNTRY_NAMES = {
   ZA:'South Africa',GB:'United Kingdom',US:'United States',NG:'Nigeria',KE:'Kenya',GH:'Ghana',UG:'Uganda',TZ:'Tanzania',ZM:'Zambia',ZW:'Zimbabwe',BW:'Botswana',CA:'Canada',AU:'Australia',DE:'Germany',FR:'France',NL:'Netherlands',IE:'Ireland',IN:'India',SG:'Singapore',NZ:'New Zealand',AE:'United Arab Emirates',BR:'Brazil',MX:'Mexico',ES:'Spain',IT:'Italy',PL:'Poland',SE:'Sweden',NO:'Norway',DK:'Denmark',CH:'Switzerland'
 };
@@ -87,8 +97,10 @@ export function compactLocation(geo={}) {
   };
 }
 
+const normalizeSearchValue=value=>String(value||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+
 export function searchTokens(value=''){
-  return [...new Set(String(value||'').toLowerCase().split(/[^a-z0-9]+/).map(x=>x.trim()).filter(x=>x.length>1))].slice(0,20);
+  return [...new Set(normalizeSearchValue(value).split(/[^a-z0-9]+/).map(x=>x.trim()).filter(x=>x.length>1))].slice(0,20);
 }
 
 export function postSearchText(post={}){
@@ -100,22 +112,26 @@ export function postSearchText(post={}){
     ...(post.classification?.education_level||[]),...(post.classification?.fields_of_study||[]),
     post.classification?.job_type,post.classification?.work_mode,...(post.classification?.eligibility_tags||[]),
     ...(post.classification?.keywords||[])
-  ].filter(Boolean).join(' ').toLowerCase();
+  ].filter(Boolean).join(' ').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 }
 
 export function matchesSearch(post={},query=''){
   const terms=searchTokens(query);
   if(!terms.length)return true;
   const hay=postSearchText(post);
-  return terms.every(term=>hay.includes(term));
+  const phrase=normalizeSearchValue(query).trim();
+  if(phrase&&hay.includes(phrase))return true;
+  const hits=terms.filter(term=>hay.includes(term)).length;
+  const required=terms.length<=2?terms.length:Math.max(2,Math.ceil(terms.length*0.6));
+  return hits>=required;
 }
 
 export function queryFilters(query={}) {
   const pick=(...keys)=>keys.map(k=>query[k]).find(v=>v!==undefined&&v!==null&&String(v).trim()!=='');
   return {
-    q:pick('q','query','keywords'),
+    q:pick('q','query','keywords','search','term'),
     type:pick('type','content_type'),
-    country:normalizeCountryCode(pick('country','country_code')),
+    country:normalizeCountryCode(pick('country','country_code','countryCode','country_name','countryName')),
     region:pick('region','region_name','province','state'),
     city:pick('city'),
     category:pick('category'),
