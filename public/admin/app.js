@@ -48,9 +48,49 @@ const renderers={
     <div class="grid2"><section class="panel"><div class="panel-head"><h3>Bursary status</h3></div><div class="donut-wrap"><div class="donut" style="--pct:${pct}%"><strong>${pct}%</strong></div><div class="donut-legend"><div class="legend-row"><span class="dot"></span>Open <b>${d.cards.open_bursaries||0}</b></div><div class="legend-row"><span class="dot dim"></span>Closed <b>${d.cards.closed_bursaries||0}</b></div></div></div></section><section class="panel"><div class="panel-head"><h3>Published content mix</h3></div>${bars(d.content_mix)}</section></div>
     <div class="grid2" style="margin-top:16px"><section class="panel"><div class="panel-head"><h3>Views today by content type</h3></div>${bars(d.views_by_type)}</section><section class="panel"><div class="panel-head"><h3>Top content</h3></div>${d.top_posts?.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Title</th><th>Type</th><th>Views</th><th>Reads</th></tr></thead><tbody>${d.top_posts.map(p=>`<tr><td><strong>${esc(p.title)}</strong></td><td>${badge(p.content_type,p.content_type)}</td><td>${p.views}</td><td>${p.reads}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No published analytics yet.</div>'}</section></div>`;$('#overviewCreate').onclick=()=>openTypePicker()},
 
-  async imports(){const rows=await api('/imports');$('#navImportCount').textContent=rows.filter(x=>x.review_status==='unreviewed').length;$('#content').innerHTML=`<div class="toolbar"><input id="importSearch" class="search" placeholder="Search imported title, source or URL"><select id="importStatus" class="search" style="flex:0 0 170px"><option value="">All statuses</option><option>unreviewed</option><option>reviewing</option><option>promoted</option><option>ignored</option></select><button class="primary" id="fetchBtn">↻ Fetch information</button></div><section class="panel"><div class="panel-head"><h3>Private Import Inbox</h3></div><p class="panel-sub">Fetched content does not appear in the public API until you promote, edit and publish it.</p><div id="importList" class="source-grid"></div></section>`;
-    const render=(list)=>{$('#importList').innerHTML=list.length?list.map(x=>{const p=x.prepared_draft||{};return`<article class="source-card"><div class="grow"><div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:7px">${badge(x.detected_type||'other',x.detected_type||'other')}${badge(x.review_status)}</div><h4>${esc(p.title||x.source_payload?.title||'Untitled')}</h4><p>${esc(x.source_name||'Source')} · ${esc(x.source_slug||'no source slug')}</p></div><div class="actions"><button class="ghost review-import" data-id="${x.id}">Review</button>${x.review_status!=='promoted'?`<button class="primary promote-import" data-id="${x.id}">Promote</button>`:''}<button class="danger ignore-import" data-id="${x.id}">Ignore</button></div></article>`}).join(''):'<div class="empty wide">Nothing matches this filter.</div>'};render(rows);
-    $('#fetchBtn').onclick=openFetch;const filter=()=>{const q=$('#importSearch').value.toLowerCase(),s=$('#importStatus').value;render(rows.filter(x=>(!s||x.review_status===s)&&(!q||JSON.stringify(x).toLowerCase().includes(q))))};$('#importSearch').oninput=filter;$('#importStatus').onchange=filter;
+  async imports(){
+    const rows=await api('/imports');
+    const waiting=rows.filter(x=>x.review_status==='unreviewed').length;
+    const changed=rows.filter(x=>x.source_changed).length;
+    const promoted=rows.filter(x=>x.review_status==='promoted').length;
+    const remembered=rows.filter(x=>Number(x.fetch_count||1)>1).length;
+    $('#navImportCount').textContent=waiting;
+    $('#content').innerHTML=`
+      <div class="import-hero">
+        <div><p class="eyebrow">SOURCE MEMORY</p><h2>Deep Sync Import Inbox</h2><p>Fetch up to 100 source pages. TodayInfo remembers previously seen records, preserves your review state, and highlights source changes instead of duplicating work.</p></div>
+        <button class="primary" id="fetchBtn">↻ Deep sync source</button>
+      </div>
+      <div class="cards import-stats">
+        ${metric('Remembered imports',rows.length,'stored across syncs')}
+        ${metric('Waiting review',waiting,'private')}
+        ${metric('Changed at source',changed,'needs attention')}
+        ${metric('Seen more than once',remembered,'deduplicated')}
+        ${metric('Promoted',promoted,'draft or published')}
+      </div>
+      <div class="toolbar"><input id="importSearch" class="search" placeholder="Search imported title, source or URL"><select id="importStatus" class="search" style="flex:0 0 170px"><option value="">All statuses</option><option>unreviewed</option><option>reviewing</option><option>promoted</option><option>ignored</option></select></div>
+      <section class="panel"><div class="panel-head"><div><h3>Private Import Inbox</h3><p class="panel-sub">Latest source records appear first. Archive, tag, category and pagination pages are filtered before review.</p></div></div><div id="importList" class="source-grid"></div></section>`;
+
+    const render=(list)=>{
+      $('#importList').innerHTML=list.length?list.map(x=>{
+        const p=x.prepared_draft||{};
+        const score=Number(x.quality_score||0);
+        const memory=Number(x.fetch_count||1);
+        return `<article class="source-card import-card ${x.source_changed?'changed-source':''}">
+          <div class="grow">
+            <div class="import-badges">${badge(x.detected_type||'other',x.detected_type||'other')}${badge(x.review_status)}${x.source_changed?badge('source changed','closing_soon'):''}<span class="quality-pill q${Math.floor(score/20)}">${score}% clean</span></div>
+            <h4>${esc(p.title||x.source_payload?.title||'Untitled')}</h4>
+            <p>${esc(x.source_name||'Source')} · ${esc(x.source_slug||'no source slug')}</p>
+            <div class="import-meta"><span>Seen ${memory}×</span><span>Last seen ${fmtDate(x.last_seen_at||x.updated_at)}</span>${x.source_record_date?`<span>Source date ${fmtDate(x.source_record_date)}</span>`:''}</div>
+            ${x.quality_issues?.length?`<small class="quality-note">${esc(x.quality_issues.slice(0,2).join(' · '))}</small>`:''}
+          </div>
+          <div class="actions"><button class="ghost review-import" data-id="${x.id}">Review</button>${x.review_status!=='promoted'?`<button class="primary promote-import" data-id="${x.id}">Promote</button>`:''}<button class="danger ignore-import" data-id="${x.id}">Ignore</button></div>
+        </article>`;
+      }).join(''):'<div class="empty wide">Nothing matches this filter.</div>'
+    };
+
+    render(rows);
+    const filter=()=>{const q=$('#importSearch').value.toLowerCase(),s=$('#importStatus').value;render(rows.filter(x=>(!s||x.review_status===s)&&(!q||JSON.stringify(x).toLowerCase().includes(q))))};
+    $('#importSearch').oninput=filter;$('#importStatus').onchange=filter;$('#fetchBtn').onclick=openFetch;
     $('#importList').onclick=async e=>{const b=e.target.closest('button');if(!b)return;const id=b.dataset.id;try{if(b.classList.contains('promote-import')){const post=await api(`/imports/${id}/promote`,{method:'POST',body:{}});toast('Promoted to a private draft');await renderers.imports();openPostEditor(post)}else if(b.classList.contains('ignore-import')){await api(`/imports/${id}`,{method:'DELETE',body:{}});toast('Import ignored');await renderers.imports()}else if(b.classList.contains('review-import'))openImportReview(rows.find(x=>x.id===id))}catch(err){toast(err.message,true)}}
   },
 
@@ -67,7 +107,35 @@ const renderers={
   async audit(){const rows=await api('/audit');$('#content').innerHTML=`<section class="panel"><div class="panel-head"><h3>Audit Log</h3></div><div class="audit-list">${rows.length?rows.map(a=>`<div class="audit-item"><div class="audit-time">${esc(new Date(a.created_at).toLocaleString())}</div><div><strong>${esc(a.action)}</strong><small>${esc(a.entity_type)} · ${esc(a.entity_id||'')}</small></div></div>`).join(''):'<div class="empty">No audit activity yet.</div>'}</div></section>`}
 };
 
-async function openFetch(){let presets=[];try{presets=await api('/source-presets')}catch(err){return toast(err.message,true)}modal('Fetch new information','IMPORT SOURCE',`<form id="fetchForm" class="form-grid"><label class="field wide">What do you want to fetch?<select name="preset">${presets.map(p=>`<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}</select><small>Psychometric Test is included as a dedicated tag source.</small></label><label class="field">Year filter<input name="year" inputmode="numeric" placeholder="2026"></label><label class="field">Maximum source pages<input name="maxPages" type="number" min="1" max="20" value="5"></label><div class="wide notice">Fetched records enter the private Import Inbox only. Nothing is published automatically.</div><div class="form-actions"><button type="button" class="ghost" id="cancelFetch">Cancel</button><button class="primary">Fetch into Inbox</button></div></form>`);$('#cancelFetch').onclick=closeModal;$('#fetchForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget),p=presets.find(x=>x.id===f.get('preset'));const body={kind:p?.kind||(p?.id||'pages'),year:f.get('year')||undefined,maxPages:Number(f.get('maxPages')||5),expand:true};if(p?.tagSlug)body.tagSlug=p.tagSlug;try{const r=await api('/imports/fetch',{method:'POST',body});toast(`Fetched ${r.total} record${r.total===1?'':'s'}`);closeModal();await navigate('imports')}catch(err){toast(err.message,true)}}}
+async function openFetch(){
+  let presets=[];try{presets=await api('/source-presets')}catch(err){return toast(err.message,true)}
+  const currentYear=new Date().getFullYear();
+  modal('Deep sync TodayInfo source','IMPORT SOURCE',`<form id="fetchForm" class="form-grid">
+    <label class="field wide">What do you want to fetch?<select name="preset">${presets.map(p=>`<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}</select><small>Psychometric Test remains a dedicated tag source.</small></label>
+    <label class="field">Year filter<input name="year" inputmode="numeric" value="${currentYear}" placeholder="${currentYear}"><small>Clear this field to fetch every year.</small></label>
+    <label class="field">How deep should we sync?<select name="maxPages"><option value="10">10 source pages</option><option value="25">25 source pages</option><option value="50">50 source pages</option><option value="100" selected>100 source pages / everything available</option></select></label>
+    <label class="field wide preview-check"><input name="publishSamples" type="checkbox" checked><span>Publish up to 3 clean preview posts after syncing<small>Only in demo/testing storage. Incomplete imports are skipped and remembered items are never republished.</small></span></label>
+    <div class="wide notice">Each source page requests up to 100 records. Existing imports are remembered by source key; reviewed, promoted and ignored states are preserved.</div>
+    <div id="syncProgress" class="wide sync-progress hidden"><span class="sync-spinner"></span><div><strong>Syncing source…</strong><small>Large syncs can take longer. Keep this dialog open until the result appears.</small></div></div>
+    <div class="form-actions"><button type="button" class="ghost" id="cancelFetch">Cancel</button><button class="primary" id="syncSubmit">Start deep sync</button></div>
+  </form>`);
+  $('#cancelFetch').onclick=closeModal;
+  $('#fetchForm').onsubmit=async e=>{
+    e.preventDefault();
+    const f=new FormData(e.currentTarget),p=presets.find(x=>x.id===f.get('preset'));
+    const body={kind:p?.kind||(p?.id||'pages'),year:f.get('year')||undefined,maxPages:Number(f.get('maxPages')||100),expand:true,publishSamples:f.get('publishSamples')==='on'?3:0};
+    if(p?.tagSlug)body.tagSlug=p.tagSlug;
+    const submit=$('#syncSubmit');submit.disabled=true;submit.textContent='Syncing…';$('#syncProgress').classList.remove('hidden');
+    try{
+      const r=await api('/imports/fetch',{method:'POST',body});
+      const samples=r.published_samples?.length||0;
+      toast(`Sync complete: ${r.inserted||0} new · ${r.changed||0} changed · ${r.unchanged||0} remembered${samples?` · ${samples} preview published`:''}`);
+      closeModal();await navigate('imports');
+    }catch(err){
+      submit.disabled=false;submit.textContent='Start deep sync';$('#syncProgress').classList.add('hidden');toast(err.message,true);
+    }
+  }
+}
 
 function openImportReview(row){const d=row.prepared_draft||{};modal('Review imported content','PRIVATE IMPORT',`<div class="editor-shell"><div class="notice">This is source data only. Promote it to create a private draft, then clean and publish from the structured editor.</div><section class="editor-section"><div class="editor-section-head"><span class="section-number">1</span><div><h4>Source</h4><p>${esc(row.source_name||'')}</p></div></div><div class="editor-section-body form-grid"><label class="field">Detected type<select id="importType">${Object.entries(state.contentTypes).map(([k,v])=>`<option value="${k}" ${k===row.detected_type?'selected':''}>${esc(v.label)}</option>`).join('')}</select></label><label class="field">Source slug<input value="${esc(row.source_slug||'')}" readonly></label><label class="field wide">Prepared title<input value="${esc(d.title||'')}" readonly></label><label class="field wide">Prepared summary<textarea readonly>${esc(d.summary||'')}</textarea></label><label class="field wide">Source URL<input value="${esc(row.source_url||'')}" readonly></label></div></section><div class="form-actions"><button class="danger" id="ignoreImport">Ignore</button><button class="primary" id="promoteImport">Promote to private draft</button></div></div>`);$('#importType').onchange=async e=>{try{await api(`/imports/${row.id}`,{method:'PATCH',body:{detected_type:e.target.value,prepared_draft:{...d,content_type:e.target.value}}});toast('Type updated')}catch(err){toast(err.message,true)}};$('#ignoreImport').onclick=async()=>{try{await api(`/imports/${row.id}`,{method:'DELETE',body:{}});toast('Import ignored');closeModal();await renderers.imports()}catch(err){toast(err.message,true)}};$('#promoteImport').onclick=async()=>{try{const post=await api(`/imports/${row.id}/promote`,{method:'POST',body:{}});toast('Promoted to private draft');closeModal();openPostEditor(post)}catch(err){toast(err.message,true)}}}
 

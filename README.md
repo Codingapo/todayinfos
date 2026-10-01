@@ -1,4 +1,4 @@
-# TodayInfo Control Center v0.2
+# TodayInfo Control Center v0.3
 
 A Node.js admin dashboard and structured publishing API for TodayInfo.
 
@@ -276,3 +276,22 @@ npm test
 ```
 
 The included tests cover rule-based source classification, crawler-text cleanup, date-driven bursary status, safe rich links, structured import drafts, structured public responses, dynamic content definitions and removed-role/permission checks.
+
+
+## v0.3 — Deep sync and remembered imports
+
+The Import Inbox now behaves like a real sync system rather than a one-time fetch.
+
+- Sync 10, 25, 50 or up to **100 source pages**.
+- Each collection page requests up to **100 records**.
+- Current-year filtering is pre-filled in the dashboard for latest content; clear it to fetch all years.
+- Re-fetching a record does **not** reset its review state.
+- Previously promoted or ignored content stays promoted/ignored.
+- Changed source content is flagged separately for review.
+- Import records track first seen, last seen, last changed and fetch count.
+- Archive/category/tag/pagination pages are filtered from the publishable inbox.
+- Quality score and cleanup issues are visible on each imported record.
+- In demo/testing storage, the fetch dialog can publish up to three sufficiently clean preview posts so you can immediately inspect the public API.
+- The same remembered import will not be promoted twice.
+
+For PostgreSQL deployments, review and run `migrations/002_import_memory.sql` after mapping the schema to your real Supabase database.

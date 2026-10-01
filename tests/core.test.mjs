@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { slugify } from '../src/lib/utils.mjs';
-import { cleanSourceText, detectContentType, calculateOpportunityStatus, ruleDraftFromRecord } from '../src/lib/content-rules.mjs';
+import { cleanSourceText, detectContentType, calculateOpportunityStatus, ruleDraftFromRecord, isIndexLikeRecord, contentQuality } from '../src/lib/content-rules.mjs';
 import { markdownToBlocks, renderBlocksHtml, extractInlineTags } from '../src/lib/rich-content.mjs';
 import { publicPost } from '../src/lib/serializers.mjs';
 import { ROLE_PERMISSIONS, hasPermission } from '../src/lib/rbac.mjs';
@@ -82,4 +82,21 @@ test('database configuration selects postgres only for a real-looking postgres U
   const good='postgresql://postgres:secret@db.example.supabase.co:5432/postgres';
   assert.equal(inspectDatabaseUrl(good).valid,true);
   assert.equal(resolveStoreMode({requestedMode:'auto',databaseUrl:good}).mode,'postgres');
+});
+
+
+test('archive/tag/category records are filtered before import review',()=>{
+  assert.equal(isIndexLikeRecord({title:'Month: October 2026',path:'/2026/10/'}),true);
+  assert.equal(isIndexLikeRecord({title:'Psychometric Test',path:'/tag/psychometric-test/'}),true);
+  assert.equal(isIndexLikeRecord({title:'Real bursary opportunity',path:'/bursaries/real-bursary'}),false);
+});
+
+test('rule-prepared content gets useful fallback tags and quality feedback',()=>{
+  const d=ruleDraftFromRecord({title:'Example Company Jobs 2026',organization:'Example Company',contentText:'This is a detailed vacancy article. '.repeat(12),publishedAt:'2026-10-01',categories:['Vacancies','2'],applicationLinks:[{url:'https://example.com/apply'}]});
+  assert.equal(d.content_type,'job');
+  assert.ok(d.tags.includes('Jobs'));
+  assert.ok(d.tags.includes('2026'));
+  assert.ok(!d.categories.includes('2'));
+  const q=contentQuality(d);
+  assert.ok(q.score>=50);
 });

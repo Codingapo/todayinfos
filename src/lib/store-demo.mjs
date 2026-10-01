@@ -36,7 +36,36 @@ export class DemoStore{
     return{cards:{open_bursaries:openB,closed_bursaries:closedB,published_posts:published.length,visitors_today:new Set(ev.map(e=>e.visitor_id).filter(Boolean)).size,reads_today:ev.filter(e=>e.event_type==='read').length,raw_imports_waiting:this.db.imports.filter(i=>i.review_status==='unreviewed').length},content_mix:mix,views_by_type:viewsByType,recent_activity:this.db.audit.slice(-12).reverse(),top_posts:published.map(p=>({id:p.id,title:p.title,slug:p.slug,content_type:p.content_type,views:this.db.analytics.filter(e=>e.post_id===p.id&&e.event_type==='view').length,reads:this.db.analytics.filter(e=>e.post_id===p.id&&e.event_type==='read').length})).sort((a,b)=>b.views-a.views).slice(0,8)}
   }
 
-  async upsertImports(rows){let inserted=0,updated=0;for(const input of rows){const found=this.db.imports.find(i=>i.source_key===input.source_key);if(found){Object.assign(found,input,{updated_at:nowIso()});updated++}else{this.db.imports.push({id:id(),...input,created_at:nowIso(),updated_at:nowIso()});inserted++}}this.#save();return{inserted,updated,total:rows.length}}
+  async upsertImports(rows){
+    let inserted=0,changed=0,unchanged=0;
+    const now=nowIso();
+    for(const input of rows){
+      const found=this.db.imports.find(i=>i.source_key===input.source_key);
+      if(!found){
+        this.db.imports.push({id:id(),...input,source_changed:false,fetch_count:1,first_seen_at:now,last_seen_at:now,last_changed_at:now,created_at:now,updated_at:now});
+        inserted++;continue;
+      }
+      const isChanged=Boolean(input.source_hash&&found.source_hash&&input.source_hash!==found.source_hash);
+      const keepReview=found.review_status||'unreviewed';
+      const keepPromoted=found.promoted_post_id||null;
+      Object.assign(found,{
+        source_name:input.source_name,source_id:input.source_id,source_url:input.source_url,source_slug:input.source_slug,
+        source_hash:input.source_hash,source_payload:input.source_payload,detected_type:input.detected_type,
+        source_record_date:input.source_record_date||found.source_record_date||null,
+        quality_score:input.quality_score,quality_issues:input.quality_issues||[],
+        review_status:keepReview,promoted_post_id:keepPromoted,
+        source_changed:isChanged || Boolean(found.source_changed),
+        fetch_count:Number(found.fetch_count||1)+1,last_seen_at:now,updated_at:now
+      });
+      if(isChanged){
+        found.last_changed_at=now;
+        if(['unreviewed','reviewing'].includes(keepReview)) found.prepared_draft=input.prepared_draft;
+        changed++;
+      } else unchanged++;
+    }
+    this.#save();
+    return{inserted,changed,unchanged,total:rows.length};
+  }
   async listImports({status,type,q}={}){let rows=[...this.db.imports];if(status)rows=rows.filter(x=>x.review_status===status);if(type)rows=rows.filter(x=>x.detected_type===type);if(q){const n=String(q).toLowerCase();rows=rows.filter(x=>JSON.stringify(x).toLowerCase().includes(n))}return rows.sort((a,b)=>String(b.updated_at).localeCompare(String(a.updated_at)))}
   async getImport(v){return this.db.imports.find(i=>i.id===v)||null}
   async updateImport(v,p){const row=await this.getImport(v);if(!row)return null;Object.assign(row,p,{updated_at:nowIso()});this.#save();return row}
@@ -49,7 +78,13 @@ export class DemoStore{
   async trashPost(v,a=null){return this.updatePost(v,{deleted_at:nowIso(),status:'trash'},a)}
   async restorePost(v,a=null){return this.updatePost(v,{deleted_at:null,status:'draft'},a)}
   async revisions(v){return this.db.revisions.filter(r=>r.post_id===v).sort((a,b)=>b.created_at.localeCompare(a.created_at))}
-  async promoteImport(v,actor){const imp=await this.getImport(v);if(!imp)return null;const post=await this.createPost({...imp.prepared_draft,status:'draft',source:{source_name:imp.source_name,source_id:imp.source_id,source_url:imp.source_url,source_slug:imp.source_slug,raw_import_id:imp.id}},actor);await this.updateImport(v,{review_status:'promoted',promoted_post_id:post.id});return post}
+  async promoteImport(v,actor){
+    const imp=await this.getImport(v);if(!imp)return null;
+    if(imp.promoted_post_id){const existing=await this.getPost(imp.promoted_post_id);if(existing)return existing}
+    const post=await this.createPost({...imp.prepared_draft,status:'draft',source:{source_name:imp.source_name,source_id:imp.source_id,source_url:imp.source_url,source_slug:imp.source_slug,raw_import_id:imp.id}},actor);
+    await this.updateImport(v,{review_status:'promoted',promoted_post_id:post.id,source_changed:false});
+    return post;
+  }
 
   async recordEvent(i){const row={id:id(),...i,created_at:nowIso()};this.db.analytics.push(row);if(this.db.analytics.length>50000)this.db.analytics=this.db.analytics.slice(-50000);this.#save();return row}
   async analyticsSummary(){const e=this.db.analytics;const totals={};for(const x of e)totals[x.event_type]=(totals[x.event_type]||0)+1;const days={};for(const x of e){const d=x.created_at.slice(0,10);days[d]=(days[d]||0)+1}const byContent={};for(const x of e.filter(v=>v.event_type==='view')){const p=this.db.posts.find(p=>p.id===x.post_id);const t=p?.content_type||'other';byContent[t]=(byContent[t]||0)+1}return{totals,daily:Object.entries(days).sort().slice(-30).map(([date,total])=>({date,total})),unique_visitors:new Set(e.map(x=>x.visitor_id).filter(Boolean)).size,views_by_content_type:byContent}}
