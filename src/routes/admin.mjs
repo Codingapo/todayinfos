@@ -170,6 +170,40 @@ adminRouter.post('/imports/fetch',permit('imports.fetch'),async(req,res)=>{
     records:sync.rows.slice(0,100)
   });
 });
+
+adminRouter.post('/harvest/global',permit('imports.fetch'),async(req,res)=>{
+  const schema=z.object({
+    target:z.number().int().min(1).max(5000).optional().default(1000),
+    maxAgeDays:z.number().int().min(1).max(120).optional().default(60),
+    providers:z.array(z.enum(['arbeitnow','jobicy','remoteok','lever','ashby'])).max(5).optional().default(['arbeitnow','jobicy']),
+    leverSites:z.array(z.string().min(1).max(120)).max(100).optional().default([]),
+    ashbyBoards:z.array(z.string().min(1).max(120)).max(100).optional().default([]),
+    autoPublish:z.boolean().optional().default(true)
+  });
+  const p=schema.safeParse(req.body||{});
+  if(!p.success)return res.status(400).json({error:'Invalid global harvest options',details:p.error.flatten()});
+  const harvest=await harvestGlobalJobs(p.data);
+  const stored=await store.upsertImports(harvest.rows);
+  const keys=new Set(harvest.rows.map(x=>x.source_key));
+  const remembered=await store.listImports({});
+  const published=[];const review=[];
+  if(p.data.autoPublish){
+    const candidates=remembered.filter(x=>keys.has(x.source_key)&&x.review_status==='unreviewed'&&!x.promoted_post_id)
+      .sort((a,b)=>Number(b.quality_score||0)-Number(a.quality_score||0));
+    for(const imp of candidates.slice(0,config.autoPublishMaxPerFetch)){
+      const draft=normalizePost({...imp.prepared_draft,content_type:imp.detected_type||imp.prepared_draft?.content_type||'job'});
+      const decision=autoPublishDecision({importRow:imp,draft,threshold:config.autoPublishMinScore,now:new Date()});
+      const issues=[...new Set([...publishProblems(draft),...decision.issues])];
+      if(issues.length){review.push({id:imp.id,title:draft.title,score:Number(imp.quality_score||0),issues});continue}
+      const post=await store.promoteImport(imp.id,req.user.id);
+      let live=await store.updatePost(post.id,{status:'published'},req.user.id);
+      live=await syncPublication(live,req.user.id);
+      published.push({id:live.id,title:live.title,type:live.content_type,country:live.geo?.country_code||null,score:Number(imp.quality_score||0)});
+    }
+  }
+  await audit(req,'harvest.global','source','global',{target:p.data.target,providers:p.data.providers,...harvest.stats,...stored,published:published.length,review:review.length});
+  ok(res,{...harvest.stats,...stored,published,review:review.slice(0,100)});
+});
 adminRouter.get('/imports/learning',permit('imports.view'),async(req,res)=>ok(res,publicLearningSummary(await loadImportLearning())));
 adminRouter.get('/imports/priority',permit('imports.view'),async(req,res)=>ok(res,await store.priorityImports({limit:Math.min(500,Math.max(1,Number(req.query.limit)||200))})));
 adminRouter.get('/imports/:id',permit('imports.view'),async(req,res)=>{const row=await store.getImport(req.params.id);if(!row)return res.status(404).json({error:'Import not found'});ok(res,row)});
