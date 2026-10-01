@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { publicPost } from './serializers.mjs';
 import { normalizeCountryCode, rootForType } from './global-content.mjs';
 import { publishedObjectKey, readPublishedJson, removePublishedJson, savePublishedJson } from './r2.mjs';
+import { removePublishedIndex, upsertPublishedIndex } from './published-index.mjs';
 
 export const PUBLICATION_SCHEMA='todayinfo.content.v1';
 
@@ -40,11 +41,19 @@ export async function publishPostArtifact(store,row){
   const sha256=crypto.createHash('sha256').update(serialized).digest('hex');
   const key=publicationKey(row);
   const stored=await savePublishedJson({key,payload});
-  return {
+  const publication={
     schema:PUBLICATION_SCHEMA,key,sha256,
     provider:stored.provider,url:stored.url||null,local_path:stored.local_path||null,
     sync_status:stored.sync_status,last_synced_at:stored.last_synced_at||null,last_error:stored.last_error||null
   };
+  try{
+    const indexResult=await upsertPublishedIndex({...row,publication});
+    publication.index_sync_status=indexResult.sync_status||'synced';
+  }catch(error){
+    publication.index_sync_status='pending';
+    publication.index_error=error.message;
+  }
+  return publication;
 }
 
 export async function loadPostArtifact(row){
@@ -56,5 +65,7 @@ export async function loadPostArtifact(row){
 
 export async function unpublishPostArtifact(row){
   const key=row.publication?.key||publicationKey(row);
-  return removePublishedJson(key);
+  const result=await removePublishedJson(key);
+  try{await removePublishedIndex(row)}catch{}
+  return result;
 }
