@@ -1,4 +1,4 @@
-# TodayInfo Control Center v0.8
+# TodayInfo Control Center v0.8.4
 
 A Node.js admin dashboard and structured publishing API for TodayInfo.
 
@@ -629,3 +629,20 @@ The CEO Analytics screen includes a clickable world traffic atlas and continent 
 ### SEO quality rule
 
 TodayInfo is designed to add user value rather than create lightly transformed copies. Extra pages should exist because they provide useful structure such as verified application routes, eligibility, application steps, source attribution, location and clear summaries.
+
+
+## v0.8.4 — Direct source fallback repair
+
+TodayInfo first uses the existing source API for DailyUpdate and ZA Bursaries. If the source API and its internal fallback endpoints fail or return no usable records, the importer can use the approved public source domains directly.
+
+Direct fallback is deliberately conservative:
+
+- it extracts page title, short metadata, canonical/source URL, useful links and application-link candidates;
+- it does **not** copy the full source article into the prepared TodayInfo draft;
+- it caps the cleanliness score below auto-publish level;
+- it disables auto-publishing for that fetch;
+- the result stays in Import Inbox for Apo or an authorized editor to review, clean, promote and publish.
+
+This fallback also supports Demand Queue URLs on the approved DailyUpdate and ZA Bursaries domains.
+
+Source Hub continues to expose a source-specific publishing policy. The system does not use AI rewriting; narrative rewriting remains a human editorial action.
