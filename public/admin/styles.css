@@ -169,3 +169,11 @@ html[data-theme="dark"] .recommendation-link-row{border-left-color:#66b89a}
 .source-policy{display:grid;gap:4px;padding:10px 11px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
 .source-policy strong{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--teal)}
 .source-policy span{font-size:.76rem;line-height:1.45;color:var(--muted)}
+
+
+/* v0.8.2 legacy source diagnostics */
+.source-health-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
+.source-health-panel{display:grid;gap:8px;margin:0 0 16px}.source-health-panel.hidden{display:none}
+.source-health-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.source-health-row>div{min-width:0}.source-health-row strong,.source-health-row small{display:block}.source-health-row small{max-width:720px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+.source-health-row>span{font-size:.75rem;font-weight:850;white-space:nowrap}.source-health-row.ok{border-color:#bcdcca}.source-health-row.ok>span{color:#26724a}.source-health-row.bad{border-color:#e6c1b7;background:#fff8f5}.source-health-row.bad>span{color:#a34e39}
