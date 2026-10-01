@@ -34,3 +34,13 @@ The repair branch must pass:
 - npm run check
 - the complete Node regression test suite
 before merge to main.
+
+
+## v0.8.3 hardening
+
+This follow-up preserves the green v0.8.2 Source Hub diagnostics and adds two production resilience protections:
+
+- PostgreSQL import operations inspect the actual `raw_imports` columns so older Supabase schemas do not blank Import Inbox or Demand Queue.
+- Admin assets use no-store/no-cache headers so a Render deployment cannot leave the browser on an older broken `app.js`.
+
+No editor, CEO permission, source fallback, Source Hub diagnostic, R2 publishing, or API feature is removed.
