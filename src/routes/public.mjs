@@ -6,6 +6,7 @@ import { paginate } from '../lib/utils.mjs';
 import { GLOBAL_FILTERS, normalizeCountryCode, queryFilters } from '../lib/global-content.mjs';
 import { loadPostArtifact } from '../lib/publication-service.mjs';
 import { deriveVisitorSignals, rankSearch } from '../lib/ranking.mjs';
+import { smartRelated, smartRecommendations } from '../lib/related-content.mjs';
 import { clickedDiscoveryRow, normalizeTargetUrl } from '../lib/demand-priority.mjs';
 
 export const publicRouter=Router();
@@ -77,11 +78,18 @@ publicRouter.get('/dailyupdate/jobs',async(req,res)=>sendList(req,res,{types:['j
 
 async function detailPayload(row){
   const artifact=await loadPostArtifact(row);
-  if(artifact)return artifact;
-  const base=publicPost(row);const related=[];const recs=[];
-  for(const id of row.related_ids||[]){const p=await store.getPost(id);if(p&&p.status==='published'&&!p.deleted_at)related.push(publicPost(p,{compact:true}))}
-  for(const id of row.recommendation_ids||[]){const p=await store.getPost(id);if(p&&p.status==='published'&&!p.deleted_at)recs.push(publicPost(p,{compact:true}))}
-  return{...base,related_content:related,recommendations:recs,_artifact:{provider:'database-fallback'}};
+  const base=artifact||publicPost(row);
+  let candidates=await store.listPosts({status:'published',country:row.geo?.country_code||undefined});
+  if(candidates.length<16)candidates=await store.listPosts({status:'published'});
+  const related=smartRelated(row,candidates,{limit:8}).map(x=>({...publicPost(x.post,{compact:true}),relation_score:x.score}));
+  const recs=smartRecommendations(row,candidates,{limit:6}).map(x=>({...publicPost(x.post,{compact:true}),relation_score:x.score}));
+  return{
+    ...base,
+    related_content:related,
+    recommendations:recs,
+    relation_meta:{strategy:'deterministic-structured-similarity',signals:['manual','country','content_type','organisation','categories','tags','fields_of_study','education_level','work_mode']},
+    _artifact:artifact?base._artifact||{provider:'published-artifact'}:{provider:'database-fallback'}
+  };
 }
 
 const expected={
