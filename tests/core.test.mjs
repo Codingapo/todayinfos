@@ -26,7 +26,8 @@ import { applicationCandidates, buildApplicationGuide } from '../src/lib/applica
 import { plainEnglishNewsDraft } from '../src/lib/plain-content.mjs';
 import { NEWS_FEEDS } from '../src/lib/news-harvest.mjs';
 import { buildTrafficAtlas, continentForCode } from '../src/lib/geo-analytics.mjs';
-import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload } from '../src/lib/source-catalog.mjs';
+import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload, editorialPolicyFor } from '../src/lib/source-catalog.mjs';
+import { fetchImports } from '../src/lib/importer.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
   assert.equal(slugify('University of Limpopo — Applications 2027!'),'university-of-limpopo-applications-2027');
@@ -800,4 +801,102 @@ test('dashboard exposes official-news batches direct-link processing and world t
   assert.match(ui,/Checking apply links/);
   assert.match(ui,/WORLD TRAFFIC ATLAS/);
   assert.match(ui,/application clicks/);
+});
+
+
+test('CEO owner retains complete import edit promote and publish permissions',()=>{
+  for(const permission of ['imports.view','imports.fetch','imports.review','posts.view','posts.create','posts.edit','posts.publish','posts.delete','analytics.view','team.view','settings.view','audit.view']){
+    assert.equal(hasPermission('owner',permission),true,permission);
+  }
+  assert.equal(ROLE_LABELS.owner,'CEO / Owner');
+});
+
+test('admin bundle has no collection-selector crash regressions',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.doesNotMatch(ui,/(^|[^$])\$\([^\n]*?\)\.(?:forEach|map|filter)\(/m);
+  assert.doesNotMatch(ui,/\$\$\$\(/);
+  assert.match(ui,/\$\$\('#nav button\[data-view\]'\)\.forEach/);
+  assert.match(ui,/\$\$\('\.traffic-dot'\)\.forEach/);
+  assert.match(ui,/\$\$\('\.run-news'\)\.forEach/);
+});
+
+test('CEO Import Inbox still exposes review promote edit and publish workflow',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+  assert.match(ui,/review-import/);
+  assert.match(ui,/promote-import/);
+  assert.match(ui,/function openImportReview/);
+  assert.match(ui,/Promote to private draft/);
+  assert.match(ui,/function openPostEditor/);
+  assert.match(ui,/Publishing status/);
+  assert.match(admin,/\/imports\/\:id\/promote/);
+  assert.match(admin,/permit\('imports\.review'\)/);
+  assert.match(admin,/hasPermission\(req\.user\.role,'posts\.publish'\)/);
+});
+
+test('Demand Queue remains available to the CEO while worker restrictions remain server-side',()=>{
+  const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(admin,/imports\/priority',permit\('imports\.fetch'\)/);
+  assert.match(ui,/async demand\(\)/);
+  assert.match(ui,/Fetch & process/);
+  assert.equal(hasPermission('owner','imports.fetch'),true);
+  assert.equal(hasPermission('editor','imports.fetch'),false);
+});
+
+test('Deep Sync year filter defaults to all years so current and future bursaries are not hidden',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(ui,/Year filter \(optional\)/);
+  assert.match(ui,/name="year" inputmode="numeric" value=""/);
+  assert.match(ui,/Leave blank to fetch every available year/);
+});
+
+test('bursary source fetch falls back to search when the dedicated collection endpoint fails',async()=>{
+  const original=globalThis.fetch;
+  const record={
+    id:'bursary-fallback-1',sourceId:'zabursaries',sourceName:'ZA Bursaries',
+    title:'Example Engineering Bursary 2027',url:'https://www.zabursaries.co.za/example-engineering-bursary/',
+    pageType:'bursary',organization:'Example Fund',closingDate:'2027-01-31',
+    contentText:'Example Fund is inviting students to apply for an engineering bursary. '.repeat(12),
+    tags:['Bursaries','Engineering'],applicationLinks:[{url:'https://apply.example.org/bursary'}]
+  };
+  globalThis.fetch=async url=>{
+    const u=String(url);
+    if(u.includes('/bursaries?'))return new Response(JSON.stringify({error:'temporary failure'}),{status:503,headers:{'content-type':'application/json'}});
+    if(u.includes('/search?q=bursary'))return new Response(JSON.stringify({data:{records:[record]},meta:{pagination:{totalPages:1}}}),{status:200,headers:{'content-type':'application/json'}});
+    throw new Error('Unexpected URL '+u);
+  };
+  try{
+    const out=await fetchImports({kind:'bursaries',maxPages:1,expand:false,expandRelated:false});
+    assert.equal(out.stats.endpointFallbackUsed,true);
+    assert.equal(out.stats.endpointUsed,'/search?q=bursary');
+    assert.equal(out.rows.length,1);
+    assert.equal(out.rows[0].detected_type,'bursary');
+  }finally{globalThis.fetch=original}
+});
+
+test('source editorial policies distinguish paraphrase from copying and require verification',()=>{
+  const daily=SOURCE_CATALOG.find(x=>x.id==='dailyupdate');
+  const za=SOURCE_CATALOG.find(x=>x.id==='zabursaries');
+  const restricted=SOURCE_CATALOG.find(x=>x.id==='adzuna');
+  const dailyPolicy=editorialPolicyFor(daily);
+  const zaPolicy=editorialPolicyFor(za);
+  const restrictedPolicy=editorialPolicyFor(restricted);
+  assert.equal(dailyPolicy.mode,'structured_paraphrase');
+  assert.match(dailyPolicy.paraphrase,/simple TodayInfo wording/i);
+  assert.ok(dailyPolicy.verify.some(x=>/application/i.test(x)));
+  assert.ok(zaPolicy.avoid.some(x=>/copying long source passages/i.test(x)));
+  assert.equal(restrictedPolicy.mode,'catalog_only');
+});
+
+test('Source Hub exposes diagnostics and fetch endpoint fallback information',()=>{
+  const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+  const importer=fs.readFileSync(new URL('../src/lib/importer.mjs',import.meta.url),'utf8');
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(admin,/\/sources\/diagnostics/);
+  assert.match(importer,/endpointFallbackUsed/);
+  assert.match(importer,/\/search\?q=bursary/);
+  assert.match(importer,/\/dailyupdate.*\/search\?q=jobs/s);
+  assert.match(ui,/Check legacy source health/);
+  assert.match(ui,/Post policy/);
 });
