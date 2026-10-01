@@ -171,9 +171,12 @@ adminRouter.post('/harvest/global',permit('imports.fetch'),async(req,res)=>{
   const schema=z.object({
     target:z.number().int().min(1).max(5000).optional().default(1000),
     maxAgeDays:z.number().int().min(1).max(120).optional().default(60),
-    providers:z.array(z.enum(['arbeitnow','jobicy','remoteok','lever','ashby'])).max(5).optional().default(['arbeitnow','jobicy']),
+    providers:z.array(z.enum(['arbeitnow','jobicy','remoteok','remotive','lever','ashby','greenhouse','workable','smartrecruiters'])).max(9).optional().default(['arbeitnow','jobicy']),
     leverSites:z.array(z.string().min(1).max(120)).max(100).optional().default([]),
     ashbyBoards:z.array(z.string().min(1).max(120)).max(100).optional().default([]),
+    greenhouseBoards:z.array(z.string().min(1).max(120)).max(100).optional().default([]),
+    workableAccounts:z.array(z.string().min(1).max(120)).max(100).optional().default([]),
+    smartRecruitersCompanies:z.array(z.string().min(1).max(160)).max(100).optional().default([]),
     autoPublish:z.boolean().optional().default(true)
   });
   const p=schema.safeParse(req.body||{});
