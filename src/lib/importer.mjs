@@ -8,9 +8,10 @@ import { discoverSourceLinks } from './source-profiles.mjs';
 const MAX_SOURCE_PAGES = 100;
 const PAGE_SIZE = 100;
 
-const endpointFor = ({ kind, tagSlug, query }) => {
+const endpointFor = ({ kind, tagSlug, query, url }) => {
   if (kind === 'tag') return `/tags/${encodeURIComponent(tagSlug || 'psychometric-test')}`;
   if (kind === 'search') return `/search?q=${encodeURIComponent(query || '')}`;
+  if (kind === 'url') return `/extract?url=${encodeURIComponent(url || '')}`;
   const allowed = new Set(['pages','bursaries','articles','dailyupdate','dailyupdate/jobs']);
   return `/${allowed.has(kind) ? kind : 'pages'}`;
 };
