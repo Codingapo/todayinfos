@@ -9,6 +9,7 @@ import { config } from './config.mjs';
 import { authRouter } from './routes/auth.mjs';
 import { adminRouter } from './routes/admin.mjs';
 import { publicRouter } from './routes/public.mjs';
+import { internalRouter } from './routes/internal.mjs';
 import { retryPublicationQueue } from './lib/r2.mjs';
 import { store } from './lib/store.mjs';
 import { bootstrapReferenceSeeds } from './lib/reference-seed.mjs';
@@ -37,6 +38,7 @@ app.use(cookieParser());
 
 app.get('/health',(req,res)=>res.json({status:'ok',service:'todayinfo-control-center',mode:config.dataStore,database_fallback:config.dataStoreFallback,store:store.health?.()||{mode:config.dataStore},reference_seed:referenceSeedStatus,time:new Date().toISOString()}));
 app.use('/api/v1',cors({origin:'*',methods:['GET','POST','OPTIONS']}),publicRouter);
+app.use('/internal/ingest/v1',internalRouter);
 app.use('/admin/api/auth',authRouter);
 app.use('/admin/api',adminRouter);
 app.use('/uploads',express.static(path.resolve(__dirname,'../uploads'),{fallthrough:false,maxAge:'1y',immutable:true}));
