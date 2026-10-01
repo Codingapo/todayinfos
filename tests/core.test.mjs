@@ -8,6 +8,7 @@ import { publicPost } from '../src/lib/serializers.mjs';
 import { ROLE_PERMISSIONS, hasPermission } from '../src/lib/rbac.mjs';
 import { resolvedDefinition } from '../src/lib/content-types.mjs';
 import { inspectDatabaseUrl, resolveStoreMode } from '../src/lib/database-config.mjs';
+import { normalizeGeo, normalizeClassification, seoPath, filterPost } from '../src/lib/global-content.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
   assert.equal(slugify('University of Limpopo — Applications 2027!'),'university-of-limpopo-applications-2027');
@@ -136,4 +137,50 @@ test('explicit source related links are preserved even when their title is not g
     relatedLinks:[{title:'Application Guide for Students',url:'https://source.test/student-guide'}]
   },'bursary');
   assert.deepEqual(recs,[{title:'Application Guide for Students',url:'https://source.test/student-guide',type:'source_related'}]);
+});
+
+
+test('global location model normalizes countries and supports country SEO paths',()=>{
+  const geo=normalizeGeo({country:'South Africa',province:'Gauteng',city:'Johannesburg'});
+  assert.equal(geo.country_code,'ZA');
+  assert.equal(geo.region_name,'Gauteng');
+  assert.equal(seoPath({content_type:'bursary',slug:'example',geo}),'/za/bursaries/example');
+  assert.equal(seoPath({content_type:'news',slug:'application-update',category:'University News',geo}),'/za/news/university-news/application-update');
+});
+
+test('global classification supports opportunity discovery fields',()=>{
+  const c=normalizeClassification({
+    organisation:'Example Org',education_level:['Undergraduate'],fields_of_study:['Engineering'],
+    job_type:'full-time',work_mode:'remote',salary:{min:1000,max:2000,currency:'zar'}
+  });
+  assert.equal(c.organisation,'Example Org');
+  assert.deepEqual(c.fields_of_study,['Engineering']);
+  assert.equal(c.salary.currency,'ZAR');
+});
+
+test('global filter helper matches country region city and field of study',()=>{
+  const post={
+    geo:{country_code:'ZA',region_name:'Gauteng',city:'Johannesburg'},
+    classification:{fields_of_study:['Engineering'],education_level:['Graduate'],work_mode:'hybrid'},
+    type_data:{}
+  };
+  assert.equal(filterPost(post,{country:'za',region:'gauteng',city:'johan',field_of_study:'engineer'}),true);
+  assert.equal(filterPost(post,{country:'GB'}),false);
+});
+
+test('public serializer exposes explicit global location classification and legacy path',()=>{
+  const p=publicPost({
+    id:'g1',slug:'global-job',title:'Global Job',content_type:'job',summary:'Role',body_markdown:'Details',
+    posted_date:'2026-10-01',category:'Technology',categories:['Technology'],tags:['Jobs'],
+    topics:[],related_links:[],related_ids:[],recommendation_ids:[],recommendation_links:[],documents:[],navigation_links:[],
+    type_data:{company:'Example',closing_date:'2026-11-01',status_override:'open'},
+    geo:{country_code:'GB',country_name:'United Kingdom',city:'London'},
+    classification:{organisation:'Example',job_type:'full-time',work_mode:'hybrid',fields_of_study:['Computer Science']},
+    status:'published',created_at:'2026-10-01',updated_at:'2026-10-01'
+  });
+  assert.equal(p.path,'/gb/jobs/global-job');
+  assert.equal(p.legacy_path,'/jobs/global-job');
+  assert.equal(p.location.country.code,'GB');
+  assert.equal(p.classification.job_type,'full-time');
+  assert.equal(p.organisation,'Example');
 });
