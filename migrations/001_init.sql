@@ -56,6 +56,7 @@ create table if not exists posts (
   related_links jsonb not null default '[]'::jsonb,
   related_ids uuid[] not null default '{}',
   recommendation_ids uuid[] not null default '{}',
+  recommendation_links jsonb not null default '[]'::jsonb,
   documents jsonb not null default '[]'::jsonb,
   navigation_links jsonb not null default '[]'::jsonb,
   type_data jsonb not null default '{}'::jsonb,
