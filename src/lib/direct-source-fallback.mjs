@@ -26,7 +26,7 @@ const CONFIGS={
       'https://www.zabursaries.co.za/?s=bursary'
     ],
     useful:(title,url)=>{
-      const hay=\`\${title} \${url}\`.toLowerCase();
+      const hay=`${title} ${url}`.toLowerCase();
       if(!/bursar|scholarship|funding/.test(hay))return false;
       if(/search results|list of all bursaries|bursaries closing in|privacy|contact|about us|sassa payment/.test(hay))return false;
       return true;
@@ -42,7 +42,7 @@ const CONFIGS={
       'https://dailyupdate.co.za/?s=jobs'
     ],
     useful:(title,url)=>{
-      const hay=\`\${title} \${url}\`.toLowerCase();
+      const hay=`${title} ${url}`.toLowerCase();
       if(!/job|hiring|vacanc|career|intern|learnership|apprentice|graduate|programme|opportunit/.test(hay))return false;
       if(/privacy|contact|about|\/tag\/|\/author\/|login|register|\/page\/\d+/.test(hay))return false;
       return true;
@@ -73,9 +73,9 @@ async function fetchHtml(url,{maxBytes=MAX_DETAIL_BYTES}={}){
       signal:controller.signal,
       headers:{accept:'text/html,application/xhtml+xml;q=0.9,*/*;q=0.3','user-agent':UA}
     });
-    if(!res.ok)throw new Error(\`Direct source returned HTTP \${res.status}\`);
+    if(!res.ok)throw new Error(`Direct source returned HTTP ${res.status}`);
     const type=res.headers.get('content-type')||'';
-    if(type&&!/html|xhtml|text\//i.test(type))throw new Error(\`Direct source returned unsupported content type: \${type}\`);
+    if(type&&!/html|xhtml|text\//i.test(type))throw new Error(`Direct source returned unsupported content type: ${type}`);
     const body=await res.text();
     return body.length>maxBytes?body.slice(0,maxBytes):body;
   }finally{clearTimeout(timer)}
@@ -83,17 +83,17 @@ async function fetchHtml(url,{maxBytes=MAX_DETAIL_BYTES}={}){
 
 function attr(html,name){
   const escaped=String(name).replace(/[.*+?^()|[\]\\]/g,'\\$&');
-  const a=new RegExp(\`<meta[^>]+(?:name|property)=["']\${escaped}["'][^>]+content=["']([^"']*)["'][^>]*>\`,'i').exec(html);
+  const a=new RegExp(`<meta[^>]+(?:name|property)=["']${escaped}["'][^>]+content=["']([^"']*)["'][^>]*>`,'i').exec(html);
   if(a)return decode(a[1]);
-  const b=new RegExp(\`<meta[^>]+content=["']([^"']*)["'][^>]+(?:name|property)=["']\${escaped}["'][^>]*>\`,'i').exec(html);
+  const b=new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]+(?:name|property)=["']${escaped}["'][^>]*>`,'i').exec(html);
   return b?decode(b[1]):'';
 }
 
 function linkRel(html,rel){
-  const re=new RegExp(\`<link[^>]+rel=["'][^"']*\\b\${rel}\\b[^"']*["'][^>]+href=["']([^"']+)["'][^>]*>\`,'i');
+  const re=new RegExp(`<link[^>]+rel=["'][^"']*\\b${rel}\\b[^"']*["'][^>]+href=["']([^"']+)["'][^>]*>`,'i');
   const a=re.exec(html);
   if(a)return decode(a[1]);
-  const b=new RegExp(\`<link[^>]+href=["']([^"']+)["'][^>]+rel=["'][^"']*\\b\${rel}\\b[^"']*["'][^>]*>\`,'i').exec(html);
+  const b=new RegExp(`<link[^>]+href=["']([^"']+)["'][^>]+rel=["'][^"']*\\b${rel}\\b[^"']*["'][^>]*>`,'i').exec(html);
   return b?decode(b[1]):'';
 }
 
@@ -120,7 +120,7 @@ function usefulLinks(links,config,baseUrl){
 
 function applicationLinks(links,sourceUrl){
   return links.filter(x=>{
-    const hay=\`\${x.title} \${x.url}\`.toLowerCase();
+    const hay=`${x.title} ${x.url}`.toLowerCase();
     if(x.url===sourceUrl)return false;
     if(/privacy|contact|facebook|instagram|youtube|twitter|x\.com|whatsapp|terms|cookie/.test(hay))return false;
     return /apply|application|application form|career portal|vacanc|recruit|submit/.test(hay);
@@ -145,7 +145,7 @@ export async function fetchDirectSourceRecord(url,{config:forcedConfig}={}){
   const apply=applicationLinks(anchors,canonical);
 
   return{
-    id:\`direct:\${config.id}:\${slugify(canonical)}\`,
+    id:`direct:${config.id}:${slugify(canonical)}`,
     sourceId:config.id,
     sourceName:config.name,
     title,
@@ -165,7 +165,7 @@ export async function fetchDirectSourceRecord(url,{config:forcedConfig}={}){
 
 export async function fetchDirectSourceFallback(kind,{limit=30}={}){
   const config=CONFIGS[kind];
-  if(!config)throw new Error(\`No direct fallback configured for \${kind}\`);
+  if(!config)throw new Error(`No direct fallback configured for ${kind}`);
   const wanted=Math.max(1,Math.min(40,Number(limit)||30));
   const candidates=new Map();
   const indexResults=[];
