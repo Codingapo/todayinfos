@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: TodayInfo Global Managed API
-  version: 0.6.0
+  version: 0.7.0
   description: Published-only global content API for TodayInfo. Drafts and raw imports are never returned by public content/search endpoints.
 servers:
   - url: https://todayinfos.onrender.com/api/v1
@@ -11,6 +11,30 @@ paths:
       summary: API capabilities, supported content types and filters
       responses:
         '200': {description: API metadata}
+  /sources:
+    get:
+      summary: Categorized public source and integration-capability catalog
+      description: Returns source names, categories, regions, content types and operational status. Private import/published counts are not exposed.
+      responses:
+        '200':
+          description: Source catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      categories:
+                        type: array
+                        items: {$ref: '#/components/schemas/SourceCategory'}
+                      sources:
+                        type: array
+                        items: {$ref: '#/components/schemas/Source'}
+                  meta:
+                    type: object
+                    additionalProperties: true
   /site:
     get:
       summary: Public site configuration
@@ -183,6 +207,27 @@ components:
                 items: {$ref: '#/components/schemas/ContentSummary'}
               meta: {type: object, additionalProperties: true}
   schemas:
+    SourceCategory:
+      type: object
+      properties:
+        id: {type: string}
+        label: {type: string}
+        description: {type: string}
+    Source:
+      type: object
+      properties:
+        id: {type: string}
+        label: {type: string}
+        category: {type: string}
+        region: {type: string}
+        country_code: {type: [string, 'null']}
+        content_types: {type: array, items: {type: string}}
+        mode: {type: string}
+        integration_status: {type: string, enum: [active, discovery, credentials_required, licence_required]}
+        description: {type: string}
+        homepage: {type: string, format: uri}
+        operational: {type: boolean}
+        operation: {type: [string, 'null']}
     Location:
       type: object
       properties:
