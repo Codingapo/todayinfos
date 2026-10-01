@@ -95,9 +95,10 @@ adminRouter.get('/source-presets',permit('imports.view'),(req,res)=>ok(res,[
 adminRouter.get('/imports',permit('imports.view'),async(req,res)=>ok(res,await store.listImports({status:req.query.status,type:req.query.type,q:req.query.q})));
 adminRouter.post('/imports/fetch',permit('imports.fetch'),async(req,res)=>{
   const schema=z.object({
-    kind:z.enum(['pages','bursaries','articles','dailyupdate','dailyupdate/jobs','tag','search']).default('pages'),
+    kind:z.enum(['pages','bursaries','articles','dailyupdate','dailyupdate/jobs','tag','search','url']).default('pages'),
     tagSlug:z.string().max(120).optional(),
     query:z.string().max(200).optional(),
+    url:z.string().url().max(2048).optional(),
     year:z.union([z.string(),z.number()]).optional(),
     country_code:z.string().max(3).optional(),region_name:z.string().max(120).optional(),city:z.string().max(120).optional(),
     expand:z.boolean().optional().default(true),
