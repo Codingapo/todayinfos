@@ -27,7 +27,7 @@ import { plainEnglishNewsDraft } from '../src/lib/plain-content.mjs';
 import { NEWS_FEEDS } from '../src/lib/news-harvest.mjs';
 import { buildTrafficAtlas, continentForCode } from '../src/lib/geo-analytics.mjs';
 import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload, sourcePublishingPolicy } from '../src/lib/source-catalog.mjs';
-import { sourceEndpointCandidates } from '../src/lib/importer.mjs';
+import { sourceEndpointCandidates, probeLegacySources } from '../src/lib/importer.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
   assert.equal(slugify('University of Limpopo — Applications 2027!'),'university-of-limpopo-applications-2027');
@@ -883,5 +883,27 @@ test('repair: CEO Owner still has full edit review promote and publish permissio
   assert.equal(hasPermission('owner','imports.review'),true);
   assert.equal(hasPermission('owner','posts.view'),true);
   assert.equal(hasPermission('owner','posts.edit'),true);
+  assert.equal(hasPermission('owner','posts.publish'),true);
+});
+
+
+test('v0.8.2: DailyUpdate has a final search fallback and diagnostics are wired',()=>{
+  assert.deepEqual(sourceEndpointCandidates('dailyupdate/jobs'),['/dailyupdate/jobs','/dailyupdate','/articles','/search?q=jobs']);
+  assert.deepEqual(sourceEndpointCandidates('bursaries'),['/bursaries','/search?q=bursary']);
+  assert.equal(typeof probeLegacySources,'function');
+  const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(admin,/\/sources\/diagnostics/);
+  assert.match(ui,/Check jobs & bursaries health/);
+  assert.match(ui,/r\.usedEndpoint/);
+});
+
+test('v0.8.2: current main repair keeps editable import review and safe news draft-first behavior',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+  assert.match(ui,/Clean imported content/);
+  assert.match(ui,/Save cleanup/);
+  assert.match(ui,/Save & promote to draft/);
+  assert.match(admin,/autoPublish:z\.boolean\(\)\.optional\(\)\.default\(false\)/);
   assert.equal(hasPermission('owner','posts.publish'),true);
 });
