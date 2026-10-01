@@ -11,16 +11,16 @@ import { adminRouter } from './routes/admin.mjs';
 import { publicRouter } from './routes/public.mjs';
 import { retryPublicationQueue } from './lib/r2.mjs';
 import { store } from './lib/store.mjs';
-import { bootstrapSouthAfricaReferenceSeed } from './lib/reference-seed.mjs';
+import { bootstrapReferenceSeeds } from './lib/reference-seed.mjs';
 
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
-let referenceSeedStatus={state:'pending',records:40,last_attempt_at:null,error:null};
+let referenceSeedStatus={state:'pending',records:80,last_attempt_at:null,error:null};
 async function ensureReferenceSeed(){
   referenceSeedStatus={...referenceSeedStatus,state:'loading',last_attempt_at:new Date().toISOString(),error:null};
   try{
-    const result=await bootstrapSouthAfricaReferenceSeed(store);
-    referenceSeedStatus={state:result.deferred?'deferred':'ready',records:result.seed_records||40,last_attempt_at:new Date().toISOString(),error:result.error||null,storage:result};
-    if(!result.deferred)console.log(`Reference seed ready: ${result.seed_records} South Africa opportunities.`);
+    const result=await bootstrapReferenceSeeds(store);
+    referenceSeedStatus={state:result.deferred?'deferred':'ready',records:result.seed_records||80,last_attempt_at:new Date().toISOString(),error:result.error||null,storage:result};
+    if(!result.deferred)console.log(`Reference seeds ready: ${result.seed_records} permanent opportunities.`);
   }catch(error){
     referenceSeedStatus={...referenceSeedStatus,state:'deferred',error:error.message,last_attempt_at:new Date().toISOString()};
     console.warn(`Reference seed deferred: ${error.message}`);
