@@ -10,8 +10,13 @@ const json=v=>v==null?null:JSON.stringify(v);
 const JSON_FIELDS=new Set(['source_payload','prepared_draft','topics','related_links','recommendation_links','documents','navigation_links','type_data','geo','classification','publication','source']);
 
 export class PostgresStore{
-  constructor({connectionString,ssl=true}){this.pool=new Pool({connectionString,ssl:ssl?{rejectUnauthorized:false}:false,max:10,idleTimeoutMillis:30000})}
+  constructor({connectionString,ssl=true}){this.pool=new Pool({connectionString,ssl:ssl?{rejectUnauthorized:false}:false,max:10,idleTimeoutMillis:30000});this.columnCache=new Map()}
   q(t,p=[]){return this.pool.query(t,p)}
+  async tableColumns(table){
+    if(this.columnCache.has(table))return this.columnCache.get(table);
+    const rows=(await this.q(`select column_name from information_schema.columns where table_schema='public' and table_name=$1`,[table])).rows;
+    const columns=new Set(rows.map(x=>x.column_name));this.columnCache.set(table,columns);return columns;
+  }
   async #uniqueSlug(value,excludeId=null){const base=slugify(value)||'post';const rows=(await this.q(`select slug from posts ${excludeId?'where id<>$1':''}`,excludeId?[excludeId]:[])).rows.map(x=>x.slug);return uniqueSlug(base,rows)}
 
   async findUserByUsername(u){return(await this.q('select * from admin_users where lower(username)=lower($1) and active=true limit 1',[u])).rows[0]||null}
@@ -50,46 +55,84 @@ export class PostgresStore{
 
   async upsertImports(rows){
     let inserted=0,changed=0,unchanged=0;
+    const columns=await this.tableColumns('raw_imports');
+    const modern=['source_hash','source_changed','quality_score','quality_issues','source_record_date','fetch_count','first_seen_at','last_seen_at','last_changed_at'].every(x=>columns.has(x));
     for(const i of rows){
-      const existing=(await this.q('select source_hash,review_status,promoted_post_id from raw_imports where source_key=$1',[i.source_key])).rows[0];
-      const isChanged=Boolean(existing&&i.source_hash&&existing.source_hash&&i.source_hash!==existing.source_hash);
-      const r=await this.q(`
-        insert into raw_imports(
-          source_key,source_name,source_id,source_url,source_slug,source_hash,source_payload,detected_type,prepared_draft,review_status,
-          source_changed,quality_score,quality_issues,source_record_date,fetch_count,first_seen_at,last_seen_at,last_changed_at
-        ) values($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9::jsonb,$10,false,$11,$12::jsonb,$13,1,now(),now(),now())
-        on conflict(source_key) do update set
-          source_name=excluded.source_name,source_id=excluded.source_id,source_url=excluded.source_url,source_slug=excluded.source_slug,
-          source_hash=excluded.source_hash,source_payload=excluded.source_payload,detected_type=excluded.detected_type,
-          prepared_draft=case when raw_imports.review_status in ('unreviewed','reviewing') and raw_imports.source_hash is distinct from excluded.source_hash then excluded.prepared_draft else raw_imports.prepared_draft end,
-          source_changed=raw_imports.source_changed or (raw_imports.source_hash is distinct from excluded.source_hash),
-          quality_score=excluded.quality_score,quality_issues=excluded.quality_issues,source_record_date=excluded.source_record_date,
-          fetch_count=coalesce(raw_imports.fetch_count,1)+1,last_seen_at=now(),
-          last_changed_at=case when raw_imports.source_hash is distinct from excluded.source_hash then now() else raw_imports.last_changed_at end,
-          updated_at=now()
-        returning (xmax=0) inserted
-      `,[i.source_key,i.source_name,i.source_id,i.source_url,i.source_slug,i.source_hash,json(i.source_payload||{}),i.detected_type,json(i.prepared_draft||{}),i.review_status||'unreviewed',i.quality_score||0,json(i.quality_issues||[]),i.source_record_date||null]);
-      if(r.rows[0]?.inserted)inserted++;else if(isChanged)changed++;else unchanged++;
+      if(modern){
+        const existing=(await this.q('select source_hash,review_status,promoted_post_id from raw_imports where source_key=$1',[i.source_key])).rows[0];
+        const isChanged=Boolean(existing&&i.source_hash&&existing.source_hash&&i.source_hash!==existing.source_hash);
+        const r=await this.q(`
+          insert into raw_imports(
+            source_key,source_name,source_id,source_url,source_slug,source_hash,source_payload,detected_type,prepared_draft,review_status,
+            source_changed,quality_score,quality_issues,source_record_date,fetch_count,first_seen_at,last_seen_at,last_changed_at
+          ) values($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9::jsonb,$10,false,$11,$12::jsonb,$13,1,now(),now(),now())
+          on conflict(source_key) do update set
+            source_name=excluded.source_name,source_id=excluded.source_id,source_url=excluded.source_url,source_slug=excluded.source_slug,
+            source_hash=excluded.source_hash,source_payload=excluded.source_payload,detected_type=excluded.detected_type,
+            prepared_draft=case when raw_imports.review_status in ('unreviewed','reviewing') and raw_imports.source_hash is distinct from excluded.source_hash then excluded.prepared_draft else raw_imports.prepared_draft end,
+            source_changed=raw_imports.source_changed or (raw_imports.source_hash is distinct from excluded.source_hash),
+            quality_score=excluded.quality_score,quality_issues=excluded.quality_issues,source_record_date=excluded.source_record_date,
+            fetch_count=coalesce(raw_imports.fetch_count,1)+1,last_seen_at=now(),
+            last_changed_at=case when raw_imports.source_hash is distinct from excluded.source_hash then now() else raw_imports.last_changed_at end,
+            updated_at=now()
+          returning (xmax=0) inserted
+        `,[i.source_key,i.source_name,i.source_id,i.source_url,i.source_slug,i.source_hash,json(i.source_payload||{}),i.detected_type,json(i.prepared_draft||{}),i.review_status||'unreviewed',i.quality_score||0,json(i.quality_issues||[]),i.source_record_date||null]);
+        if(r.rows[0]?.inserted)inserted++;else if(isChanged)changed++;else unchanged++;
+        continue;
+      }
+
+      const candidates=[
+        ['source_key',i.source_key],['source_name',i.source_name],['source_id',i.source_id],['source_url',i.source_url],
+        ['source_slug',i.source_slug],['source_payload',json(i.source_payload||{})],['detected_type',i.detected_type],
+        ['prepared_draft',json(i.prepared_draft||{})],['review_status',i.review_status||'unreviewed']
+      ].filter(([name])=>columns.has(name));
+      const names=candidates.map(([name])=>name),values=candidates.map(([,value])=>value);
+      const placeholders=names.map((name,n)=>`$${n+1}${['source_payload','prepared_draft'].includes(name)?'::jsonb':''}`);
+      const updates=names.filter(name=>name!=='source_key').map(name=>{
+        if(name==='prepared_draft'&&columns.has('review_status'))return `prepared_draft=case when raw_imports.review_status in ('unreviewed','reviewing') then excluded.prepared_draft else raw_imports.prepared_draft end`;
+        return `${name}=excluded.${name}`;
+      });
+      if(columns.has('updated_at'))updates.push('updated_at=now()');
+      const r=await this.q(`insert into raw_imports(${names.join(',')}) values(${placeholders.join(',')}) on conflict(source_key) do update set ${updates.join(',')} returning (xmax=0) inserted`,values);
+      if(r.rows[0]?.inserted)inserted++;else unchanged++;
     }
-    return{inserted,changed,unchanged,total:rows.length};
+    return{inserted,changed,unchanged,total:rows.length,legacy_schema:!modern};
   }
   async listImports(f={}){
+    const columns=await this.tableColumns('raw_imports');
     const p=[];const w=[];const add=(value,sql)=>{p.push(value);w.push(sql(p.length))};
-    if(f.status)add(f.status,n=>`review_status=$${n}`);
-    if(f.type)add(f.type,n=>`detected_type=$${n}`);
-    if(f.q)add(`%${f.q}%`,n=>`(coalesce(source_name,'') ilike $${n} or coalesce(source_slug,'') ilike $${n} or coalesce(source_url,'') ilike $${n} or source_payload::text ilike $${n})`);
-    return(await this.q(`select * from raw_imports ${w.length?'where '+w.join(' and '):''} order by coalesce(source_record_date,last_seen_at,updated_at) desc limit 5000`,p)).rows;
+    if(f.status&&columns.has('review_status'))add(f.status,n=>`review_status=$${n}`);
+    if(f.type&&columns.has('detected_type'))add(f.type,n=>`detected_type=$${n}`);
+    if(f.q){
+      const index=p.length+1;const clauses=[];
+      for(const name of ['source_name','source_slug','source_url'])if(columns.has(name))clauses.push(`coalesce(${name},'') ilike $${index}`);
+      if(columns.has('source_payload'))clauses.push(`source_payload::text ilike $${index}`);
+      if(clauses.length)add(`%${f.q}%`,()=>`(${clauses.join(' or ')})`);
+    }
+    const order=['source_record_date','last_seen_at','updated_at','created_at'].filter(x=>columns.has(x));
+    const orderExpr=order.length>1?`coalesce(${order.join(',')})`:(order[0]||'source_key');
+    return(await this.q(`select * from raw_imports ${w.length?'where '+w.join(' and '):''} order by ${orderExpr} desc limit 5000`,p)).rows;
   }
   async priorityImports({limit=100}={}){
-    const imports=(await this.q(`select * from raw_imports where review_status in ('unreviewed','reviewing') order by coalesce(source_record_date,last_seen_at,updated_at) desc limit 5000`)).rows;
-    const clicks=(await this.q(`select meta->>'target_url' target_url,count(*)::int clicks,max(created_at) last_clicked_at from analytics_events where event_type in ('related_click','recommendation_click') and coalesce(meta->>'target_url','')<>'' group by 1`)).rows;
+    const imports=(await this.listImports({})).filter(row=>['unreviewed','reviewing'].includes(row.review_status||'unreviewed'));
+    let clicks=[];
+    try{clicks=(await this.q(`select meta->>'target_url' target_url,count(*)::int clicks,max(created_at) last_clicked_at from analytics_events where event_type in ('related_click','recommendation_click') and coalesce(meta->>'target_url','')<>'' group by 1`)).rows}catch{}
     const byUrl=new Map(clicks.map(x=>[normalizeTargetUrl(x.target_url),x]));
-    return imports.map(row=>{const c=byUrl.get(normalizeTargetUrl(row.source_url))||{};return{...row,...demandPriority({clicks:c.clicks||0,fetchCount:row.fetch_count,quality:row.quality_score,sourceChanged:row.source_changed,lastClickedAt:c.last_clicked_at||null})}})
-      .sort((a,b)=>b.priority_score-a.priority_score||String(b.last_seen_at||b.updated_at||'').localeCompare(String(a.last_seen_at||a.updated_at||'')))
+    return imports.map(row=>{const c=byUrl.get(normalizeTargetUrl(row.source_url))||{};return{...row,...demandPriority({clicks:c.clicks||0,fetchCount:row.fetch_count||1,quality:row.quality_score||0,sourceChanged:Boolean(row.source_changed),lastClickedAt:c.last_clicked_at||null})}})
+      .sort((a,b)=>b.priority_score-a.priority_score||String(b.last_seen_at||b.updated_at||b.created_at||'').localeCompare(String(a.last_seen_at||a.updated_at||a.created_at||'')))
       .slice(0,Math.min(500,Math.max(1,Number(limit)||100)));
   }
   async getImport(id){return(await this.q('select * from raw_imports where id=$1',[id])).rows[0]||null}
-  async updateImport(id,p){const allowed=new Set(['review_status','detected_type','prepared_draft','promoted_post_id','source_changed']);const keys=Object.keys(p).filter(k=>allowed.has(k));if(!keys.length)return this.getImport(id);const vals=keys.map(k=>JSON_FIELDS.has(k)?json(p[k]):p[k]);const sets=keys.map((k,n)=>`${k}=$${n+2}${JSON_FIELDS.has(k)?'::jsonb':''}`).join(',');return(await this.q(`update raw_imports set ${sets},updated_at=now() where id=$1 returning *`,[id,...vals])).rows[0]||null}
+  async updateImport(id,p){
+    const columns=await this.tableColumns('raw_imports');
+    const allowed=new Set(['review_status','detected_type','prepared_draft','promoted_post_id','source_changed']);
+    const keys=Object.keys(p).filter(k=>allowed.has(k)&&columns.has(k));
+    if(!keys.length)return this.getImport(id);
+    const vals=keys.map(k=>JSON_FIELDS.has(k)?json(p[k]):p[k]);
+    const sets=keys.map((k,n)=>`${k}=$${n+2}${JSON_FIELDS.has(k)?'::jsonb':''}`);
+    if(columns.has('updated_at'))sets.push('updated_at=now()');
+    return(await this.q(`update raw_imports set ${sets.join(',')} where id=$1 returning *`,[id,...vals])).rows[0]||null;
+  }
 
   async listPosts(f={}){
     const p=[];const w=[];const add=(value,sql)=>{p.push(value);w.push(sql(p.length))};
