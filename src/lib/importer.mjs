@@ -1,6 +1,7 @@
 import { config } from '../config.mjs';
 import { hashKey } from './utils.mjs';
 import { detectContentType, ruleDraftFromRecord, isIndexLikeRecord, contentQuality } from './content-rules.mjs';
+import { normalizeClassification, normalizeGeo } from './global-content.mjs';
 
 const MAX_SOURCE_PAGES = 100;
 const PAGE_SIZE = 100;
@@ -156,6 +157,23 @@ export async function fetchImports(options={}) {
 
   const rows = records.map(record => {
     const prepared = ruleDraftFromRecord(record);
+    prepared.geo=normalizeGeo({
+      country_code:options.country_code||record.country_code||record.countryCode||record.country||config.sourceDefaultCountry,
+      country_name:record.country_name||record.countryName,
+      region_name:options.region_name||record.region_name||record.region||record.province||record.state||(Array.isArray(record.provinces)&&record.provinces.length===1?record.provinces[0]:null),
+      city:options.city||record.city,
+      location:record.location
+    });
+    prepared.classification=normalizeClassification({
+      organisation:record.organization||record.organisation||record.company||record.provider,
+      subcategory:record.subcategory,
+      opportunity_type:record.opportunityType||prepared.content_type,
+      education_level:record.educationLevel||record.education_level,
+      fields_of_study:record.fieldsOfStudy||record.fields_of_study,
+      job_type:record.jobType||record.job_type,
+      work_mode:record.workMode||record.work_mode,
+      eligibility_tags:Array.isArray(record.eligibility)?record.eligibility:[]
+    });
     const quality = contentQuality(prepared);
     return {
       source_key: hashKey(record.sourceId || 'source', record.id || record.url || record.slug || record.title),
