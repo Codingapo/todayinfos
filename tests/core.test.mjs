@@ -813,7 +813,8 @@ test('CEO owner retains complete import edit promote and publish permissions',()
 
 test('admin bundle has no collection-selector crash regressions',()=>{
   const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
-  assert.doesNotMatch(ui,/(^|[^$])\$\([^\n]*?\)\.(?:forEach|map|filter)\(/m);
+  const withoutMultiSelectors=ui.replace(/\$\$\(/g,'MULTI_SELECTOR(');
+  assert.doesNotMatch(withoutMultiSelectors,/\$\([^\n]*?\)\.(?:forEach|map|filter)\(/m);
   assert.doesNotMatch(ui,/\$\$\$\(/);
   assert.match(ui,/\$\$\('#nav button\[data-view\]'\)\.forEach/);
   assert.match(ui,/\$\$\('\.traffic-dot'\)\.forEach/);
