@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { id, nowIso, uniqueSlug, slugify } from './utils.mjs';
 import { calculateOpportunityStatus } from './content-rules.mjs';
 import { filterPost } from './global-content.mjs';
+import { rankTrending } from './ranking.mjs';
 
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const DB_FILE=path.resolve(__dirname,'../../data/demo-db.json');
@@ -88,6 +89,16 @@ export class DemoStore{
     rows=rows.sort((a,b)=>String(b.published_at||b.posted_date||b.updated_at).localeCompare(String(a.published_at||a.posted_date||a.updated_at)));
     return rows.map(p=>({...p,views:this.db.analytics.filter(e=>e.post_id===p.id&&e.event_type==='view').length,reads:this.db.analytics.filter(e=>e.post_id===p.id&&e.event_type==='read').length}));
   }
+  async trendingPosts(f={}){
+    const rows=await this.listPosts({...f,status:'published'});
+    const cutoff=Date.now()-14*86400000;const counts={};
+    for(const e of this.db.analytics){
+      if(!e.post_id||new Date(e.created_at).getTime()<cutoff)continue;
+      counts[e.post_id]||={};counts[e.post_id][e.event_type]=(counts[e.post_id][e.event_type]||0)+1;
+    }
+    return rankTrending(rows,counts);
+  }
+  async visitorEvents(visitorId,limit=200){return this.db.analytics.filter(e=>e.visitor_id===visitorId).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))).slice(0,limit)}
   async getPost(v){return this.db.posts.find(p=>p.id===v)||null}
   async getPostBySlug(slug){return this.db.posts.find(p=>p.slug===slug&&p.status==='published'&&!p.deleted_at)||null}
   async createPost(i,actor=null){
