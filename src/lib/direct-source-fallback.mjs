@@ -107,16 +107,26 @@ async function fetchDetails(links,family,limit){
 
 async function dailyUpdateFallback(maxPages){
   const pages=Math.min(30,Math.max(1,Number(maxPages)||10));const links=[];let listingPages=0;
-  for(let page=1;page<=pages;page++){
-    const url=page===1?'https://dailyupdate.co.za/category/vacancies/':`https://dailyupdate.co.za/category/vacancies/page/${page}/`;
-    try{const res=await fetchHtml(url);listingPages+=1;links.push(...anchors(res.html,res.url).filter(usefulDailyUpdateLink))}
-    catch{if(page===1)throw new Error('DailyUpdate website fallback is unavailable');break}
+  const seeds=['https://dailyupdate.co.za/category/vacancies/','https://dailyupdate.co.za/'];
+  for(const url of seeds){
+    try{const res=await fetchHtml(url);listingPages+=1;links.push(...anchors(res.html,res.url).filter(usefulDailyUpdateLink))}catch{}
   }
+  for(let page=2;page<=pages;page++){
+    const urls=[
+      `https://dailyupdate.co.za/category/vacancies/page/${page}/`,
+      `https://dailyupdate.co.za/page/${page}/`
+    ];
+    let fetched=false;
+    for(const url of urls){
+      try{const res=await fetchHtml(url);listingPages+=1;links.push(...anchors(res.html,res.url).filter(usefulDailyUpdateLink));fetched=true;break}catch{}
+    }
+    if(!fetched&&page===2&&!listingPages)break;
+  }
+  if(!listingPages)throw new Error('DailyUpdate website fallback is unavailable');
   const unique=[...new Map(links.map(x=>[x.url.replace(/\/$/,''),x])).values()];
   const detail=await fetchDetails(unique,'dailyupdate',Math.min(300,Math.max(20,pages*12)));
   return{records:detail.records,stats:{mode:'direct-website',listingPages,discovered:unique.length,detailFailed:detail.failed}};
 }
-
 async function zaBursariesFallback(maxPages,year){
   const now=new Date();const y=Number(String(year||now.getFullYear()).replace(/\D/g,''))||now.getFullYear();
   const seeds=['https://www.zabursaries.co.za/','https://www.zabursaries.co.za/bursary-news/',`https://www.zabursaries.co.za/?s=${y}`];
