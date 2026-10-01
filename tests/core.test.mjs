@@ -17,6 +17,8 @@ import { searchScore, trendScore, deriveVisitorSignals } from '../src/lib/rankin
 import { loadSouthAfricaReferenceSeed } from '../src/lib/reference-seed.mjs';
 import { autoPublishDecision } from '../src/lib/auto-publish.mjs';
 import { applyLearningHints, learnIntoProfile, learningQualityBonus } from '../src/lib/import-learning.mjs';
+import { sourceFamily, improveDraftForSource, isSourceIndexRecord, discoverSourceLinks } from '../src/lib/source-profiles.mjs';
+import { demandPriority, clickedDiscoveryRow } from '../src/lib/demand-priority.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
   assert.equal(slugify('University of Limpopo — Applications 2027!'),'university-of-limpopo-applications-2027');
@@ -383,4 +385,109 @@ test('Import Inbox UI advertises the 80-percent auto-publish rule',()=>{
   const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
   assert.match(ui,/Auto-publish clean imports scoring 80% or higher/);
   assert.doesNotMatch(ui,/Publish up to 3 clean preview posts/);
+});
+
+
+test('DailyUpdate source profile removes article chrome and extracts job structure',()=>{
+  const record={
+    sourceId:'dailyupdate',url:'https://dailyupdate.co.za/example-hiring-2026/',
+    title:'Example Stores Hiring 2026: Apply Now',
+    contentText:'Table of Contents\nToggle\nExample Stores Hiring 2026: Apply Now\n## Requirements\n- Grade 12\n- Good communication\n## How to Apply\nApply on the official careers website.\n',
+    links:[
+      {title:'Official careers - Apply',url:'https://careers.example.org/jobs'},
+      {title:'Facebook',url:'https://facebook.com/example'}
+    ]
+  };
+  assert.equal(sourceFamily(record),'dailyupdate');
+  const draft=improveDraftForSource(record,{title:record.title,content_type:'news',body_markdown:record.contentText,type_data:{}});
+  assert.equal(draft.content_type,'job');
+  assert.doesNotMatch(draft.body_markdown,/Table of Contents|Toggle/);
+  assert.match(draft.type_data.requirements,/Grade 12/);
+  assert.equal(draft.type_data.application_url,'https://careers.example.org/jobs');
+});
+
+test('ZA Bursaries source profile extracts eligibility application and closing date',()=>{
+  const record={
+    sourceId:'zabursaries',url:'https://www.zabursaries.co.za/example-bursary/',
+    title:'Example Foundation Bursary South Africa 2027',
+    contentText:'### ELIGIBILITY REQUIREMENTS FOR THE EXAMPLE BURSARY\n- South African citizen\n- Study Engineering\n### HOW TO APPLY FOR THE EXAMPLE BURSARY\nApplications must be submitted online.\n### SUPPORTING DOCUMENTS\n- ID document\n- Academic record\n### CLOSING DATE FOR THE EXAMPLE BURSARY\n31 October 2026\n',
+    links:[{title:'Example Bursary Application 2027',url:'https://apply.example.org/bursary'}]
+  };
+  const draft=improveDraftForSource(record,{title:record.title,content_type:'other',body_markdown:record.contentText,type_data:{}});
+  assert.equal(sourceFamily(record),'zabursaries');
+  assert.equal(draft.content_type,'bursary');
+  assert.match(draft.type_data.eligibility,/South African citizen/);
+  assert.match(draft.type_data.how_to_apply,/submitted online/i);
+  assert.match(draft.type_data.supporting_documents,/Academic record/);
+  assert.equal(draft.type_data.closing_date,'2026-10-31');
+  assert.equal(draft.type_data.application_url,'https://apply.example.org/bursary');
+});
+
+test('ZA Bursaries monthly closing pages are discovery indexes, not bursary articles',()=>{
+  assert.equal(isSourceIndexRecord({
+    sourceId:'zabursaries',title:'BURSARIES CLOSING IN OCTOBER 2026',
+    url:'https://www.zabursaries.co.za/bursaries-closing-in-october-2026/'
+  }),true);
+});
+
+test('source discovery keeps opportunity links but drops junk links',()=>{
+  const rows=discoverSourceLinks([{
+    sourceId:'zabursaries',title:'BURSARIES CLOSING IN OCTOBER 2026',
+    url:'https://www.zabursaries.co.za/bursaries-closing-in-october-2026/',
+    links:[
+      {title:'NSFAS Funding',url:'https://www.zabursaries.co.za/nsfas-funding/'},
+      {title:'Privacy Policy',url:'https://www.zabursaries.co.za/privacy/'}
+    ]
+  }]);
+  assert.equal(rows.length,1);
+  assert.equal(rows[0].suggested_type,'bursary');
+  assert.equal(rows[0].reason,'source_index');
+});
+
+test('visitor click makes a missing content lead highest priority',()=>{
+  const p=demandPriority({clicks:1,quality:10,fetchCount:1});
+  const ordinary=demandPriority({clicks:0,quality:100,fetchCount:10,sourceChanged:true});
+  assert.equal(p.priority,'highest');
+  assert.ok(p.priority_score>ordinary.priority_score);
+});
+
+test('clicked missing URL becomes a private draft discovery row',()=>{
+  const row=clickedDiscoveryRow({url:'https://source.example/new-bursary',title:'New Bursary',suggestedType:'bursary',sourcePostId:'p1'});
+  assert.equal(row.review_status,'unreviewed');
+  assert.equal(row.prepared_draft.status,'draft');
+  assert.equal(row.detected_type,'bursary');
+  assert.equal(row.source_payload.reason,'visitor_click');
+});
+
+test('public links include frontend-ready demand tracking metadata',()=>{
+  const p=publicPost({
+    id:'track1',slug:'tracked-bursary',title:'Tracked Bursary',content_type:'bursary',summary:'Funding',
+    body_markdown:'Details',posted_date:'2026-10-01',category:'Bursaries',categories:['Bursaries'],tags:['Bursaries'],
+    topics:[],related_links:[{title:'Official guide',url:'https://example.org/guide'}],related_ids:[],recommendation_ids:[],
+    recommendation_links:[{title:'Another bursary',url:'https://source.example/another'}],documents:[],navigation_links:[],
+    type_data:{provider:'Example',closing_date:'2026-11-01',status_override:'open',application_url:'https://apply.example.org'},
+    status:'published',created_at:'2026-10-01',updated_at:'2026-10-01'
+  });
+  assert.equal(p.related_links[0].tracking.event_type,'related_click');
+  assert.equal(p.recommendation_links[0].tracking.event_type,'recommendation_click');
+  assert.equal(p.recommendation_links[0].tracking.target_url,'https://source.example/another');
+  assert.equal(p.application_tracking.event_type,'application_click');
+});
+
+test('reference bootstrap is coded to publish and artifact-sync the 40 seed records',()=>{
+  const src=fs.readFileSync(new URL('../src/lib/reference-seed.mjs',import.meta.url),'utf8');
+  assert.match(src,/status:'published'/);
+  assert.match(src,/publishPostArtifact\(store,post\)/);
+  const seed=loadSouthAfricaReferenceSeed();
+  assert.equal(seed.rows.length,40);
+});
+
+test('dashboard exposes demand queue and richer analytics',()=>{
+  const html=fs.readFileSync(new URL('../public/admin/index.html',import.meta.url),'utf8');
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(html,/data-view="demand"/);
+  assert.match(ui,/Missing content users actually want/);
+  assert.match(ui,/Top searches/);
+  assert.match(ui,/Visitors by country/);
+  assert.match(ui,/Fetch & process/);
 });
