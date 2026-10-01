@@ -60,6 +60,8 @@ create table if not exists posts (
   documents jsonb not null default '[]'::jsonb,
   navigation_links jsonb not null default '[]'::jsonb,
   type_data jsonb not null default '{}'::jsonb,
+  geo jsonb not null default '{}'::jsonb,
+  classification jsonb not null default '{}'::jsonb,
   main_image_url text,
   seo_title text,
   seo_description text,
@@ -77,6 +79,10 @@ create index if not exists posts_public_idx on posts(status,content_type,publish
 create index if not exists posts_tags_gin on posts using gin(tags);
 create index if not exists posts_categories_gin on posts using gin(categories);
 create index if not exists posts_type_data_gin on posts using gin(type_data);
+create index if not exists posts_geo_gin on posts using gin(geo);
+create index if not exists posts_classification_gin on posts using gin(classification);
+create index if not exists posts_country_idx on posts((upper(coalesce(geo->>'country_code',''))));
+create index if not exists posts_region_idx on posts((lower(coalesce(geo->>'region_name',''))));
 
 create table if not exists post_revisions (
   id uuid primary key default gen_random_uuid(),
