@@ -84,6 +84,12 @@ export const SOURCE_CATALOG=[
     action:{type:'harvest',provider:'remotive'}
   },
   {
+    id:'eures',label:'EURES',category:'public_job_apis',region:'European Union / EEA',country_code:null,
+    content_types:['job','internship'],mode:'official_portal',integration_status:'discovery',
+    description:'Official European employment-services network used for first-party job discovery and location verification.',
+    homepage:'https://eures.europa.eu/',aliases:['eures']
+  },
+  {
     id:'usajobs',label:'USAJOBS',category:'public_job_apis',region:'United States',country_code:'US',
     content_types:['job'],mode:'official_api',integration_status:'credentials_required',
     description:'Official United States federal jobs API. Search access requires registered API credentials and source attribution.',
