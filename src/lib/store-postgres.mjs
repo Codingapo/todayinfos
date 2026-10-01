@@ -28,10 +28,34 @@ export class PostgresStore{
     return{cards:{open_bursaries:openB,closed_bursaries:closedB,published_posts:posts.length,visitors_today:visits.visitors,reads_today:visits.reads,raw_imports_waiting:waiting},content_mix:mix,views_by_type:Object.fromEntries(viewMix.map(x=>[x.content_type,x.n])),top_posts:top,recent_activity:activity}
   }
 
-  async upsertImports(rows){let inserted=0,updated=0;for(const i of rows){const r=await this.q(`insert into raw_imports(source_key,source_name,source_id,source_url,source_slug,source_payload,detected_type,prepared_draft,review_status) values($1,$2,$3,$4,$5,$6::jsonb,$7,$8::jsonb,$9) on conflict(source_key) do update set source_name=excluded.source_name,source_id=excluded.source_id,source_url=excluded.source_url,source_slug=excluded.source_slug,source_payload=excluded.source_payload,detected_type=excluded.detected_type,prepared_draft=excluded.prepared_draft,updated_at=now() returning (xmax=0) inserted`,[i.source_key,i.source_name,i.source_id,i.source_url,i.source_slug,json(i.source_payload||{}),i.detected_type,json(i.prepared_draft||{}),i.review_status||'unreviewed']);if(r.rows[0]?.inserted)inserted++;else updated++}return{inserted,updated,total:rows.length}}
-  async listImports(f={}){const p=[];const w=[];if(f.status){p.push(f.status);w.push(`review_status=$${p.length}`)}if(f.type){p.push(f.type);w.push(`detected_type=$${p.length}`)}if(f.q){p.push(`%${f.q}%`);w.push(`(coalesce(source_name,'') ilike $${p.length} or coalesce(source_slug,'') ilike $${p.length} or source_payload::text ilike $${p.length})`)}return(await this.q(`select * from raw_imports ${w.length?'where '+w.join(' and '):''} order by updated_at desc limit 1000`,p)).rows}
+  async upsertImports(rows){
+    let inserted=0,changed=0,unchanged=0;
+    for(const i of rows){
+      const existing=(await this.q('select source_hash,review_status,promoted_post_id from raw_imports where source_key=$1',[i.source_key])).rows[0];
+      const isChanged=Boolean(existing&&i.source_hash&&existing.source_hash&&i.source_hash!==existing.source_hash);
+      const r=await this.q(`
+        insert into raw_imports(
+          source_key,source_name,source_id,source_url,source_slug,source_hash,source_payload,detected_type,prepared_draft,review_status,
+          source_changed,quality_score,quality_issues,source_record_date,fetch_count,first_seen_at,last_seen_at,last_changed_at
+        ) values($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9::jsonb,$10,false,$11,$12::jsonb,$13,1,now(),now(),now())
+        on conflict(source_key) do update set
+          source_name=excluded.source_name,source_id=excluded.source_id,source_url=excluded.source_url,source_slug=excluded.source_slug,
+          source_hash=excluded.source_hash,source_payload=excluded.source_payload,detected_type=excluded.detected_type,
+          prepared_draft=case when raw_imports.review_status in ('unreviewed','reviewing') and raw_imports.source_hash is distinct from excluded.source_hash then excluded.prepared_draft else raw_imports.prepared_draft end,
+          source_changed=raw_imports.source_changed or (raw_imports.source_hash is distinct from excluded.source_hash),
+          quality_score=excluded.quality_score,quality_issues=excluded.quality_issues,source_record_date=excluded.source_record_date,
+          fetch_count=coalesce(raw_imports.fetch_count,1)+1,last_seen_at=now(),
+          last_changed_at=case when raw_imports.source_hash is distinct from excluded.source_hash then now() else raw_imports.last_changed_at end,
+          updated_at=now()
+        returning (xmax=0) inserted
+      `,[i.source_key,i.source_name,i.source_id,i.source_url,i.source_slug,i.source_hash,json(i.source_payload||{}),i.detected_type,json(i.prepared_draft||{}),i.review_status||'unreviewed',i.quality_score||0,json(i.quality_issues||[]),i.source_record_date||null]);
+      if(r.rows[0]?.inserted)inserted++;else if(isChanged)changed++;else unchanged++;
+    }
+    return{inserted,changed,unchanged,total:rows.length};
+  }
+  async listImports(f={}){const p=[];const w=[];if(f.status){p.push(f.status);w.push(`review_status=$${p.length}`)}if(f.type){p.push(f.type);w.push(`detected_type=$${p.length}`)}if(f.q){p.push(`%${f.q}%`);w.push(`(coalesce(source_name,'') ilike $${p.length} or coalesce(source_slug,'') ilike $${p.length} or source_payload::text ilike $${p.length})`)}return(await this.q(`select * from raw_imports ${w.length?'where '+w.join(' and '):''} order by coalesce(source_record_date,last_seen_at,updated_at) desc limit 5000`,p)).rows}
   async getImport(id){return(await this.q('select * from raw_imports where id=$1',[id])).rows[0]||null}
-  async updateImport(id,p){const allowed=new Set(['review_status','detected_type','prepared_draft','promoted_post_id']);const keys=Object.keys(p).filter(k=>allowed.has(k));if(!keys.length)return this.getImport(id);const vals=keys.map(k=>JSON_FIELDS.has(k)?json(p[k]):p[k]);const sets=keys.map((k,n)=>`${k}=$${n+2}${JSON_FIELDS.has(k)?'::jsonb':''}`).join(',');return(await this.q(`update raw_imports set ${sets},updated_at=now() where id=$1 returning *`,[id,...vals])).rows[0]||null}
+  async updateImport(id,p){const allowed=new Set(['review_status','detected_type','prepared_draft','promoted_post_id','source_changed']);const keys=Object.keys(p).filter(k=>allowed.has(k));if(!keys.length)return this.getImport(id);const vals=keys.map(k=>JSON_FIELDS.has(k)?json(p[k]):p[k]);const sets=keys.map((k,n)=>`${k}=$${n+2}${JSON_FIELDS.has(k)?'::jsonb':''}`).join(',');return(await this.q(`update raw_imports set ${sets},updated_at=now() where id=$1 returning *`,[id,...vals])).rows[0]||null}
 
   async listPosts(f={}){const p=[];const w=[];if(!f.include_deleted)w.push('deleted_at is null');if(f.status){p.push(f.status);w.push(`status=$${p.length}`)}if(f.type){p.push(f.type);w.push(`content_type=$${p.length}`)}if(f.trending!==undefined){p.push(Boolean(f.trending));w.push(`is_trending=$${p.length}`)}if(f.q){p.push(`%${f.q}%`);w.push(`(title ilike $${p.length} or summary ilike $${p.length} or body_markdown ilike $${p.length} or type_data::text ilike $${p.length})`)}if(f.tag){p.push(slugify(f.tag));w.push(`exists(select 1 from unnest(tags)t where regexp_replace(lower(t),'[^a-z0-9]+','-','g')=$${p.length})`)}if(f.category){p.push(slugify(f.category));w.push(`(regexp_replace(lower(coalesce(category,'')),'[^a-z0-9]+','-','g')=$${p.length} or exists(select 1 from unnest(categories)t where regexp_replace(lower(t),'[^a-z0-9]+','-','g')=$${p.length}))`)}return(await this.q(`select posts.*,(select count(*)::int from analytics_events a where a.post_id=posts.id and a.event_type='view') views,(select count(*)::int from analytics_events a where a.post_id=posts.id and a.event_type='read') reads from posts ${w.length?'where '+w.join(' and '):''} order by coalesce(published_at,posted_date,updated_at) desc limit 1000`,p)).rows}
   async getPost(id){return(await this.q('select * from posts where id=$1',[id])).rows[0]||null}
@@ -41,7 +65,13 @@ export class PostgresStore{
   async trashPost(id,a){return this.updatePost(id,{deleted_at:new Date().toISOString(),status:'trash'},a)}
   async restorePost(id,a){return this.updatePost(id,{deleted_at:null,status:'draft'},a)}
   async revisions(id){return(await this.q('select * from post_revisions where post_id=$1 order by created_at desc',[id])).rows}
-  async promoteImport(id,actor){const imp=await this.getImport(id);if(!imp)return null;const post=await this.createPost({...imp.prepared_draft,status:'draft',source:{source_name:imp.source_name,source_id:imp.source_id,source_url:imp.source_url,source_slug:imp.source_slug,raw_import_id:imp.id}},actor);await this.updateImport(id,{review_status:'promoted',promoted_post_id:post.id});return post}
+  async promoteImport(id,actor){
+    const imp=await this.getImport(id);if(!imp)return null;
+    if(imp.promoted_post_id){const existing=await this.getPost(imp.promoted_post_id);if(existing)return existing}
+    const post=await this.createPost({...imp.prepared_draft,status:'draft',source:{source_name:imp.source_name,source_id:imp.source_id,source_url:imp.source_url,source_slug:imp.source_slug,raw_import_id:imp.id}},actor);
+    await this.updateImport(id,{review_status:'promoted',promoted_post_id:post.id,source_changed:false});
+    return post;
+  }
 
   async recordEvent(i){return(await this.q(`insert into analytics_events(visitor_id,event_type,post_id,meta) values($1,$2,$3,$4::jsonb) returning *`,[i.visitor_id||null,i.event_type,i.post_id||null,json(i.meta||{})])).rows[0]}
   async analyticsSummary(){const totals=(await this.q(`select event_type,count(*)::int n from analytics_events group by event_type`)).rows;const daily=(await this.q(`select created_at::date date,count(*)::int total from analytics_events where created_at>=current_date-interval '30 days' group by 1 order by 1`)).rows;const u=(await this.q(`select count(distinct visitor_id)::int n from analytics_events`)).rows[0].n;const mix=(await this.q(`select coalesce(p.content_type,'other') content_type,count(*)::int n from analytics_events a left join posts p on p.id=a.post_id where a.event_type='view' group by 1`)).rows;return{totals:Object.fromEntries(totals.map(x=>[x.event_type,x.n])),daily,unique_visitors:u,views_by_content_type:Object.fromEntries(mix.map(x=>[x.content_type,x.n]))}}
