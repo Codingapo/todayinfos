@@ -1139,7 +1139,7 @@ test('CEO Import Inbox Demand Queue and content editor controls remain wired',()
   const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
   assert.match(ui,/\$\$\('\#nav button\[data-view\]'\)\.forEach/);
   assert.equal(ui.split('\n').some(line=>line.trim().startsWith("$('#nav button[data-view]').forEach")),false);
-  assert.match(ui,/id="saveImportCleanup"/);
+  assert.match(ui,/id="saveImportReview"/);
   assert.match(ui,/id="promoteImport"/);
   assert.match(ui,/id="publishImport"/);
   assert.match(ui,/fetch-demand/);
