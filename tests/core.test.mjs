@@ -26,7 +26,8 @@ import { applicationCandidates, buildApplicationGuide } from '../src/lib/applica
 import { plainEnglishNewsDraft } from '../src/lib/plain-content.mjs';
 import { NEWS_FEEDS } from '../src/lib/news-harvest.mjs';
 import { buildTrafficAtlas, continentForCode } from '../src/lib/geo-analytics.mjs';
-import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload } from '../src/lib/source-catalog.mjs';
+import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload, sourcePublishingPolicy } from '../src/lib/source-catalog.mjs';
+import { sourceEndpointCandidates } from '../src/lib/importer.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
   assert.equal(slugify('University of Limpopo — Applications 2027!'),'university-of-limpopo-applications-2027');
@@ -800,4 +801,87 @@ test('dashboard exposes official-news batches direct-link processing and world t
   assert.match(ui,/Checking apply links/);
   assert.match(ui,/WORLD TRAFFIC ATLAS/);
   assert.match(ui,/application clicks/);
+});
+
+
+test('repair: dashboard collection selectors use the multi-element helper',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  const forbidden=[
+    "$('#nav button[data-view]').forEach",
+    "$('#nav p').forEach",
+    "$('.traffic-dot').forEach",
+    "$('.continent-card').forEach",
+    "$('.run-news').forEach",
+    "$('.choose-harvest').forEach"
+  ];
+  for(const pattern of forbidden){
+    const trueSingle=ui.split('\n').some(line=>line.trimStart().startsWith(pattern));
+    assert.equal(trueSingle,false,pattern);
+  }
+  assert.match(ui,/\$\$\('#nav button\[data-view\]'\)\.forEach/);
+  assert.match(ui,/\$\$\('\.traffic-dot'\)\.forEach/);
+});
+
+test('repair: Import Inbox review is editable and can save then promote',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(ui,/Clean imported content/);
+  assert.match(ui,/name="title"/);
+  assert.match(ui,/name="summary"/);
+  assert.match(ui,/name="body_markdown"/);
+  assert.match(ui,/name="application_url"/);
+  assert.match(ui,/Save cleanup/);
+  assert.match(ui,/Save & promote to draft/);
+  assert.match(ui,/Open draft/);
+});
+
+test('repair: partial import cleanup merges with the existing prepared draft',()=>{
+  const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+  assert.match(admin,/const current=await store\.getImport\(req\.params\.id\)/);
+  assert.match(admin,/\.\.\.oldDraft,\.\.\.incoming/);
+  assert.match(admin,/type_data:\{\.\.\.\(oldDraft\.type_data\|\|\{\}\),\.\.\.\(incoming\.type_data\|\|\{\}\)\}/);
+});
+
+test('repair: DailyUpdate and bursary source fetches have fallback candidates',()=>{
+  assert.deepEqual(sourceEndpointCandidates('dailyupdate/jobs'),['/dailyupdate/jobs','/dailyupdate','/articles']);
+  assert.deepEqual(sourceEndpointCandidates('bursaries'),['/bursaries','/search?q=bursary']);
+  const src=fs.readFileSync(new URL('../src/lib/importer.mjs',import.meta.url),'utf8');
+  assert.match(src,/attempts=3/);
+  assert.match(src,/Source API returned HTTP/);
+});
+
+test('repair: Deep Sync defaults to all years instead of silently filtering current year',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(ui,/Leave blank to fetch all years/);
+  assert.doesNotMatch(ui,/name="year" inputmode="numeric" value="\$\{currentYear\}"/);
+});
+
+test('repair: Source Hub publishes explicit non-AI reuse and paraphrase policies',()=>{
+  const sanews=SOURCE_CATALOG.find(x=>x.id==='sanews');
+  const gov=SOURCE_CATALOG.find(x=>x.id==='govza');
+  const jobs=SOURCE_CATALOG.find(x=>x.id==='greenhouse');
+  const a=sourcePublishingPolicy(sanews),b=sourcePublishingPolicy(gov),c=sourcePublishingPolicy(jobs);
+  assert.equal(a.ai_rewriting,false);
+  assert.equal(a.mode,'reuse_with_credit');
+  assert.equal(a.can_paraphrase,true);
+  assert.equal(b.mode,'facts_and_link');
+  assert.equal(c.mode,'structured_facts_and_link');
+  assert.equal(c.can_paraphrase,false);
+});
+
+test('repair: official news harvest is draft-first and never auto-publishes from Source Hub',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+  assert.match(ui,/autoPublish:false/);
+  assert.match(ui,/prepared as private drafts for review/);
+  assert.match(admin,/Invalid news harvest options/);
+  assert.match(admin,/autoPublish:z\.boolean\(\)\.optional\(\)\.default\(false\)/);
+});
+
+test('repair: CEO Owner still has full edit review promote and publish permissions',()=>{
+  assert.equal(hasPermission('owner','imports.view'),true);
+  assert.equal(hasPermission('owner','imports.fetch'),true);
+  assert.equal(hasPermission('owner','imports.review'),true);
+  assert.equal(hasPermission('owner','posts.view'),true);
+  assert.equal(hasPermission('owner','posts.edit'),true);
+  assert.equal(hasPermission('owner','posts.publish'),true);
 });
