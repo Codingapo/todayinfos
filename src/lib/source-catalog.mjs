@@ -209,6 +209,16 @@ export const SOURCE_CATALOG=[
   }
 ];
 
+export function sourcePublishingPolicy(source={}){
+  const base={ai_rewriting:false,human_editing:true,store_source_url:true,attribution_required:true};
+  if(source.id==='sanews')return{...base,mode:'reuse_with_credit',can_paraphrase:true,can_quote_or_reuse:true,auto_publish_news:false,note:'SAnews permits media reuse when SAnews is credited. TodayInfo still keeps review/editing before publication.'};
+  if(['govza','dpsa'].includes(source.id))return{...base,mode:'facts_and_link',can_paraphrase:true,can_quote_or_reuse:false,auto_publish_news:false,note:'Use factual metadata and a short original summary with a source link. Do not copy full text for commercial use without permission.'};
+  if(source.category==='south_africa_official')return{...base,mode:'summary_and_link',can_paraphrase:true,can_quote_or_reuse:false,auto_publish_news:false,note:'Create a short factual TodayInfo summary, preserve attribution and link to the official source. Human review remains required.'};
+  if(['public_job_apis','employer_ats'].includes(source.category))return{...base,mode:'structured_facts_and_link',can_paraphrase:false,can_quote_or_reuse:false,auto_publish_news:false,note:'Store structured job facts, requirements when permitted, and the real application/source link. Avoid copying full descriptions unless the provider terms allow it.'};
+  if(['scholarships_funding','international_organisations'].includes(source.category))return{...base,mode:'summary_and_link',can_paraphrase:true,can_quote_or_reuse:false,auto_publish_news:false,note:'Use structured facts and a concise original summary with clear source attribution and official links.'};
+  return{...base,mode:'structured_extract',can_paraphrase:true,can_quote_or_reuse:false,auto_publish_news:false,note:'Use TodayInfo extraction rules, keep provenance, and require human editing for rewritten narrative content.'};
+}
+
 export const ACTIVE_HARVEST_SOURCE_IDS=SOURCE_CATALOG.filter(x=>x.action?.type==='harvest').map(x=>x.id);
 
 export function categorizedSources(){
@@ -229,6 +239,7 @@ export function sourceCatalogWithStats({imports=[],posts=[]}={}){
     const sourcePosts=posts.filter(row=>matchesSource(row,source));
     return {
       ...source,
+      publishing_policy:sourcePublishingPolicy(source),
       stats:{
         imports:sourceImports.length,
         waiting:sourceImports.filter(x=>x.review_status==='unreviewed').length,
