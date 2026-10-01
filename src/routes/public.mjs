@@ -129,6 +129,33 @@ publicRouter.get('/personalized',async(req,res)=>{
   res.json({data,meta:{published_only:true,personalized:true,signals,filters}});
 });
 
+publicRouter.get('/facets',async(req,res)=>{
+  const rows=await store.listPosts({status:'published',...queryFilters(req.query)});
+  const bucket=getter=>{const m=new Map();for(const row of rows){const values=getter(row);for(const value of (Array.isArray(values)?values:[values])){if(!value)continue;const key=String(value);m.set(key,(m.get(key)||0)+1)}}return [...m.entries()].map(([value,count])=>({value,count})).sort((a,b)=>b.count-a.count)};
+  res.json({data:{
+    total:rows.length,
+    content_types:bucket(x=>x.content_type),countries:bucket(x=>x.geo?.country_code),regions:bucket(x=>x.geo?.region_name),
+    cities:bucket(x=>x.geo?.city),categories:bucket(x=>[x.category,...(x.categories||[])]),
+    organisations:bucket(x=>x.classification?.organisation),education_levels:bucket(x=>x.classification?.education_level||[]),
+    fields_of_study:bucket(x=>x.classification?.fields_of_study||[]),job_types:bucket(x=>x.classification?.job_type),
+    work_modes:bucket(x=>x.classification?.work_mode),currencies:bucket(x=>x.classification?.salary?.currency)
+  },meta:{published_only:true,filters:queryFilters(req.query)}});
+});
+
+publicRouter.get('/locations',async(req,res)=>{
+  const filters=queryFilters(req.query);const rows=await store.listPosts({status:'published',...filters});
+  const countries=new Map();
+  for(const row of rows){
+    const code=normalizeCountryCode(row.geo?.country_code||'');if(!code)continue;
+    let country=countries.get(code);
+    if(!country){country={code,name:row.geo?.country_name||code,count:0,regions:new Map(),cities:new Map()};countries.set(code,country)}
+    country.count+=1;
+    if(row.geo?.region_name)country.regions.set(row.geo.region_name,(country.regions.get(row.geo.region_name)||0)+1);
+    if(row.geo?.city)country.cities.set(row.geo.city,(country.cities.get(row.geo.city)||0)+1);
+  }
+  res.json({data:[...countries.values()].map(c=>({code:c.code,name:c.name,count:c.count,regions:[...c.regions].map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count),cities:[...c.cities].map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count)})).sort((a,b)=>b.count-a.count),meta:{published_only:true,filters}});
+});
+
 publicRouter.get('/countries',async(req,res)=>{
   const rows=await store.listPosts({status:'published'});
   const map=new Map();
