@@ -97,7 +97,6 @@ export class PostgresStore{
     if(f.status)add(f.status,n=>`status=$${n}`);
     if(f.type)add(f.type,n=>`content_type=$${n}`);
     if(f.trending!==undefined)add(Boolean(f.trending),n=>`is_trending=$${n}`);
-    if(f.q)add(`%${f.q}%`,n=>`(title ilike $${n} or summary ilike $${n} or body_markdown ilike $${n} or type_data::text ilike $${n} or geo::text ilike $${n} or classification::text ilike $${n} or array_to_string(tags,' ') ilike $${n})`);
     if(f.tag)add(slugify(f.tag),n=>`exists(select 1 from unnest(tags)t where regexp_replace(lower(t),'[^a-z0-9]+','-','g')=$${n})`);
     if(f.category)add(slugify(f.category),n=>`(regexp_replace(lower(coalesce(category,'')),'[^a-z0-9]+','-','g')=$${n} or exists(select 1 from unnest(categories)t where regexp_replace(lower(t),'[^a-z0-9]+','-','g')=$${n}))`);
     if(f.country)add(normalizeCountryCode(f.country),n=>`upper(coalesce(geo->>'country_code',''))=$${n}`);
