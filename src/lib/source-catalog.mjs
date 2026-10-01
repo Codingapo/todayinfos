@@ -216,6 +216,26 @@ export const SOURCE_CATALOG=[
 ];
 
 export function editorialPolicyFor(source={}){
+  if(source.publishing_policy){
+    const p=source.publishing_policy;
+    return{
+      mode:p.mode||'review_required',
+      publishable:p.publishable||['structured facts after review'],
+      paraphrase:p.auto_rewrite===false?'Automatic rewriting is disabled. Use manual TodayInfo wording based on verified facts.':(p.note||'Review before publishing.'),
+      verify:[
+        p.verify_application_url?'real application destination':null,
+        p.verify_facts?'source facts':null,
+        p.attribution_required?'source attribution':null
+      ].filter(Boolean),
+      avoid:[
+        p.full_copy===false?'copying full source pages':null,
+        p.auto_rewrite===false?'automatic rewriting':null,
+        p.rights_status==='republishing_restricted'?'republishing restricted source prose':null
+      ].filter(Boolean),
+      rights_status:p.rights_status||null,
+      rights_note:p.rights_note||null
+    };
+  }
   if(['credentials_required','licence_required'].includes(source.integration_status)){
     return{
       mode:'catalog_only',
