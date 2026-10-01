@@ -1,4 +1,4 @@
-# TodayInfo Control Center v0.8
+# TodayInfo Control Center v0.8.4
 
 A Node.js admin dashboard and structured publishing API for TodayInfo.
 
@@ -629,3 +629,32 @@ The CEO Analytics screen includes a clickable world traffic atlas and continent 
 ### SEO quality rule
 
 TodayInfo is designed to add user value rather than create lightly transformed copies. Extra pages should exist because they provide useful structure such as verified application routes, eligibility, application steps, source attribution, location and clear summaries.
+
+
+## v0.8.4 — Stability repair and live-source fallback
+
+This release keeps the existing v0.8.3 repairs and adds a second source path for the two legacy South African content families that matter most to TodayInfo.
+
+### Jobs and bursaries remain fetchable
+
+TodayInfo still tries the legacy source API first. For DailyUpdate jobs and ZA Bursaries it now also has a direct website fallback when the API is unavailable or returns no records.
+
+The Import Inbox response includes:
+
+```text
+usedEndpoint
+endpointFallbackUsed
+endpointAttempts
+```
+
+Demand Queue detail URLs from DailyUpdate and ZA Bursaries can also use the direct detail-page fallback when the legacy extract endpoint fails.
+
+### Source policy is authoritative
+
+TodayInfo does **not** use AI rewriting.
+
+DailyUpdate and ZA Bursaries are treated as factual discovery/application sources. Their narrative content requires manual editing before publication. SAnews and DSTI are editorial discovery feeds: **Discover 10** creates private editorial leads instead of automatically rewritten news pages.
+
+Structured public job APIs and employer ATS feeds may continue using deterministic 80%+ auto-publishing when all hard publishing checks pass and their source policy permits it.
+
+A caller cannot override a manual-review source by sending `autoPublish=true`; the backend publishing gate enforces the source policy.
