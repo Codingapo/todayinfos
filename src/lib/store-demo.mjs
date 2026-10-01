@@ -6,6 +6,7 @@ import { calculateOpportunityStatus } from './content-rules.mjs';
 import { filterPost } from './global-content.mjs';
 import { rankTrending } from './ranking.mjs';
 import { demandPriority, normalizeTargetUrl } from './demand-priority.mjs';
+import { buildTrafficAtlas } from './geo-analytics.mjs';
 
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const DB_FILE=path.resolve(__dirname,'../../data/demo-db.json');
@@ -162,23 +163,35 @@ export class DemoStore{
 
   async recordEvent(i){const row={id:id(),...i,created_at:nowIso()};this.db.analytics.push(row);if(this.db.analytics.length>50000)this.db.analytics=this.db.analytics.slice(-50000);this.#save();return row}
   async analyticsSummary(){
-    const e=this.db.analytics;const totals={},days={},byContent={},countries={},regions={},searches={};
+    const e=this.db.analytics;const totals={},days={},byContent={},regions={},searches={};const countryMap={};
     for(const x of e){
       totals[x.event_type]=(totals[x.event_type]||0)+1;
       const d=String(x.created_at||'').slice(0,10);if(d)days[d]=(days[d]||0)+1;
-      const cc=x.meta?.country_code||x.meta?.country;if(cc)countries[cc]=(countries[cc]||0)+1;
+      const cc=String(x.meta?.country_code||x.meta?.country||'').toUpperCase();
+      if(cc){
+        countryMap[cc]||={code:cc,visitors:new Set(),events:0,views:0,reads:0,searches:0,application_clicks:0,downloads:0};
+        const c=countryMap[cc];if(x.visitor_id)c.visitors.add(x.visitor_id);c.events+=1;
+        if(x.event_type==='view')c.views+=1;if(x.event_type==='read')c.reads+=1;if(x.event_type==='search')c.searches+=1;
+        if(x.event_type==='application_click')c.application_clicks+=1;if(x.event_type==='download')c.downloads+=1;
+      }
       const rg=x.meta?.region_name||x.meta?.region;if(rg)regions[rg]=(regions[rg]||0)+1;
       if(x.event_type==='search'&&x.meta?.query){const q=String(x.meta.query).toLowerCase();searches[q]=(searches[q]||0)+1}
       if(x.event_type==='view'){const p=this.db.posts.find(p=>p.id===x.post_id);const t=p?.content_type||x.meta?.content_type||'other';byContent[t]=(byContent[t]||0)+1}
     }
     const topEntries=o=>Object.entries(o).map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count).slice(0,50);
+    const countries=Object.values(countryMap).map(c=>({...c,visitors:c.visitors.size,name:c.code})).sort((a,b)=>b.visitors-a.visitors||b.events-a.events).slice(0,200);
     const popular=this.db.posts.filter(p=>p.status==='published'&&!p.deleted_at).map(p=>({
       id:p.id,title:p.title,slug:p.slug,content_type:p.content_type,geo:p.geo||{},
       views:e.filter(x=>x.post_id===p.id&&x.event_type==='view').length,
       reads:e.filter(x=>x.post_id===p.id&&x.event_type==='read').length,
       application_clicks:e.filter(x=>x.post_id===p.id&&x.event_type==='application_click').length
     })).sort((a,b)=>b.views-a.views||b.reads-a.reads).slice(0,50);
-    return{totals,daily:Object.entries(days).sort().slice(-30).map(([date,total])=>({date,total})),unique_visitors:new Set(e.map(x=>x.visitor_id).filter(Boolean)).size,views_by_content_type:byContent,visitors_by_country:topEntries(countries),visitors_by_region:topEntries(regions),top_searches:topEntries(searches),popular_content:popular}
+    return{
+      totals,daily:Object.entries(days).sort().slice(-30).map(([date,total])=>({date,total})),
+      unique_visitors:new Set(e.map(x=>x.visitor_id).filter(Boolean)).size,
+      views_by_content_type:byContent,visitors_by_country:countries,visitors_by_region:topEntries(regions),
+      top_searches:topEntries(searches),popular_content:popular,traffic_atlas:buildTrafficAtlas(countries)
+    }
   }
 
   async settings(){return this.db.settings}
