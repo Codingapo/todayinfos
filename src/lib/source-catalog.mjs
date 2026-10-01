@@ -209,6 +209,52 @@ export const SOURCE_CATALOG=[
   }
 ];
 
+export function editorialPolicyFor(source={}){
+  if(['credentials_required','licence_required'].includes(source.integration_status)){
+    return{
+      mode:'catalog_only',
+      publishable:['Nothing automatically until access/licensing is configured.'],
+      paraphrase:'Do not ingest or republish content until the source access rules are satisfied.',
+      verify:['licence or API access','attribution requirements'],
+      avoid:['scraping restricted pages','publishing unverified listings']
+    };
+  }
+  if(source.category==='todayinfo_network'){
+    return{
+      mode:'structured_paraphrase',
+      publishable:['verified facts','dates','requirements','eligibility','organisation','location','application steps','short plain-English summary'],
+      paraphrase:'Paraphrase source information into simple TodayInfo wording. Keep the meaning, source credit and structured facts.',
+      verify:['real application destination','closing date','organisation','opportunity status'],
+      avoid:['copying long source passages','publishing archive/category pages as opportunities','using the source article URL as the Apply link']
+    };
+  }
+  if(['public_api','official_api','public_ats'].includes(source.mode)){
+    return{
+      mode:'structured_listing',
+      publishable:['job/opportunity metadata returned by the public feed','location','organisation','dates','direct source/apply link','short TodayInfo summary'],
+      paraphrase:'Use a short readable TodayInfo summary when useful; preserve the source record and attribution.',
+      verify:['application destination','active/public status','country/location when available'],
+      avoid:['inventing requirements or salary','removing required source attribution']
+    };
+  }
+  if(['first_party','official_rss','official_portal'].includes(source.mode)||['south_africa_official','scholarships_funding','international_organisations'].includes(source.category)){
+    return{
+      mode:'attributed_summary',
+      publishable:['factual announcements','dates','eligibility','official links','short attributed summary','application guidance derived from official instructions'],
+      paraphrase:'Write a concise plain-English summary with attribution and a link to the original source.',
+      verify:['publication date','official source URL','application/registration URL where relevant'],
+      avoid:['mirroring the full article','changing the meaning','presenting interpretation as an official statement']
+    };
+  }
+  return{
+    mode:'review_required',
+    publishable:['structured facts after review'],
+    paraphrase:'Use a short source-attributed paraphrase only after confirming the page is suitable.',
+    verify:['source ownership','dates','links'],
+    avoid:['copying full pages','publishing uncertain facts']
+  };
+}
+
 export const ACTIVE_HARVEST_SOURCE_IDS=SOURCE_CATALOG.filter(x=>x.action?.type==='harvest').map(x=>x.id);
 
 export function categorizedSources(){
@@ -229,6 +275,7 @@ export function sourceCatalogWithStats({imports=[],posts=[]}={}){
     const sourcePosts=posts.filter(row=>matchesSource(row,source));
     return {
       ...source,
+      editorial_policy:editorialPolicyFor(source),
       stats:{
         imports:sourceImports.length,
         waiting:sourceImports.filter(x=>x.review_status==='unreviewed').length,
