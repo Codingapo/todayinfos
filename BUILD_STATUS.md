@@ -1,47 +1,34 @@
-# Build Status — v0.5.0 Demand Discovery + Source-Aware Extraction
+# Build Status — v0.5.1 Dashboard Validation UX
 
-This release expands the existing TodayInfo managed API without removing the v0.4/v0.4.1 global, R2, federation, filtering, search, trending, or safe auto-publish behavior.
+This release improves the TodayInfo dashboard editor and fixes confusing content-validation errors such as:
 
-## 40 published reference records
-- The permanent South Africa reference dataset still contains 40 records: 20 jobs and 20 bursaries.
-- Startup now ensures all 40 have live `published` posts.
-- Published seed posts are synchronized to the normal JSON/R2/local artifact pipeline.
-- Closed/expired opportunities remain published but expose their calculated closed status.
-- Startup publishing is idempotent: unchanged seed posts are not rewritten on every restart.
+- `Too big: expected string to have <=60 characters`
+- `Too big: expected string to have <=320 characters`
 
-## DailyUpdate extraction profile
-- DailyUpdate archive/pagination pages are treated as discovery indexes rather than content.
-- Article chrome such as Table of Contents, Toggle, duplicate headings/dates and Read More noise is removed.
-- Hiring/job/internship/learnership titles are classified deterministically.
-- Requirements, How to Apply and external official application/careers URLs are extracted when present.
-- Relevant related DailyUpdate opportunity links become private discovery drafts.
+## Validation improvements
+- Tag length increased from 60 to 120 characters per tag.
+- SEO description storage increased from 320 to 1,000 characters.
+- Summary limit increased to 2,000 characters.
+- Category and slug limits were made more practical.
+- Related-link, document and topic titles use centralized limits.
+- Backend validation now returns exact field paths.
+- Important Zod messages now use readable field names instead of raw “Too big” messages.
 
-## ZA Bursaries extraction profile
-- Monthly “Bursaries Closing in …” pages are treated as discovery indexes, not individual bursary articles.
-- Bursary detail extraction recognizes Eligibility Requirements, How to Apply, Supporting Documents and Closing Date sections.
-- Human-readable dates such as “31 October 2026” are normalized to ISO dates.
-- Useful application links are preferred over navigation/social/junk links.
-- Relevant bursary/scholarship links become private discovery drafts.
+## Dashboard editor improvements
+- Live character counters for limited fields.
+- Recommended SEO lengths are shown separately from hard storage limits.
+- SEO search-result preview updates while typing.
+- Tags are rendered as live chips with per-tag character counts.
+- Oversized tags are highlighted before Save.
+- Invalid fields are outlined and receive inline error messages.
+- A validation summary lists every field that needs attention.
+- The first invalid field is automatically focused.
+- Save buttons show `Saving…` / `Creating…` and are disabled during submission.
+- Dynamic content-type fields and newly added topics/links receive the same live limits.
+- Document names are validated before upload.
 
-## Demand-aware missing content
-- Missing related/recommended/source links are stored privately in the Import Inbox as low-quality draft leads.
-- Public related/recommendation link payloads now include frontend-ready analytics tracking metadata.
-- When a visitor clicks a missing external related/recommended link, TodayInfo records that URL as a private draft lead if it is not already known.
-- A clicked missing item receives `priority=highest` and ranks above ordinary clean/changed discoveries.
-- Admin endpoint: `GET /admin/api/imports/priority`.
-- Demand Queue actions can fetch a selected URL through the source API extractor and run it through source-aware cleaning plus the existing 80% auto-publish gate.
+## API
+- New admin endpoint: `GET /admin/api/content-constraints`.
+- The dashboard consumes limits from the backend so client/server validation stays aligned.
 
-## Dashboard
-- Added a dedicated Demand Queue.
-- Overview now shows published pages, open bursaries, visitors, searches, application clicks, related clicks, waiting imports and highest-priority missing content.
-- Analytics now shows search intent, visitors by country, visitors by region/province/state, content mix, event history and popular content.
-- Priority states are visually distinct on desktop and mobile.
-
-## Public API tracking contract
-- Related links include `tracking.event_type=related_click`.
-- Recommendation links include `tracking.event_type=recommendation_click`.
-- Tracking payloads contain `post_id`, `target_url`, `target_title` and optional target type.
-- Application URLs include an `application_tracking` payload.
-- `GET /api/v1/meta` advertises this contract.
-
-No AI or prediction functionality was added.
+No public API behavior, AI features, prediction features, or published-content structure was removed.
