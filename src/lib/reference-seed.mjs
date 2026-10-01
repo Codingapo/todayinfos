@@ -86,7 +86,7 @@ export async function bootstrapSouthAfricaReferenceSeed(store){
   const seed=loadSouthAfricaReferenceSeed();
   const learning=await learnFromImports(seed.rows);
   let storage={inserted:0,changed:0,unchanged:0,total:seed.rows.length,deferred:false};
-  let published={created:0,updated:0,artifacts:0,failed:0,total:seed.rows.length};
+  let published={created:0,updated:0,unchanged:0,artifacts:0,failed:0,total:seed.rows.length};
   try{
     storage=await store.upsertImports(seed.rows);
     const imports=await store.listImports({});
@@ -98,7 +98,7 @@ export async function bootstrapSouthAfricaReferenceSeed(store){
       try{
         const draft=item.prepared_draft;
         const imp=byKey.get(item.source_key);
-        const source={source_name:item.source_name,source_id:item.source_id,source_url:item.source_url,source_slug:item.source_slug,raw_import_id:imp?.id||null,reference_seed:true,verified_dataset:true};
+        const source={source_name:item.source_name,source_id:item.source_id,source_url:item.source_url,source_slug:item.source_slug,source_hash:item.source_hash,raw_import_id:imp?.id||null,reference_seed:true,verified_dataset:true};
         let post=bySlug.get(draft.slug)||null;
         const publicPatch={
           title:draft.title,slug:draft.slug,content_type:draft.content_type,summary:draft.summary,body_markdown:draft.body_markdown,
@@ -108,17 +108,22 @@ export async function bootstrapSouthAfricaReferenceSeed(store){
           type_data:draft.type_data,geo:draft.geo,classification:draft.classification,main_image_url:draft.main_image_url,
           seo_title:draft.seo_title,seo_description:draft.seo_description,is_trending:draft.is_trending,status:'published',deleted_at:null
         };
-        if(post){
-          post=await store.updatePost(post.id,publicPatch,null);
+        const unchanged=Boolean(post&&post.status==='published'&&!post.deleted_at&&post.source?.reference_seed&&post.source?.source_hash===item.source_hash);
+        if(unchanged){
+          published.unchanged+=1;
+        }else if(post){
+          post=await store.updatePost(post.id,{...publicPatch,source},null);
           published.updated+=1;
         }else{
           post=await store.createPost({...publicPatch,source},null);
           published.created+=1;
           bySlug.set(post.slug,post);
         }
-        const publication=await publishPostArtifact(store,post);
-        post=await store.updatePost(post.id,{publication},null)||{...post,publication};
-        published.artifacts+=1;
+        if(!unchanged){
+          const publication=await publishPostArtifact(store,post);
+          post=await store.updatePost(post.id,{publication},null)||{...post,publication};
+          published.artifacts+=1;
+        }
         if(imp)await store.updateImport(imp.id,{review_status:'promoted',promoted_post_id:post.id,source_changed:false});
       }catch(error){
         published.failed+=1;
