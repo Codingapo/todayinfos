@@ -329,7 +329,9 @@ export async function fetchImports(options={}) {
       skippedYear,
       pageSize: PAGE_SIZE,
       maxPages,
-      usedEndpoint:options._usedEndpoint||endpoint
+      usedEndpoint:endpointUsed,
+      endpointFallbackUsed:endpointUsed!==endpoint,
+      endpointAttempts
     }
   };
 }
