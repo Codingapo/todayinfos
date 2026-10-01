@@ -91,8 +91,17 @@ async function syncPublication(row,actor){
 adminRouter.get('/dashboard',permit('dashboard.view'),async(req,res)=>ok(res,await store.dashboard()));
 adminRouter.get('/content-types',permit('posts.view'),(req,res)=>ok(res,Object.fromEntries(contentTypes.map(t=>[t,resolvedDefinition(t)]))));
 adminRouter.get('/content-constraints',permit('posts.view'),(req,res)=>ok(res,{limits:CONTENT_LIMITS,seo:SEO_GUIDANCE}));
+adminRouter.get('/sources/hub',permit('imports.view'),(req,res)=>ok(res,{
+  regional:[
+    {id:'dailyupdate',label:'DailyUpdate',description:'Fetch jobs, internships and learnerships, then follow useful related opportunity links.',fetch:{kind:'dailyupdate/jobs',maxPages:100,expand:true,expandRelated:true,relatedLimit:150,autoPublish:true}},
+    {id:'zabursaries',label:'ZA Bursaries',description:'Fetch bursary detail pages and follow useful bursary/scholarship links from directory pages.',fetch:{kind:'bursaries',maxPages:100,expand:true,expandRelated:true,relatedLimit:200,autoPublish:true}},
+    {id:'psychometric-test',label:'Psychometric Test topic',description:'Fetch the existing psychometric-test topic and related detail pages.',fetch:{kind:'tag',tagSlug:'psychometric-test',maxPages:20,expand:true,expandRelated:true,relatedLimit:80,autoPublish:true}}
+  ],
+  global:GLOBAL_HARVEST_PROVIDERS,
+  permanent_seeds:{expected_records:80,description:'South Africa and Africa reference datasets are published on startup.'}
+}));
 adminRouter.get('/source-presets',permit('imports.view'),(req,res)=>ok(res,[
-  {id:'pages',label:'All source pages'},{id:'bursaries',label:'Bursaries'},{id:'articles',label:'Articles / news'},{id:'dailyupdate/jobs',label:'DailyUpdate jobs'},
+  {id:'pages',label:'All source pages'},{id:'bursaries',label:'ZA Bursaries'},{id:'articles',label:'Articles / news'},{id:'dailyupdate/jobs',label:'DailyUpdate jobs + related'},
   {id:'tag:psychometric-test',label:'Psychometric Test tag',kind:'tag',tagSlug:'psychometric-test'}
 ]));
 adminRouter.get('/imports',permit('imports.view'),async(req,res)=>ok(res,await store.listImports({status:req.query.status,type:req.query.type,q:req.query.q})));
