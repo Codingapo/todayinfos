@@ -138,17 +138,19 @@ for(const prefix of Object.keys(expected))publicRouter.get(`/${prefix}/:slug`,as
 });
 
 publicRouter.get('/search',async(req,res)=>{
-  const q=String(req.query.q||'').trim();
+  const q=String(req.query.q||req.query.query||req.query.keywords||'').trim();
   const filters=queryFilters(req.query);
   if(!q&&!Object.values(filters).some(Boolean))return res.json({data:[],meta:{query:q,total:0,filters,published_only:true}});
   const raw=await store.listPosts({status:'published',...filters});
-  const ranked=rankSearch(raw,q);
-  const rows=ranked.slice(0,250).map(p=>({...publicPost(p,{compact:true}),search_score:Number(p.search_score||0)}));
+  const ranked=q?rankSearch(raw,q):raw.map(p=>({...p,search_score:0}));
+  const items=ranked.map(p=>({...publicPost(p,{compact:true}),search_score:Number(p.search_score||0)}));
+  const payload=paginate(items,req.query.page,req.query.limit);
+  payload.meta={...(payload.meta||{}),query:q,total:items.length,filters,published_only:true,ranking:q?'structured_relevance':'filtered'};
   if(req.query.visitor_id){
     const location=requestLocation(req);
     store.recordEvent({visitor_id:String(req.query.visitor_id).slice(0,120),event_type:'search',meta:{query:q,...location,filters}}).catch(()=>{});
   }
-  res.json({data:rows,meta:{query:q,total:ranked.length,filters,published_only:true,ranking:'structured_relevance'}});
+  res.json(payload);
 });
 
 publicRouter.get('/personalized',async(req,res)=>{
