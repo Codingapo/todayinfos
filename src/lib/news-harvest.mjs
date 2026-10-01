@@ -117,3 +117,39 @@ export async function harvestOfficialNews({source='sanews',limit=10}={}){
     stats:{source:def.id,requested:wanted,feed_items:items.length,accepted:rows.length,failed:failures.length,failures}
   };
 }
+
+
+export async function discoverOfficialNews({source='sanews',limit=10}={}){
+  const def=sourceById(source);
+  if(!def)throw new Error('Unknown official news source');
+  const wanted=Math.max(1,Math.min(10,Number(limit)||10));
+  const xml=await fetchText(def.feed_url);
+  const parsed=parser.parse(xml);
+  const items=rssItems(parsed).filter(x=>x.title&&/^https?:\/\//i.test(x.url||'')).slice(0,wanted);
+  const rows=items.map(item=>{
+    const title=String(item.title||'Editorial lead').replace(/\s+/g,' ').trim();
+    const draft={
+      title,slug:title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,180),
+      content_type:'news',summary:'',body_markdown:'',posted_date:item.publishedAt||null,
+      category:'News',categories:['News'],tags:['News','Needs editorial review'],
+      topics:[],related_links:[],related_ids:[],recommendation_ids:[],recommendation_links:[],documents:[],navigation_links:[],
+      type_data:{event_date:item.publishedAt||null},
+      geo:{country_code:def.country_code||null,country_name:def.country_name||null},
+      classification:{organisation:def.label,opportunity_type:'news',keywords:['news','editorial review']},
+      main_image_url:item.image||null,seo_title:title,seo_description:'',is_trending:false,status:'draft',
+      source_transform:{
+        mode:'manual_editorial_summary',auto_rewrite:false,source_name:def.label,source_url:item.url,
+        source_credit:def.credit,editorial_note:'Write a human-edited TodayInfo summary from verified facts. Do not copy the source article.'
+      }
+    };
+    return{
+      source_key:`news-lead:${def.id}:${hashKey(item.url||item.title)}`,
+      source_hash:hashKey(JSON.stringify({title:item.title,url:item.url,publishedAt:item.publishedAt})),
+      source_name:def.label,source_id:def.id,source_url:item.url,source_slug:draft.slug,
+      source_payload:{title:item.title,url:item.url,publishedAt:item.publishedAt,source_credit:def.credit,usage_note:def.usage_note,editorial_discovery:true},
+      detected_type:'news',prepared_draft:draft,review_status:'unreviewed',source_changed:false,
+      quality_score:20,quality_issues:['Editorial lead — write and verify the TodayInfo story manually before publishing.'],source_record_date:item.publishedAt||null
+    };
+  });
+  return{rows,stats:{source:def.id,requested:wanted,feed_items:items.length,accepted:rows.length,mode:'manual-editorial-discovery'}};
+}
