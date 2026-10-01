@@ -7,6 +7,48 @@ export const SOURCE_CATEGORIES=[
   {id:'international_organisations',label:'International Organisations',description:'First-party careers and opportunity sites from international organisations.'}
 ];
 
+export const SOURCE_USAGE_POLICIES={
+  sanews:{
+    mode:'reuse_with_credit',label:'Reuse with credit',attribution_required:true,auto_publish_allowed:true,
+    copy_full_text_allowed:false,paraphrase_allowed:true,policy_status:'verified',
+    note:'SAnews expressly welcomes media reuse when SAnews.gov.za is credited. TodayInfo still prefers short structured summaries.'
+  },
+  dailyupdate:{
+    mode:'summary_and_facts_only',label:'Summary / facts only',attribution_required:true,auto_publish_allowed:false,
+    copy_full_text_allowed:false,paraphrase_allowed:true,policy_status:'verified',
+    note:'DailyUpdate terms reserve its material and prohibit republishing, reproduction and redistribution. Fetch for discovery and create original structured summaries; do not mirror article text.'
+  },
+  zabursaries:{
+    mode:'summary_and_facts_only',label:'Summary / facts only',attribution_required:true,auto_publish_allowed:false,
+    copy_full_text_allowed:false,paraphrase_allowed:true,policy_status:'review_required',
+    note:'Use listings for factual opportunity discovery, verify details against the bursary provider where possible, and avoid copying source prose.'
+  },
+  'dsti-news':{
+    mode:'summary_and_facts_only',label:'Summary / facts only',attribution_required:true,auto_publish_allowed:false,
+    copy_full_text_allowed:false,paraphrase_allowed:true,commercial_permission_required:true,policy_status:'verified',
+    note:'The department provides RSS, but its published terms restrict commercial reuse without permission. Keep automatic output to attributed summaries/drafts unless permission is confirmed.'
+  },
+  dpsa:{
+    mode:'facts_and_link_only',label:'Facts + link',attribution_required:true,auto_publish_allowed:false,
+    copy_full_text_allowed:false,paraphrase_allowed:true,commercial_permission_required:true,policy_status:'verified',
+    note:'DPSA permits non-commercial informational/reference use; commercial reproduction requires prior written permission.'
+  },
+  govza:{
+    mode:'facts_and_link_only',label:'Facts + link',attribution_required:true,auto_publish_allowed:false,
+    copy_full_text_allowed:false,paraphrase_allowed:true,commercial_permission_required:true,policy_status:'verified',
+    note:'Gov.za terms permit non-commercial informational/reference use; commercial reproduction requires prior written permission.'
+  }
+};
+
+export function sourceUsagePolicy(sourceOrId){
+  const id=typeof sourceOrId==='string'?sourceOrId:sourceOrId?.id;
+  return SOURCE_USAGE_POLICIES[id]||{
+    mode:'source_specific_review',label:'Check source terms',attribution_required:true,auto_publish_allowed:false,
+    copy_full_text_allowed:false,paraphrase_allowed:true,policy_status:'unverified',
+    note:'Source terms have not been verified in TodayInfo yet. Use for discovery and keep publication human-reviewed.'
+  };
+}
+
 export const SOURCE_CATALOG=[
   {
     id:'dailyupdate',label:'DailyUpdate',category:'todayinfo_network',region:'South Africa',country_code:'ZA',
@@ -229,6 +271,7 @@ export function sourceCatalogWithStats({imports=[],posts=[]}={}){
     const sourcePosts=posts.filter(row=>matchesSource(row,source));
     return {
       ...source,
+      usage_policy:sourceUsagePolicy(source),
       stats:{
         imports:sourceImports.length,
         waiting:sourceImports.filter(x=>x.review_status==='unreviewed').length,
