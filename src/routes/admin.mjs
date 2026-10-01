@@ -290,6 +290,19 @@ adminRouter.get('/imports/priority',permit('imports.fetch'),async(req,res)=>ok(r
 adminRouter.get('/imports/:id',permit('imports.view'),async(req,res)=>{const row=await store.getImport(req.params.id);if(!row)return res.status(404).json({error:'Import not found'});ok(res,row)});
 adminRouter.patch('/imports/:id',permit('imports.review'),async(req,res)=>{const schema=z.object({review_status:z.enum(['unreviewed','reviewing','promoted']).optional(),detected_type:z.enum(contentTypes).optional(),prepared_draft:postSchema.partial().optional()});const p=schema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid import update',details:p.error.flatten()});const patch={...p.data};if(patch.prepared_draft)patch.prepared_draft=normalizePost({...patch.prepared_draft,content_type:patch.prepared_draft.content_type||patch.detected_type||'other'});const row=await store.updateImport(req.params.id,patch);if(!row)return res.status(404).json({error:'Import not found'});await audit(req,'import.update','raw_import',row.id,{fields:Object.keys(patch)});if(patch.prepared_draft)await audit(req,'import.clean','raw_import',row.id,{fields:Object.keys(patch.prepared_draft||{})});ok(res,row)});
 adminRouter.post('/imports/:id/promote',permit('imports.review'),async(req,res)=>{const row=await store.promoteImport(req.params.id,req.user.id);if(!row)return res.status(404).json({error:'Import not found'});await audit(req,'import.promote','post',row.id,{source_import:req.params.id});res.status(201).json({data:row})});
+adminRouter.post('/imports/:id/publish',permit('imports.review'),async(req,res)=>{
+  if(!hasPermission(req.user.role,'posts.publish'))return res.status(403).json({error:'Your role cannot publish'});
+  const imp=await store.getImport(req.params.id);if(!imp)return res.status(404).json({error:'Import not found'});
+  const draft=normalizePost({...imp.prepared_draft,content_type:imp.detected_type||imp.prepared_draft?.content_type||'other'});
+  const issues=publishProblems(draft);
+  if(issues.length)return res.status(400).json({error:'Publishing checklist failed',details:{formErrors:issues}});
+  let row=await store.promoteImport(req.params.id,req.user.id);if(!row)return res.status(404).json({error:'Import not found'});
+  row=await store.updatePost(row.id,{status:'published'},req.user.id);
+  row=await syncPublication(row,req.user.id);
+  await audit(req,'import.promote','post',row.id,{source_import:req.params.id,via:'direct-publish'});
+  await audit(req,'post.publish','post',row.id,{source_import:req.params.id,via:'direct-publish',publication:row.publication?.sync_status||null});
+  res.status(201).json({data:row});
+});
 
 adminRouter.get('/posts',permit('posts.view'),async(req,res)=>{
   let rows=await store.listPosts({
