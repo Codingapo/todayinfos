@@ -17,8 +17,8 @@ import { loadImportLearning, learnFromImports, publicLearningSummary } from '../
 import { autoPublishDecision } from '../lib/auto-publish.mjs';
 import { CONTENT_LIMITS, SEO_GUIDANCE, zodValidationDetails } from '../lib/content-constraints.mjs';
 import { GLOBAL_HARVEST_PROVIDERS, harvestGlobalJobs } from '../lib/global-harvest.mjs';
-import { sourceHubPayload } from '../lib/source-catalog.mjs';
-import { harvestOfficialNews } from '../lib/news-harvest.mjs';
+import { sourceHubPayload, importPublishingPolicy } from '../lib/source-catalog.mjs';
+import { harvestOfficialNews, discoverOfficialNews } from '../lib/news-harvest.mjs';
 import { enrichApplicationImport } from '../lib/application-intelligence.mjs';
 
 export const adminRouter=Router();
@@ -141,7 +141,9 @@ adminRouter.post('/imports/fetch',permit('imports.fetch'),async(req,res)=>{
     for(const imp of candidates.slice(0,config.autoPublishMaxPerFetch)){
       const draft=normalizePost({...imp.prepared_draft,content_type:imp.detected_type||imp.prepared_draft?.content_type||'other'});
       const decision=autoPublishDecision({importRow:imp,draft,threshold:config.autoPublishMinScore,now:new Date()});
-      const issues=[...new Set([...publishProblems(draft),...decision.issues])];
+      const policy=importPublishingPolicy(imp);
+      const policyIssues=policy.auto_publish===false?[`Source policy requires manual review (${policy.mode||'review required'}).`]:[];
+      const issues=[...new Set([...publishProblems(draft),...decision.issues,...policyIssues])];
       if(issues.length){
         auto_publish_skipped.push({id:imp.id,title:draft.title,score:Number(imp.quality_score||0),issues});
         continue;
@@ -197,7 +199,9 @@ adminRouter.post('/harvest/global',permit('imports.fetch'),async(req,res)=>{
     for(const imp of candidates.slice(0,config.autoPublishMaxPerFetch)){
       const draft=normalizePost({...imp.prepared_draft,content_type:imp.detected_type||imp.prepared_draft?.content_type||'job'});
       const decision=autoPublishDecision({importRow:imp,draft,threshold:config.autoPublishMinScore,now:new Date()});
-      const issues=[...new Set([...publishProblems(draft),...decision.issues])];
+      const policy=importPublishingPolicy(imp);
+      const policyIssues=policy.auto_publish===false?[`Source policy requires manual review (${policy.mode||'review required'}).`]:[];
+      const issues=[...new Set([...publishProblems(draft),...decision.issues,...policyIssues])];
       if(issues.length){review.push({id:imp.id,title:draft.title,score:Number(imp.quality_score||0),issues});continue}
       const post=await store.promoteImport(imp.id,req.user.id);
       let live=await store.updatePost(post.id,{status:'published'},req.user.id);
@@ -217,28 +221,11 @@ adminRouter.post('/harvest/news',permit('imports.fetch'),async(req,res)=>{
   });
   const p=schema.safeParse(req.body||{});
   if(!p.success)return res.status(400).json({error:'Invalid news harvest options',details:p.error.flatten()});
-  const harvest=await harvestOfficialNews(p.data);
+  const harvest=await discoverOfficialNews(p.data);
   const stored=await store.upsertImports(harvest.rows);
-  const keys=new Set(harvest.rows.map(x=>x.source_key));
-  const remembered=await store.listImports({});
-  const published=[];const review=[];
-  if(p.data.autoPublish){
-    const candidates=remembered.filter(x=>keys.has(x.source_key)&&x.review_status==='unreviewed'&&!x.promoted_post_id)
-      .sort((a,b)=>Number(b.quality_score||0)-Number(a.quality_score||0)).slice(0,p.data.limit);
-    for(const imp of candidates){
-      const draft=normalizePost({...imp.prepared_draft,content_type:'news'});
-      const decision=autoPublishDecision({importRow:imp,draft,threshold:config.autoPublishMinScore,now:new Date()});
-      const issues=[...new Set([...publishProblems(draft),...decision.issues])];
-      if(issues.length){review.push({id:imp.id,title:draft.title,score:Number(imp.quality_score||0),issues});continue}
-      const post=await store.promoteImport(imp.id,req.user.id);
-      let live=await store.updatePost(post.id,{status:'published'},req.user.id);
-      live=await syncPublication(live,req.user.id);
-      published.push({id:live.id,title:live.title,slug:live.slug,publication:live.publication?.sync_status||null});
-      await audit(req,'post.publish','post',live.id,{via:'official-news-batch',source:p.data.source});
-    }
-  }
-  await audit(req,'harvest.news','source',p.data.source,{...harvest.stats,...stored,published:published.length,review:review.length});
-  ok(res,{...harvest.stats,...stored,published,review});
+  const review=harvest.rows.map(x=>({title:x.prepared_draft?.title||x.source_payload?.title||'Editorial lead',source_url:x.source_url,score:x.quality_score||0}));
+  await audit(req,'harvest.news','source',p.data.source,{...harvest.stats,...stored,published:0,review:review.length,manual_review_required:true});
+  ok(res,{...harvest.stats,...stored,published:[],review,manual_review_required:true});
 });
 
 adminRouter.post('/imports/process-batch',permit('imports.fetch'),async(req,res)=>{
@@ -269,7 +256,9 @@ adminRouter.post('/imports/process-batch',permit('imports.fetch'),async(req,res)
     const issues=[...publishProblems(draft)];
     if(isOpportunity&&!route?.verified)issues.push('Direct application link has not been verified.');
     const decision=autoPublishDecision({importRow:{...imp,quality_score:quality.score},draft,threshold:config.autoPublishMinScore,now:new Date()});
+    const policy=importPublishingPolicy(imp);
     issues.push(...decision.issues);
+    if(policy.auto_publish===false)issues.push(`Source policy requires manual review (${policy.mode||'review required'}).`);
     const uniqueIssues=[...new Set(issues)];
     const result={id:imp.id,title:draft.title,type:draft.content_type,score:quality.score,application:route,issues:uniqueIssues};
 
