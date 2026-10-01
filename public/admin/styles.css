@@ -163,3 +163,9 @@ html[data-theme="dark"] .recommendation-link-row{border-left-color:#66b89a}
 .import-hero>.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 @media(max-width:760px){.continent-strip{grid-template-columns:1fr 1fr}.traffic-map{min-height:220px}}
 @media(max-width:520px){.continent-strip{grid-template-columns:1fr}.traffic-map{min-height:190px}.traffic-dot span{font-size:.48rem}}
+
+
+/* v0.8.1 source usage policy */
+.source-policy{display:grid;gap:4px;padding:10px 11px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.source-policy strong{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--teal)}
+.source-policy span{font-size:.76rem;line-height:1.45;color:var(--muted)}
