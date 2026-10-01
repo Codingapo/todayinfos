@@ -1,29 +1,42 @@
-# Build Status — v0.8.4 Direct Source Fallback Repair
+# Build Status — v0.8.5 Source Policy Stability
 
-This release is an incremental stability update on top of v0.8.3. Existing Source Hub, Import Inbox, Demand Queue, CEO/employee permissions, R2 publication, analytics, public API, search, trending, application guides and legacy Supabase compatibility remain in place.
+This release is an incremental policy/stability update on top of v0.8.4. It does not remove any working TodayInfo API, R2, Import Inbox, Demand Queue, CEO editing, analytics, search, source fallback or employee features.
 
-## What v0.8.4 fixes
+## Existing repairs preserved
+- v0.8.1 CEO edit/review/promote/publish and Import Inbox repair.
+- v0.8.2 Source Hub diagnostics and API endpoint fallbacks.
+- v0.8.3 legacy Supabase raw_imports compatibility and no-cache admin assets.
+- v0.8.4 direct website fallback for DailyUpdate / ZA Bursaries and Demand Queue details.
 
-- DailyUpdate and ZA Bursaries no longer depend completely on the legacy TodayInfo source API.
-- The importer still tries the source API and its fallback endpoints first.
-- If those routes all fail or return no records, TodayInfo may read the approved public source website directly.
-- Direct fallback extracts only metadata, titles, source links, useful related links and application-link candidates.
-- Full source articles are not copied into the fallback draft.
-- Direct-fallback cleanliness is capped below the automatic publishing threshold.
-- Direct-fallback imports are always kept private for human review, even when Auto-publish was requested.
-- Demand Queue URL fetches can use the same approved-domain fallback when source extraction is unavailable.
-- The dashboard clearly says when direct fallback was used.
+## No AI rewriting
+- Source policy declares ai_rewriting=false.
+- SAnews / DSTI feeds are editorial discovery only: Discover 10 creates private leads.
+- The news discovery path does not generate a rewritten story body and cannot auto-publish.
 
-## Non-AI editorial rule
+## Manual-review narrative sources
+- DailyUpdate: extracted facts/application details may be used, narrative copy requires human editing.
+- ZA Bursaries: factual funding details/application routes may be used, narrative copy requires human editing.
+- Both source actions request autoPublish=false.
+- Server-side policy also blocks automatic publication if a caller sends autoPublish=true.
 
-Source Hub remains rule-based. `sourcePublishingPolicy()` reports `ai_rewriting:false` for every source. Human editors decide what to publish and may paraphrase only according to the source-specific reuse policy.
+## Structured feeds
+- Public job APIs and employer ATS feeds keep their existing deterministic 80%+ publishing path when the source policy allows auto_publish=true and normal hard publishing checks pass.
 
-## Existing repairs retained
+## Enforcement
+Source policy is enforced in:
+1. Import Inbox source fetch auto-publishing.
+2. Global structured harvest auto-publishing.
+3. Process 10 batch publishing.
 
-- v0.8.1: CEO editing/review/promote/publish flow, Import Inbox editing, Demand Queue repair, source policies, draft-first news.
-- v0.8.2: source diagnostics and legacy API endpoint fallbacks.
-- v0.8.3: older Supabase `raw_imports` schema compatibility, Demand Queue analytics resilience, no-cache admin assets.
+Unknown source families default to manual review.
+
+## Source Hub
+Source cards show:
+- source publishing mode
+- reuse/rights status when known
+- AI rewriting status
+- auto-publish policy
+- source health diagnostics
 
 ## Release gate
-
-The exact final branch must pass dependency installation, syntax checks and the full Node regression suite before merge.
+The exact final branch must pass dependency install, JavaScript/Node syntax checks, and the full regression suite before merge.
