@@ -9,9 +9,12 @@ export function searchScore(post={},query=''){
   const q=String(query||'').trim().toLowerCase();if(!q)return 0;
   const terms=tokens(q);if(!terms.length)return 0;
   const fields=[
-    [post.title,12],[post.summary,5],[post.category,4],[(post.tags||[]).join(' '),6],
+    [post.title,12],[post.summary,5],[post.content_type,5],[post.category,4],[(post.categories||[]).join(' '),4],[(post.tags||[]).join(' '),6],
+    [post.type_data?.company,7],[post.type_data?.provider,7],[post.type_data?.location,4],
     [post.classification?.organisation,7],[(post.classification?.fields_of_study||[]).join(' '),6],
-    [post.geo?.country_name,4],[post.geo?.region_name,4],[post.geo?.city,4],
+    [(post.classification?.education_level||[]).join(' '),4],[(post.classification?.keywords||[]).join(' '),5],
+    [post.classification?.job_type,4],[post.classification?.work_mode,4],
+    [post.geo?.country_code,3],[post.geo?.country_name,4],[post.geo?.region_name,4],[post.geo?.city,4],
     [post.body_markdown,1]
   ];
   let score=0;
