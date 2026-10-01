@@ -1,4 +1,4 @@
-# TodayInfo Control Center v0.8
+# TodayInfo Control Center v0.8.1
 
 A Node.js admin dashboard and structured publishing API for TodayInfo.
 
@@ -629,3 +629,20 @@ The CEO Analytics screen includes a clickable world traffic atlas and continent 
 ### SEO quality rule
 
 TodayInfo is designed to add user value rather than create lightly transformed copies. Extra pages should exist because they provide useful structure such as verified application routes, eligibility, application steps, source attribution, location and clear summaries.
+
+
+## v0.8.1 — Admin and Import repair
+
+This is a stability release. It restores CEO dashboard navigation and fixes Import Inbox/Demand Queue failures caused by selector regressions and older raw-import database schemas.
+
+Key repairs:
+- role-aware admin navigation works again;
+- Import Inbox and Demand Queue render again;
+- Source Hub buttons wire correctly;
+- Apo/Owner keeps full edit, promote and publish access;
+- admin JavaScript is not cached after deploy;
+- deep sync defaults to latest available source records, with an optional year filter;
+- older `raw_imports` schemas degrade safely instead of taking the inbox down;
+- Source Hub now records a source-specific publishing policy so discovery does not automatically mean permission to copy or auto-publish.
+
+No AI/prediction feature is introduced by this repair. Existing content transformation/publishing behavior is otherwise preserved.
