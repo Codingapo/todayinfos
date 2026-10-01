@@ -18,6 +18,9 @@ export const CONTENT_TYPE_DEFINITIONS = {
       {key:'application_url',label:'Official application link',type:'url'}
     ]
   },
+  scholarship: {
+    label:'Scholarship',icon:'🌍',description:'Scholarships and education funding opportunities.',inherits:'bursary'
+  },
   job: {
     label:'Job',icon:'💼',description:'Vacancies with employer, location, requirements and application details.',
     fields:[
@@ -43,6 +46,15 @@ export const CONTENT_TYPE_DEFINITIONS = {
   },
   story: {
     label:'Story',icon:'✍️',description:'Long-form stories and useful editorial content.',fields:[]
+  },
+  opportunity: {
+    label:'Opportunity',icon:'✨',description:'General structured opportunities for global discovery.',fields:[
+      {key:'closing_date',label:'Closing date',type:'date'},
+      {key:'status_override',label:'Opportunity status',type:'select',options:['auto','open','closing_soon','closed','upcoming','unknown']},
+      {key:'requirements',label:'Requirements',type:'textarea'},
+      {key:'how_to_apply',label:'How to apply',type:'textarea'},
+      {key:'application_url',label:'Application link',type:'url'}
+    ]
   },
   other: {
     label:'Other supported content',icon:'◫',description:'Flexible structured content for future page types.',fields:[{key:'subtype',label:'Content subtype',type:'text',help:'Example: guide, notice, resource or update.'}]
