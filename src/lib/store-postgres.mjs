@@ -16,6 +16,20 @@ export class PostgresStore{
   async findUserByUsername(u){return(await this.q('select * from admin_users where lower(username)=lower($1) and active=true limit 1',[u])).rows[0]||null}
   async getUser(id){return(await this.q('select * from admin_users where id=$1',[id])).rows[0]||null}
   async listUsers(){return(await this.q('select id,username,email,display_name,role,active,created_at,updated_at from admin_users order by created_at desc')).rows}
+  async teamPerformance(){
+    const rows=(await this.q(`
+      select u.id user_id,
+        count(a.id) filter(where a.action='import.clean')::int cleaned,
+        count(a.id) filter(where a.action='import.promote')::int promoted,
+        count(a.id) filter(where a.action='post.publish')::int published,
+        count(a.id) filter(where a.action='post.update')::int edited,
+        max(a.created_at) last_activity_at
+      from admin_users u
+      left join audit_logs a on a.actor_id=u.id
+      group by u.id
+    `)).rows;
+    return rows;
+  }
   async createUser(i){return(await this.q(`insert into admin_users(username,email,display_name,role,password_hash) values($1,$2,$3,$4,$5) returning *`,[i.username,i.email||'',i.display_name||i.username,i.role||'viewer',i.password_hash||null])).rows[0]}
   async updateUser(id,p){const allowed=new Set(['role','active','display_name','password_hash']);const keys=Object.keys(p).filter(k=>allowed.has(k));if(!keys.length)return this.getUser(id);const vals=keys.map(k=>p[k]);const sets=keys.map((k,n)=>`${k}=$${n+2}`).join(',');return(await this.q(`update admin_users set ${sets},updated_at=now() where id=$1 returning *`,[id,...vals])).rows[0]||null}
 
