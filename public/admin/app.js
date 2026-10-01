@@ -288,16 +288,79 @@ function collectTopics(){return $$('.topic-card').map((card,i)=>({id:`t${i+1}`,k
 function renderDocumentList(){const el=$('#documentList');if(!el)return;const docs=state.editor?.documents||[];el.innerHTML=docs.length?docs.map((d,i)=>`<div class="doc-card"><div class="doc-icon">📄</div><div class="grow"><strong>${esc(d.title||'Document')}</strong><small>${esc(d.mime_type||d.type||'document')} ${bytes(d.size_bytes)}</small></div>${iconButton('trash','Remove document','danger remove-doc').replace('>',` data-index="${i}">`)}</div>`).join(''):'<div class="notice">No documents attached. Upload PDF, DOC/DOCX, XLS/XLSX or ZIP files when needed.</div>';$$('.remove-doc',el).forEach(b=>b.onclick=()=>{state.editor.documents.splice(Number(b.dataset.index),1);renderDocumentList()})}
 function renumberTopics(){$$('.topic-card').forEach((c,i)=>{$('.topic-key',c).textContent=`#t${i+1}`;c.dataset.index=i});$('#noTopics')?.classList.toggle('hidden',$$('.topic-card').length>0)}
 function wireEditor(post){
-  $('#contentType').onchange=e=>{const type=e.target.value;$('#typeSectionTitle').textContent=`${state.contentTypes[type].label} details`;$('#typeFields').innerHTML=typeFieldsHtml(type,{})};
+  const form=$('#postForm');
+  const refreshTags=()=>{
+    const input=form.querySelector('[name="tags"]'),issues=updateTagPreview(form);
+    input?.setCustomValidity(issues[0]?.message||'');
+  };
+  const refreshSeo=()=>updateSeoPreview(form);
+
+  $('#contentType').onchange=e=>{
+    const type=e.target.value;
+    $('#typeSectionTitle').textContent=`${state.contentTypes[type].label} details`;
+    $('#typeFields').innerHTML=typeFieldsHtml(type,{});
+    wireLengthCounters($('#typeFields'));
+  };
+
   $('#imageFile').onchange=async e=>{const file=e.target.files?.[0];if(!file)return;try{toast('Uploading image…');const m=await uploadFile(file,post.title||'Featured image');$('#mainImageUrl').value=m.url;$('#imagePreview').innerHTML=`<img src="${esc(m.url)}" alt="">`;toast('Image uploaded')}catch(err){toast(err.message,true);e.target.value=''}};
-  $('#addTopic').onclick=()=>{const list=$('#topicList');if($$('.topic-card',list).length>=10)return toast('Maximum 10 topics per page',true);list.insertAdjacentHTML('beforeend',topicCardHtml({},$$('.topic-card',list).length));renumberTopics()};
+
+  $('#addTopic').onclick=()=>{
+    const list=$('#topicList');if($$('.topic-card',list).length>=10)return toast('Maximum 10 topics per page',true);
+    list.insertAdjacentHTML('beforeend',topicCardHtml({},$$('.topic-card',list).length));renumberTopics();
+    wireLengthCounters(list.lastElementChild);
+  };
   $('#topicList').onclick=e=>{if(e.target.closest('.remove-topic')){e.target.closest('.topic-card').remove();renumberTopics()}};
-  $('#addRelatedLink').onclick=()=>$('#relatedLinkList').insertAdjacentHTML('beforeend',relatedLinkHtml());$('#relatedLinkList').onclick=e=>{if(e.target.closest('.remove-repeat'))e.target.closest('.repeat-row').remove()};
-  $('#addRecommendationLink').onclick=()=>$('#recommendationLinkList').insertAdjacentHTML('beforeend',recommendationLinkHtml());$('#recommendationLinkList').onclick=e=>{if(e.target.closest('.remove-repeat'))e.target.closest('.repeat-row').remove()};
-  $('#addNavLink').onclick=()=>$('#navLinkList').insertAdjacentHTML('beforeend',navLinkHtml());$('#navLinkList').onclick=e=>{if(e.target.closest('.remove-repeat'))e.target.closest('.repeat-row').remove()};
-  $('#addDocument').onclick=async()=>{const file=$('#docFile').files?.[0],title=$('#docTitle').value.trim();if(!title)return toast('Give the document a readable name first',true);if(!file)return toast('Choose a document to upload',true);try{toast('Uploading document…');const m=await uploadFile(file,title);state.editor.documents.push({title,url:m.url,type:'document',mime_type:m.mime_type,size_bytes:m.size_bytes});$('#docTitle').value='';$('#docFile').value='';renderDocumentList();toast('Document attached')}catch(err){toast(err.message,true)}};$('#cancelPost').onclick=closeModal;
+
+  $('#addRelatedLink').onclick=()=>{const list=$('#relatedLinkList');list.insertAdjacentHTML('beforeend',relatedLinkHtml());wireLengthCounters(list.lastElementChild)};
+  $('#relatedLinkList').onclick=e=>{if(e.target.closest('.remove-repeat'))e.target.closest('.repeat-row').remove()};
+  $('#addRecommendationLink').onclick=()=>{const list=$('#recommendationLinkList');list.insertAdjacentHTML('beforeend',recommendationLinkHtml());wireLengthCounters(list.lastElementChild)};
+  $('#recommendationLinkList').onclick=e=>{if(e.target.closest('.remove-repeat'))e.target.closest('.repeat-row').remove()};
+  $('#addNavLink').onclick=()=>{const list=$('#navLinkList');list.insertAdjacentHTML('beforeend',navLinkHtml());wireLengthCounters(list.lastElementChild)};
+  $('#navLinkList').onclick=e=>{if(e.target.closest('.remove-repeat'))e.target.closest('.repeat-row').remove()};
+
+  $('#addDocument').onclick=async()=>{const file=$('#docFile').files?.[0],title=$('#docTitle').value.trim();if(!title)return toast('Give the document a readable name first',true);if(title.length>editorLimits().document_title)return toast(`Document name is too long. Maximum ${editorLimits().document_title} characters.`,true);if(!file)return toast('Choose a document to upload',true);try{toast('Uploading document…');const m=await uploadFile(file,title);state.editor.documents.push({title,url:m.url,type:'document',mime_type:m.mime_type,size_bytes:m.size_bytes});$('#docTitle').value='';$('#docFile').value='';renderDocumentList();toast('Document attached')}catch(err){toast(err.message,true)}};
+  $('#cancelPost').onclick=closeModal;
   if(post.id)$('#revisionBtn').onclick=async()=>{try{const rows=await api(`/posts/${post.id}/revisions`);alert(rows.slice(0,12).map(r=>`${new Date(r.created_at).toLocaleString()} — revision saved`).join('\n')||'No previous revisions')}catch(err){toast(err.message,true)}};
-  $('#postForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget;if(!form.reportValidity())return;const f=new FormData(form),type=f.get('content_type'),typeData={};$$('[data-key]',$('#typeFields')).forEach(el=>typeData[el.dataset.key]=el.value||null);const body={title:f.get('title').trim(),slug:f.get('slug').trim()||undefined,content_type:type,status:f.get('status'),posted_date:f.get('posted_date')||null,category:f.get('category').trim(),categories:f.get('category')?[f.get('category').trim()]:[],summary:f.get('summary')||'',body_markdown:f.get('body_markdown')||'',main_image_url:f.get('main_image_url')||null,tags:splitList(f.get('tags')),topics:collectTopics(),related_links:collectRepeatRows('.related-link-row'),documents:state.editor.documents,navigation_links:collectRepeatRows('.nav-link-row'),related_ids:$$('input[name="related_ids"]:checked').map(x=>x.value),recommendation_ids:$$('input[name="recommendation_ids"]:checked').map(x=>x.value),recommendation_links:collectRepeatRows('.recommendation-link-row'),seo_title:f.get('seo_title')||'',seo_description:f.get('seo_description')||'',type_data:typeData,is_trending:f.get('is_trending')==='on'};try{$('#formError').classList.add('hidden');const saved=await api(post.id?`/posts/${post.id}`:'/posts',{method:post.id?'PATCH':'POST',body});toast(saved.status==='published'?'Published successfully':'Saved successfully');closeModal();state.posts=[];await navigate('posts')}catch(err){const box=$('#formError');box.textContent=err.message;box.classList.remove('hidden');box.scrollIntoView({behavior:'smooth',block:'center'})}}
+
+  form.querySelector('[name="tags"]')?.addEventListener('input',refreshTags);
+  ['title','slug','summary','seo_title','seo_description'].forEach(name=>form.querySelector(`[name="${name}"]`)?.addEventListener('input',refreshSeo));
+  refreshTags();refreshSeo();
+
+  form.onsubmit=async e=>{
+    e.preventDefault();
+    clearEditorValidation(form);
+    refreshTags();refreshSeo();
+    const localIssues=clientEditorIssues(form);
+    if(localIssues.length){showEditorValidation(form,localIssues);return}
+    if(!form.reportValidity())return;
+
+    const f=new FormData(form),type=f.get('content_type'),typeData={};
+    $$('[data-key]',$('#typeFields')).forEach(el=>typeData[el.dataset.key]=el.value||null);
+    const body={
+      title:f.get('title').trim(),slug:f.get('slug').trim()||undefined,content_type:type,status:f.get('status'),
+      posted_date:f.get('posted_date')||null,category:f.get('category').trim(),categories:f.get('category')?[f.get('category').trim()]:[],
+      summary:f.get('summary')||'',body_markdown:f.get('body_markdown')||'',main_image_url:f.get('main_image_url')||null,
+      tags:splitList(f.get('tags')),topics:collectTopics(),related_links:collectRepeatRows('.related-link-row'),
+      documents:state.editor.documents,navigation_links:collectRepeatRows('.nav-link-row'),
+      related_ids:$$('input[name="related_ids"]:checked').map(x=>x.value),
+      recommendation_ids:$$('input[name="recommendation_ids"]:checked').map(x=>x.value),
+      recommendation_links:collectRepeatRows('.recommendation-link-row'),
+      seo_title:f.get('seo_title')||'',seo_description:f.get('seo_description')||'',type_data:typeData,
+      is_trending:f.get('is_trending')==='on'
+    };
+    try{
+      const save=form.querySelector('button[type="submit"]');save.disabled=true;save.textContent=post.id?'Saving…':'Creating…';
+      const saved=await api(post.id?`/posts/${post.id}`:'/posts',{method:post.id?'PATCH':'POST',body});
+      toast(saved.status==='published'?'Published successfully':'Saved successfully');closeModal();state.posts=[];await navigate('posts');
+    }catch(err){
+      const issues=err.details?.issues||[];
+      if(issues.length)showEditorValidation(form,issues);
+      else{
+        const box=$('#formError');box.innerHTML=`<strong>Could not save this content.</strong><p>${esc(err.message)}</p>`;box.classList.remove('hidden');box.scrollIntoView({behavior:'smooth',block:'center'});
+      }
+      const save=form.querySelector('button[type="submit"]');if(save){save.disabled=false;save.textContent=post.id?'Save changes':'Create content'}
+    }
+  };
 }
 async function uploadFile(file,title=''){const fd=new FormData();fd.append('file',file);fd.append('title',title||file.name);fd.append('alt_text',title||'');return api('/media/upload',{method:'POST',body:fd})}
 function openMediaUpload(){modal('Upload media or document','MEDIA LIBRARY',`<form id="mediaUpload" class="form-grid"><label class="field wide">Readable name<input name="title" placeholder="NSFAS bursary image" required></label><label class="field wide">File<input name="file" type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip" required></label><label class="field wide">Alt text<input name="alt_text" placeholder="Describe the image for accessibility"></label><div class="form-actions"><button type="button" class="ghost" id="mediaCancel">Cancel</button><button class="primary">Upload</button></div></form>`);$('#mediaCancel').onclick=closeModal;$('#mediaUpload').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);try{const fd=new FormData();fd.append('file',f.get('file'));fd.append('title',f.get('title'));fd.append('alt_text',f.get('alt_text'));await api('/media/upload',{method:'POST',body:fd});toast('Uploaded successfully');closeModal();await renderers.media()}catch(err){toast(err.message,true)}}}
