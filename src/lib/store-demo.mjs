@@ -157,7 +157,13 @@ export class DemoStore{
       if(x.event_type==='view'){const p=this.db.posts.find(p=>p.id===x.post_id);const t=p?.content_type||x.meta?.content_type||'other';byContent[t]=(byContent[t]||0)+1}
     }
     const topEntries=o=>Object.entries(o).map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count).slice(0,50);
-    return{totals,daily:Object.entries(days).sort().slice(-30).map(([date,total])=>({date,total})),unique_visitors:new Set(e.map(x=>x.visitor_id).filter(Boolean)).size,views_by_content_type:byContent,visitors_by_country:topEntries(countries),visitors_by_region:topEntries(regions),top_searches:topEntries(searches)}
+    const popular=this.db.posts.filter(p=>p.status==='published'&&!p.deleted_at).map(p=>({
+      id:p.id,title:p.title,slug:p.slug,content_type:p.content_type,geo:p.geo||{},
+      views:e.filter(x=>x.post_id===p.id&&x.event_type==='view').length,
+      reads:e.filter(x=>x.post_id===p.id&&x.event_type==='read').length,
+      application_clicks:e.filter(x=>x.post_id===p.id&&x.event_type==='application_click').length
+    })).sort((a,b)=>b.views-a.views||b.reads-a.reads).slice(0,50);
+    return{totals,daily:Object.entries(days).sort().slice(-30).map(([date,total])=>({date,total})),unique_visitors:new Set(e.map(x=>x.visitor_id).filter(Boolean)).size,views_by_content_type:byContent,visitors_by_country:topEntries(countries),visitors_by_region:topEntries(regions),top_searches:topEntries(searches),popular_content:popular}
   }
 
   async settings(){return this.db.settings}
