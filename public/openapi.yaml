@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: TodayInfo Global Managed API
-  version: 0.4.0
+  version: 0.5.0
   description: Published-only global content API for TodayInfo. Drafts and raw imports are never returned by public content/search endpoints.
 servers:
   - url: https://todayinfos.onrender.com/api/v1
@@ -138,7 +138,7 @@ paths:
         '404': {description: Not found}
   /analytics/events:
     post:
-      summary: Record anonymous engagement for analytics/trending/personalization
+      summary: Record anonymous engagement for analytics, trending, personalization and missing-content demand
       requestBody:
         required: true
         content:
@@ -149,7 +149,7 @@ paths:
                 visitor_id: {type: string, maxLength: 120}
                 event_type: {type: string, enum: [view, read, search, application_click, download, related_click, recommendation_click, tag_click]}
                 post_id: {type: string}
-                meta: {type: object, additionalProperties: true}
+                meta: {type: object, additionalProperties: true, description: For related/recommendation clicks, send target_url, target_title and optional target_type so missing content can enter the private demand queue.}
               required: [event_type]
       responses:
         '202': {description: Accepted}
@@ -230,6 +230,7 @@ components:
         organisation: {type: [string, 'null']}
         publishing_status: {type: string, const: published}
         seo: {type: object, additionalProperties: true}
+        tracking: {type: object, additionalProperties: true}
     ContentDetail:
       allOf:
         - {$ref: '#/components/schemas/ContentSummary'}
@@ -243,3 +244,4 @@ components:
             related_content: {type: array, items: {$ref: '#/components/schemas/ContentSummary'}}
             recommendations: {type: array, items: {$ref: '#/components/schemas/ContentSummary'}}
             navigation: {type: object, additionalProperties: true}
+            application_tracking: {type: [object, 'null'], additionalProperties: true}
