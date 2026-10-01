@@ -51,7 +51,8 @@ publicRouter.get('/meta',(req,res)=>res.json({data:{
   filters:GLOBAL_FILTERS,
   seo_pattern:'/{country}/{collection}/{slug}',
   news_seo_pattern:'/{country}/news/{category}/{slug}',
-  storage:{public_content:'R2/local fallback',index:'database abstraction'}
+  storage:{public_content:'R2/local fallback',index:'database abstraction'},
+  tracking:{endpoint:'/api/v1/analytics/events',demand_events:['related_click','recommendation_click'],missing_link_behavior:'private_draft_priority_queue'}
 }}));
 
 publicRouter.get('/posts',async(req,res)=>sendList(req,res));
