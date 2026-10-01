@@ -96,6 +96,8 @@ export function queryFilters(query={}) {
     field_of_study:pick('field_of_study','field'),
     job_type:pick('job_type'),
     work_mode:pick('work_mode','remote'),
+    salary_min:pick('salary_min'),salary_max:pick('salary_max'),currency:pick('currency'),
+    stipend:pick('stipend'),eligibility:pick('eligibility'),tag:pick('tag'),
     opportunity_status:pick('opportunity_status','status_filter'),
     closing_before:pick('closing_before'),
     closing_after:pick('closing_after'),
@@ -119,6 +121,12 @@ export function filterPost(post={},filters={}) {
   if(filters.field_of_study&&!c.fields_of_study.some(x=>lc(x).includes(lc(filters.field_of_study))))return false;
   if(filters.job_type&&lc(c.job_type)!==lc(filters.job_type))return false;
   if(filters.work_mode&&lc(c.work_mode)!==lc(filters.work_mode))return false;
+  if(filters.salary_min!==undefined&&filters.salary_min!==null&&filters.salary_min!==''&&Number(c.salary?.max??c.salary?.min??0)<Number(filters.salary_min))return false;
+  if(filters.salary_max!==undefined&&filters.salary_max!==null&&filters.salary_max!==''&&Number(c.salary?.min??c.salary?.max??0)>Number(filters.salary_max))return false;
+  if(filters.currency&&lc(c.salary?.currency)!==lc(filters.currency))return false;
+  if(filters.stipend!==undefined&&filters.stipend!==null&&filters.stipend!==''&&Boolean(c.salary?.stipend)!==['1','true','yes'].includes(lc(filters.stipend)))return false;
+  if(filters.eligibility&&!c.eligibility_tags.some(x=>lc(x).includes(lc(filters.eligibility))))return false;
+  if(filters.tag&&!(post.tags||[]).some(x=>lc(x)===lc(filters.tag)))return false;
   const closing=td.closing_date?new Date(td.closing_date):null;
   if(filters.closing_before&&closing&&closing>new Date(filters.closing_before))return false;
   if(filters.closing_after&&closing&&closing<new Date(filters.closing_after))return false;
@@ -130,6 +138,6 @@ export function filterPost(post={},filters={}) {
 
 export const GLOBAL_FILTERS=[
   'q','country','region','city','category','subcategory','organisation','opportunity_type',
-  'education_level','field_of_study','job_type','work_mode','opportunity_status',
-  'closing_before','closing_after','posted_before','posted_after'
+  'education_level','field_of_study','job_type','work_mode','salary_min','salary_max','currency','stipend',
+  'eligibility','tag','opportunity_status','closing_before','closing_after','posted_before','posted_after'
 ];
