@@ -11,6 +11,7 @@ import { inspectDatabaseUrl, resolveStoreMode, collectDatabaseUrls } from '../sr
 import { normalizeGeo, normalizeClassification, seoPath, filterPost } from '../src/lib/global-content.mjs';
 import { publicationKey, PUBLICATION_SCHEMA } from '../src/lib/publication-service.mjs';
 import { publishedObjectKey } from '../src/lib/r2.mjs';
+import { PUBLISHED_INDEX_KEY, PUBLISHED_INDEX_SCHEMA } from '../src/lib/published-index.mjs';
 import { FederatedStore, availabilityError } from '../src/lib/federated-store.mjs';
 import { searchScore, trendScore, deriveVisitorSignals } from '../src/lib/ranking.mjs';
 
@@ -263,4 +264,51 @@ test('visitor signals are deterministic and based on anonymous event history',()
   assert.equal(signals.region,'Gauteng');
   assert.equal(signals.content_type,'internship');
   assert.equal(signals.query,'internships');
+});
+
+
+test('scholarships are distinct from bursaries in the global classifier',()=>{
+  assert.equal(detectContentType({title:'Rhodes Scholarship 2027',type:'article'}),'scholarship');
+  assert.equal(detectContentType({title:'Engineering Bursary 2027',type:'article'}),'bursary');
+});
+
+test('global filters support salary stipend eligibility and work mode',()=>{
+  const post={
+    tags:['Graduate'],
+    geo:{country_code:'ZA',region_name:'Gauteng'},
+    classification:{
+      work_mode:'hybrid',eligibility_tags:['South African citizens','Graduates'],
+      salary:{min:5000,max:8000,currency:'ZAR',stipend:true},
+      education_level:['Graduate'],fields_of_study:['Engineering']
+    },
+    type_data:{}
+  };
+  assert.equal(filterPost(post,{salary_min:6000,currency:'zar',stipend:'true',eligibility:'citizens',work_mode:'hybrid'}),true);
+  assert.equal(filterPost(post,{salary_min:9000}),false);
+  assert.equal(filterPost(post,{stipend:'false'}),false);
+});
+
+test('published R2 manifest has a stable schema and key',()=>{
+  assert.equal(PUBLISHED_INDEX_KEY,'published/_index.json');
+  assert.equal(PUBLISHED_INDEX_SCHEMA,'todayinfo.index.v1');
+});
+
+test('partial database outage can still use the R2 or local fallback path',async()=>{
+  const unavailable={listPosts:async()=>{const e=new Error('network timeout');e.code='ETIMEDOUT';throw e}};
+  const healthy={listPosts:async()=>[]};
+  const fallback={
+    cached:[],cachePosts(rows){this.cached=rows},
+    listPosts:async()=>[{id:'cached',slug:'cached',title:'Cached',status:'published',geo:{country_code:'ZA'},updated_at:'2026-10-01'}]
+  };
+  const fed=new FederatedStore({primary:unavailable,readers:[healthy],fallback});
+  const rows=await fed.listPosts({status:'published'});
+  assert.ok(rows.some(x=>x.id==='cached'));
+});
+
+test('OpenAPI advertises the global frontend contract',()=>{
+  const spec=fs.readFileSync(new URL('../public/openapi.yaml',import.meta.url),'utf8');
+  assert.match(spec,/\/\{countryCode\}\/\{collection\}/);
+  assert.match(spec,/\/facets:/);
+  assert.match(spec,/\/locations:/);
+  assert.match(spec,/published-only global content API/i);
 });
