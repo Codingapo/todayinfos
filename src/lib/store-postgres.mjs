@@ -1,5 +1,5 @@
 import pg from 'pg';
-import { slugify, uniqueSlug } from './utils.mjs';
+import { id, slugify, uniqueSlug } from './utils.mjs';
 import { calculateOpportunityStatus } from './content-rules.mjs';
 import { filterPost, normalizeCountryCode } from './global-content.mjs';
 const {Pool}=pg;
@@ -89,16 +89,17 @@ export class PostgresStore{
   async getPost(id){return(await this.q('select * from posts where id=$1',[id])).rows[0]||null}
   async getPostBySlug(slug){return(await this.q(`select * from posts where slug=$1 and status='published' and deleted_at is null limit 1`,[slug])).rows[0]||null}
   async createPost(i,actor){
+    const postId=i.id||id();
     const slug=await this.#uniqueSlug(i.slug||i.title);
     return(await this.q(`insert into posts(
-      title,slug,content_type,summary,body_markdown,posted_date,category,categories,tags,topics,related_links,
+      id,title,slug,content_type,summary,body_markdown,posted_date,category,categories,tags,topics,related_links,
       related_ids,recommendation_ids,recommendation_links,documents,navigation_links,type_data,geo,classification,publication,
       main_image_url,seo_title,seo_description,source,status,is_trending,created_by,updated_by,published_at
     ) values(
-      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12,$13,$14::jsonb,$15::jsonb,$16::jsonb,$17::jsonb,
-      $18::jsonb,$19::jsonb,$20::jsonb,$21,$22,$23,$24::jsonb,$25,$26,$27,$27,case when $25='published' then now() else null end
+      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13,$14,$15::jsonb,$16::jsonb,$17::jsonb,$18::jsonb,
+      $19::jsonb,$20::jsonb,$21::jsonb,$22,$23,$24,$25::jsonb,$26,$27,$28,$28,case when $26='published' then now() else null end
     ) returning *`,[
-      i.title,slug,i.content_type||'other',i.summary||'',i.body_markdown||'',i.posted_date||null,i.category||'',
+      postId,i.title,slug,i.content_type||'other',i.summary||'',i.body_markdown||'',i.posted_date||null,i.category||'',
       i.categories||[],i.tags||[],json(i.topics||[]),json(i.related_links||[]),i.related_ids||[],i.recommendation_ids||[],
       json(i.recommendation_links||[]),json(i.documents||[]),json(i.navigation_links||[]),json(i.type_data||{}),
       json(i.geo||{}),json(i.classification||{}),json(i.publication||{}),i.main_image_url||null,i.seo_title||'',i.seo_description||'',
