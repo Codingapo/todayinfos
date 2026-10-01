@@ -58,7 +58,7 @@ async function fetchJson(url,{attempts=3}={}) {
   throw lastError||new Error('Source API request failed');
 }
 
-const fallbackEndpointsFor=kind=>{
+export const sourceEndpointCandidates=kind=>{
   if(kind==='dailyupdate/jobs')return['/dailyupdate/jobs','/dailyupdate','/articles'];
   if(kind==='bursaries')return['/bursaries','/search?q=bursary'];
   return[endpointFor({kind})];
@@ -161,7 +161,7 @@ export async function fetchImports(options={}) {
   let pagesFetched = 1;
 
   if (isCollection) {
-    const candidates=fallbackEndpointsFor(options.kind);
+    const candidates=sourceEndpointCandidates(options.kind);
     let lastError=null,result=null,usedEndpoint=endpoint;
     for(const candidate of candidates){
       try{
