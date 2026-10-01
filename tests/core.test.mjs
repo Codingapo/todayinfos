@@ -5,7 +5,7 @@ import { slugify } from '../src/lib/utils.mjs';
 import { cleanSourceText, detectContentType, calculateOpportunityStatus, ruleDraftFromRecord, isIndexLikeRecord, contentQuality, sourceRecommendations } from '../src/lib/content-rules.mjs';
 import { markdownToBlocks, renderBlocksHtml, extractInlineTags } from '../src/lib/rich-content.mjs';
 import { publicPost } from '../src/lib/serializers.mjs';
-import { ROLE_PERMISSIONS, hasPermission } from '../src/lib/rbac.mjs';
+import { ROLE_PERMISSIONS, ROLE_LABELS, hasPermission } from '../src/lib/rbac.mjs';
 import { resolvedDefinition } from '../src/lib/content-types.mjs';
 import { inspectDatabaseUrl, resolveStoreMode, collectDatabaseUrls } from '../src/lib/database-config.mjs';
 import { normalizeGeo, normalizeClassification, normalizeCountryCode, seoPath, filterPost } from '../src/lib/global-content.mjs';
@@ -22,6 +22,7 @@ import { demandPriority, clickedDiscoveryRow } from '../src/lib/demand-priority.
 import { CONTENT_LIMITS, SEO_GUIDANCE, zodValidationDetails } from '../src/lib/content-constraints.mjs';
 import { relationScore, smartRelated } from '../src/lib/related-content.mjs';
 import { GLOBAL_HARVEST_PROVIDERS } from '../src/lib/global-harvest.mjs';
+import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload } from '../src/lib/source-catalog.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
   assert.equal(slugify('University of Limpopo — Applications 2027!'),'university-of-limpopo-applications-2027');
@@ -573,21 +574,25 @@ test('smart related content strongly prefers shared organisation country tags an
   assert.equal(smartRelated(base,[weak,strong],{limit:1})[0].post.id,'b');
 });
 
-test('global harvest exposes public-feed and public-board providers without requiring AI',()=>{
+test('global harvest exposes expanded public-feed and public-board providers without requiring AI',()=>{
   const ids=GLOBAL_HARVEST_PROVIDERS.map(x=>x.id);
-  assert.deepEqual(ids,['arbeitnow','jobicy','remoteok','lever','ashby']);
-  assert.ok(GLOBAL_HARVEST_PROVIDERS.filter(x=>x.attribution).length>=3);
+  assert.deepEqual(ids,['arbeitnow','jobicy','remoteok','remotive','lever','ashby','greenhouse','workable','smartrecruiters']);
+  assert.ok(GLOBAL_HARVEST_PROVIDERS.filter(x=>x.attribution).length>=4);
 });
 
-test('Source Hub dashboard exposes regional related-page fetch and global harvest controls',()=>{
+test('Source Hub dashboard exposes categorized sources and expanded harvest controls',()=>{
   const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
   const html=fs.readFileSync(new URL('../public/admin/index.html',import.meta.url),'utf8');
   const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
   assert.match(html,/data-view="sources"/);
-  assert.match(ui,/Fetch pages/);
-  assert.match(ui,/Start global harvest/);
-  assert.match(ui,/Follow useful related opportunity pages/);
+  assert.match(ui,/One hub, many source families/);
+  assert.match(ui,/All categories/);
+  assert.match(ui,/Greenhouse board tokens/);
+  assert.match(ui,/Workable account subdomains/);
+  assert.match(ui,/SmartRecruiters company identifiers/);
+  assert.match(ui,/Start harvest/);
   assert.match(admin,/\/sources\/hub/);
+  assert.match(admin,/sourceHubPayload/);
   assert.match(admin,/\/harvest\/global/);
   assert.match(admin,/expandRelated:z\.boolean/);
 });
@@ -614,4 +619,86 @@ test('PostgreSQL public filters keep parameter markers and discovery searches so
   assert.match(src,/content_type=\$\$\{n\}/);
   assert.match(src,/coalesce\(source_url,''\) ilike \$\$\{n\}/);
   assert.doesNotMatch(src,/status=\$\{p\.length\}/);
+});
+
+
+test('source catalog adds exactly twenty researched sources beyond the original eight',()=>{
+  const original=new Set(['dailyupdate','zabursaries','psychometric-test','arbeitnow','jobicy','remoteok','lever','ashby']);
+  assert.equal(SOURCE_CATALOG.length,28);
+  assert.equal(SOURCE_CATALOG.filter(x=>!original.has(x.id)).length,20);
+  assert.equal(SOURCE_CATEGORIES.length,6);
+  assert.ok(SOURCE_CATALOG.some(x=>x.id==='eures'&&x.integration_status==='discovery'));
+  assert.ok(SOURCE_CATALOG.some(x=>x.id==='usajobs'&&x.integration_status==='credentials_required'));
+  assert.ok(SOURCE_CATALOG.some(x=>x.id==='adzuna'&&x.integration_status==='licence_required'));
+  assert.ok(SOURCE_CATALOG.some(x=>x.id==='recruitee'&&x.integration_status==='credentials_required'));
+});
+
+test('categorized Source Hub reports source health without exposing it through the public catalog',()=>{
+  const payload=sourceHubPayload({
+    imports:[{source_name:'Remotive',source_url:'https://remotive.com/remote-jobs/x',review_status:'unreviewed',quality_score:90,last_seen_at:'2026-10-01'}],
+    posts:[{source:{source_name:'Remotive',source_url:'https://remotive.com/remote-jobs/x'},status:'published',deleted_at:null}],
+    permanentRecords:80
+  });
+  assert.equal(payload.totals.sources,28);
+  assert.equal(payload.categories.length,6);
+  const remotive=payload.sources.find(x=>x.id==='remotive');
+  assert.equal(remotive.stats.imports,1);
+  assert.equal(remotive.stats.published,1);
+  assert.equal(remotive.stats.average_quality,90);
+});
+
+test('Editor and Content Worker are publishing employees but cannot access CEO intelligence areas',()=>{
+  for(const role of ['editor','content_worker']){
+    assert.equal(hasPermission(role,'imports.view'),true);
+    assert.equal(hasPermission(role,'imports.review'),true);
+    assert.equal(hasPermission(role,'posts.edit'),true);
+    assert.equal(hasPermission(role,'posts.publish'),true);
+    assert.equal(hasPermission(role,'media.upload'),true);
+    assert.equal(hasPermission(role,'imports.fetch'),false);
+    assert.equal(hasPermission(role,'dashboard.view'),false);
+    assert.equal(hasPermission(role,'analytics.view'),false);
+    assert.equal(hasPermission(role,'team.view'),false);
+    assert.equal(hasPermission(role,'settings.view'),false);
+    assert.equal(hasPermission(role,'audit.view'),false);
+  }
+  assert.equal(ROLE_LABELS.owner,'CEO / Owner');
+  assert.equal(hasPermission('owner','anything.at.all'),true);
+});
+
+test('worker access is enforced in backend routes and mirrored in dashboard navigation',()=>{
+  const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(admin,/sources\/hub',permit\('imports\.fetch'\)/);
+  assert.match(admin,/imports\/priority',permit\('imports\.fetch'\)/);
+  assert.match(admin,/hasPermission\(req\.user\.role,'posts\.publish'\)/);
+  assert.match(ui,/VIEW_PERMISSION/);
+  assert.match(ui,/firstAllowedView/);
+  assert.match(ui,/applyAccess/);
+  assert.match(ui,/Editor and Content Workers only see Import Inbox, Content Library and Media/);
+});
+
+test('employee productivity is audit-derived and shown to the CEO',()=>{
+  const demo=fs.readFileSync(new URL('../src/lib/store-demo.mjs',import.meta.url),'utf8');
+  const pg=fs.readFileSync(new URL('../src/lib/store-postgres.mjs',import.meta.url),'utf8');
+  const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  for(const src of [demo,pg]){
+    assert.match(src,/teamPerformance/);
+    assert.match(src,/import\.clean/);
+    assert.match(src,/import\.promote/);
+    assert.match(src,/post\.publish/);
+  }
+  assert.match(admin,/import\.clean/);
+  assert.match(admin,/teamPerformance/);
+  assert.match(ui,/Cleaned records/);
+  assert.match(ui,/Published by employees/);
+  assert.match(ui,/Apo is CEO\. Employees clean and publish/);
+});
+
+test('public API advertises source catalog without public internal source counts',()=>{
+  const route=fs.readFileSync(new URL('../src/routes/public.mjs',import.meta.url),'utf8');
+  assert.match(route,/publicRouter\.get\('\/sources'/);
+  assert.match(route,/source_catalog_version:2/);
+  assert.match(route,/internal_counts_hidden:true/);
+  assert.match(route,/endpoint:'\/api\/v1\/sources'/);
 });
