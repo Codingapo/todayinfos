@@ -36,6 +36,9 @@ export const config = {
 
   sourceApiBase: (process.env.SOURCE_API_BASE || 'https://todayinfo-zpshgscq.manus.space/api/v1').replace(/\/$/, ''),
   sourceDefaultCountry: process.env.SOURCE_DEFAULT_COUNTRY || 'ZA',
+  autoPublishImports: String(process.env.AUTO_PUBLISH_IMPORTS ?? 'true').toLowerCase() !== 'false',
+  autoPublishMinScore: Math.max(80, Math.min(100, Number(process.env.AUTO_PUBLISH_MIN_SCORE || 80))),
+  autoPublishMaxPerFetch: Math.max(1, Math.min(1000, Number(process.env.AUTO_PUBLISH_MAX_PER_FETCH || 500))),
   databaseUrl,
   databaseUrls,
   databaseSsl: String(process.env.DATABASE_SSL ?? 'true').toLowerCase() !== 'false',
