@@ -28,7 +28,7 @@ import { NEWS_FEEDS } from '../src/lib/news-harvest.mjs';
 import { buildTrafficAtlas, continentForCode } from '../src/lib/geo-analytics.mjs';
 import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload, sourcePublishingPolicy } from '../src/lib/source-catalog.mjs';
 import { parseDirectAnchors, fetchDirectSourceRecord, fetchDirectSourceFallback, directFallbackSupports } from '../src/lib/direct-source-fallback.mjs';
-import { sourceEndpointCandidates, probeLegacySources } from '../src/lib/importer.mjs';
+import { fetchImports, sourceEndpointCandidates, probeLegacySources } from '../src/lib/importer.mjs';
 
 import { PostgresStore } from '../src/lib/store-postgres.mjs';
 test('SEO slugs stay extension-free and readable',()=>{
