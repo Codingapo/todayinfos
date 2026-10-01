@@ -1,1 +1,2 @@
-The requested file reference is not currently visible. Use files.search or files.list to rediscover the file, then retry with a returned ref_id or file_id.
+// Managed TodayInfo API consumed by this static frontend.
+window.TODAYINFO_API_BASE = 'https://todayinfos.onrender.com/api/v1';
