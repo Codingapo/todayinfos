@@ -56,7 +56,44 @@ adminRouter.get('/source-presets',permit('imports.view'),(req,res)=>ok(res,[
   {id:'tag:psychometric-test',label:'Psychometric Test tag',kind:'tag',tagSlug:'psychometric-test'}
 ]));
 adminRouter.get('/imports',permit('imports.view'),async(req,res)=>ok(res,await store.listImports({status:req.query.status,type:req.query.type,q:req.query.q})));
-adminRouter.post('/imports/fetch',permit('imports.fetch'),async(req,res)=>{const schema=z.object({kind:z.enum(['pages','bursaries','articles','dailyupdate','dailyupdate/jobs','tag','search']).default('pages'),tagSlug:z.string().max(120).optional(),query:z.string().max(200).optional(),year:z.union([z.string(),z.number()]).optional(),expand:z.boolean().optional().default(true),maxPages:z.number().int().min(1).max(20).optional()});const p=schema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid fetch options',details:p.error.flatten()});const rows=await fetchImports(p.data);const result=await store.upsertImports(rows);await audit(req,'imports.fetch','source',p.data.kind,{...p.data,...result});ok(res,{...result,records:rows.slice(0,20)})});
+adminRouter.post('/imports/fetch',permit('imports.fetch'),async(req,res)=>{
+  const schema=z.object({
+    kind:z.enum(['pages','bursaries','articles','dailyupdate','dailyupdate/jobs','tag','search']).default('pages'),
+    tagSlug:z.string().max(120).optional(),
+    query:z.string().max(200).optional(),
+    year:z.union([z.string(),z.number()]).optional(),
+    expand:z.boolean().optional().default(true),
+    maxPages:z.number().int().min(1).max(100).optional().default(100),
+    publishSamples:z.number().int().min(0).max(5).optional().default(0)
+  });
+  const p=schema.safeParse(req.body);
+  if(!p.success)return res.status(400).json({error:'Invalid fetch options',details:p.error.flatten()});
+
+  const sync=await fetchImports(p.data);
+  const result=await store.upsertImports(sync.rows);
+  const published_samples=[];
+
+  if(config.demoMode && p.data.publishSamples>0){
+    const keys=new Set(sync.rows.map(x=>x.source_key));
+    const remembered=await store.listImports({});
+    const candidates=remembered
+      .filter(x=>keys.has(x.source_key)&&x.review_status==='unreviewed'&&!x.promoted_post_id)
+      .sort((a,b)=>Number(b.quality_score||0)-Number(a.quality_score||0));
+
+    for(const imp of candidates){
+      if(published_samples.length>=p.data.publishSamples)break;
+      const draft=normalizePost({...imp.prepared_draft,content_type:imp.detected_type||imp.prepared_draft?.content_type||'other'});
+      const issues=publishProblems(draft);
+      if(issues.length||Number(imp.quality_score||0)<65)continue;
+      const post=await store.promoteImport(imp.id,req.user.id);
+      const published=await store.updatePost(post.id,{status:'published'},req.user.id);
+      published_samples.push({id:published.id,title:published.title,slug:published.slug,type:published.content_type});
+    }
+  }
+
+  await audit(req,'imports.fetch','source',p.data.kind,{...p.data,...result,...sync.stats,published_samples:published_samples.length});
+  ok(res,{...result,...sync.stats,published_samples,records:sync.rows.slice(0,100)});
+});
 adminRouter.get('/imports/:id',permit('imports.view'),async(req,res)=>{const row=await store.getImport(req.params.id);if(!row)return res.status(404).json({error:'Import not found'});ok(res,row)});
 adminRouter.patch('/imports/:id',permit('imports.review'),async(req,res)=>{const schema=z.object({review_status:z.enum(['unreviewed','reviewing','promoted','ignored']).optional(),detected_type:z.enum(contentTypes).optional(),prepared_draft:postSchema.partial().optional()});const p=schema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid import update',details:p.error.flatten()});const patch={...p.data};if(patch.prepared_draft)patch.prepared_draft=normalizePost({...patch.prepared_draft,content_type:patch.prepared_draft.content_type||patch.detected_type||'other'});const row=await store.updateImport(req.params.id,patch);if(!row)return res.status(404).json({error:'Import not found'});await audit(req,'import.update','raw_import',row.id,{fields:Object.keys(patch)});ok(res,row)});
 adminRouter.post('/imports/:id/promote',permit('imports.review'),async(req,res)=>{const row=await store.promoteImport(req.params.id,req.user.id);if(!row)return res.status(404).json({error:'Import not found'});await audit(req,'import.promote','post',row.id,{source_import:req.params.id});res.status(201).json({data:row})});
