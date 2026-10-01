@@ -1,11 +1,21 @@
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
-const state={user:null,csrf:'',view:'overview',contentTypes:null,constraints:null,posts:[],editor:null};
+const state={user:null,csrf:'',permissions:[],view:'overview',contentTypes:null,constraints:null,posts:[],editor:null};
 const savedTheme=localStorage.getItem('todayinfo-theme');
 function applyTheme(theme){document.documentElement.dataset.theme=theme;localStorage.setItem('todayinfo-theme',theme);const button=$('#themeToggle');if(button){const dark=theme==='dark';button.setAttribute('aria-label',dark?'Switch to light mode':'Switch to dark mode');button.title=dark?'Switch to light mode':'Switch to dark mode';button.querySelector('span').textContent=dark?'☀':'☾';button.querySelector('.theme-label').textContent=dark?'Light mode':'Dark mode'}}
 applyTheme(savedTheme||'light');
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate=v=>{if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})};
 const dateInput=v=>{if(!v)return'';const d=new Date(v);return Number.isNaN(d.getTime())?'':d.toISOString().slice(0,10)};
+const can=permission=>(state.permissions||[]).some(p=>p==='*'||p===permission||(p.endsWith('.*')&&permission.startsWith(p.slice(0,-1))));
+const VIEW_PERMISSION={overview:'dashboard.view',sources:'imports.fetch',imports:'imports.view',demand:'imports.fetch',posts:'posts.view',media:'media.view',analytics:'analytics.view',team:'team.view',settings:'settings.view',audit:'audit.view'};
+const firstAllowedView=()=>['overview','imports','posts','media','sources','analytics','team','settings','audit'].find(v=>can(VIEW_PERMISSION[v]))||'posts';
+const applyAccess=()=>{
+  $('#nav button[data-view]').forEach(btn=>{const permission=VIEW_PERMISSION[btn.dataset.view];btn.hidden=Boolean(permission&&!can(permission))});
+  $('#nav p').forEach(label=>{let next=label.nextElementSibling,visible=false;while(next&&next.tagName!=='P'){if(next.matches?.('button[data-view]')&&!next.hidden)visible=true;next=next.nextElementSibling}label.hidden=!visible});
+  if($('#quickFetch'))$('#quickFetch').hidden=!can('imports.fetch');
+  if($('#quickCreate'))$('#quickCreate').hidden=!can('posts.create');
+  const role=$('#roleBadge');if(role)role.textContent=state.user?.role_label||state.user?.role||'';
+};
 const adminOpportunityStatus=p=>{const td=p?.type_data||{},override=String(td.status_override||'auto').toLowerCase();if(override&&override!=='auto')return override;const close=td.closing_date?new Date(td.closing_date):null;if(close&&!Number.isNaN(close.getTime())){const days=Math.ceil((close-Date.now())/86400000);if(days<0)return'closed';if(days<=7)return'closing_soon';return'open'}return'unknown'};
 const splitList=v=>[...new Set(String(v||'').split(',').map(x=>x.trim().replace(/^#/,'')).filter(Boolean))];
 const bytes=n=>{const x=Number(n||0);if(!x)return'';if(x<1024)return`${x} B`;if(x<1048576)return`${(x/1024).toFixed(1)} KB`;return`${(x/1048576).toFixed(1)} MB`};
@@ -34,12 +44,12 @@ $('#modalClose').addEventListener('click',closeModal);
 $('#modal').addEventListener('click',e=>{if(e.target===$('#modal'))closeModal()});
 
 async function boot(){
-  try{const me=await request('/admin/api/auth/me',{auth:false});state.user=me.user;state.csrf=me.csrf;showApp();await loadContentTypes();await navigate('overview')}catch{showLogin()}
+  try{const me=await request('/admin/api/auth/me',{auth:false});state.user=me.user;state.csrf=me.csrf;state.permissions=me.permissions||[];showApp();applyAccess();await loadContentTypes();await navigate(firstAllowedView())}catch{showLogin()}
 }
 function showLogin(){$('#loginView').classList.remove('hidden');$('#appView').classList.add('hidden')}
 function showApp(){$('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');$('#avatar').textContent=(state.user?.display_name||state.user?.username||'A').slice(0,1).toUpperCase()}
-$('#loginForm').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.currentTarget);try{const r=await request('/admin/api/auth/login',{method:'POST',body:{username:f.get('username'),password:f.get('password')},auth:false});state.user=r.user;state.csrf=r.csrf;showApp();await loadContentTypes();await navigate('overview')}catch(err){toast(err.message,true)}});
-$('#logoutBtn').addEventListener('click',async()=>{try{await request('/admin/api/auth/logout',{method:'POST',body:{}})}catch{}state.user=null;state.csrf='';showLogin()});
+$('#loginForm').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.currentTarget);try{const r=await request('/admin/api/auth/login',{method:'POST',body:{username:f.get('username'),password:f.get('password')},auth:false});state.user=r.user;state.csrf=r.csrf;state.permissions=r.permissions||[];showApp();applyAccess();await loadContentTypes();await navigate(firstAllowedView())}catch(err){toast(err.message,true)}});
+$('#logoutBtn').addEventListener('click',async()=>{try{await request('/admin/api/auth/logout',{method:'POST',body:{}})}catch{}state.user=null;state.csrf='';state.permissions=[];showLogin()});
 $('#menuBtn').addEventListener('click',()=>$('#sidebar').classList.toggle('open'));
 $('#themeToggle').addEventListener('click',()=>applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
 $('#nav').addEventListener('click',e=>{const b=e.target.closest('button[data-view]');if(b)navigate(b.dataset.view)});
@@ -55,7 +65,7 @@ async function loadContentTypes(){
   state.contentTypes=types;state.constraints=constraints;
 }
 const VIEW_META={overview:['COMMAND CENTER','Overview'],sources:['SOURCE INTELLIGENCE','Source Hub'],imports:['CONTENT PIPELINE','Import Inbox'],demand:['AUDIENCE DEMAND','Demand Queue'],posts:['CONTENT','Content Library'],media:['FILES','Media & Documents'],analytics:['INSIGHTS','Analytics'],team:['ACCESS','Team & Roles'],settings:['SYSTEM','Settings'],audit:['SECURITY','Audit Log']};
-async function navigate(view){state.view=view;$('#sidebar').classList.remove('open');$$('#nav button[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===view));const [eye,title]=VIEW_META[view]||['TODAYINFO',view];$('#viewEyebrow').textContent=eye;$('#viewTitle').textContent=title;$('#content').innerHTML='<div class="empty">Loading…</div>';try{await renderers[view]()}catch(err){$('#content').innerHTML=`<div class="error-box">${esc(err.message)}</div>`}}
+async function navigate(view){if(VIEW_PERMISSION[view]&&!can(VIEW_PERMISSION[view]))view=firstAllowedView();state.view=view;$('#sidebar').classList.remove('open');$$('#nav button[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===view));const [eye,title]=VIEW_META[view]||['TODAYINFO',view];$('#viewEyebrow').textContent=eye;$('#viewTitle').textContent=title;$('#content').innerHTML='<div class="empty">Loading…</div>';try{await renderers[view]()}catch(err){$('#content').innerHTML=`<div class="error-box">${esc(err.message)}</div>`}}
 
 function metric(label,value,note=''){return`<div class="metric"><small>${esc(label)}</small><strong>${Number(value||0).toLocaleString()}</strong>${note?`<em>${esc(note)}</em>`:''}</div>`}
 function bars(obj={}){const entries=Object.entries(obj);const max=Math.max(1,...entries.map(([,v])=>Number(v)||0));return`<div class="bar-chart">${entries.length?entries.map(([k,v])=>`<div class="bar-row"><span>${esc(k.replaceAll('_',' '))}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max(2,(Number(v)/max)*100)}%"></div></div><b>${Number(v).toLocaleString()}</b></div>`).join(''):'<div class="empty">No data yet.</div>'}</div>`}
