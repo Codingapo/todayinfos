@@ -315,7 +315,7 @@ async function openFetch(){
     <label class="field wide">What do you want to fetch?<select name="preset">${presets.map(p=>`<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}</select><small>Psychometric Test remains a dedicated tag source.</small></label>
     <label class="field">Year filter<input name="year" inputmode="numeric" value="${currentYear}" placeholder="${currentYear}"><small>Clear this field to fetch every year.</small></label>
     <label class="field">How deep should we sync?<select name="maxPages"><option value="10">10 source pages</option><option value="25">25 source pages</option><option value="50">50 source pages</option><option value="100" selected>100 source pages / everything available</option></select></label>
-    <label class="field wide preview-check"><input name="autoPublish" type="checkbox" checked><span>Auto-publish clean imports scoring 80% or higher<small>Expired items, missing source links, missing required fields, or missing application routes are still blocked and left in the Import Inbox.</small></span></label>
+    <label class="field wide preview-check"><input name="expandRelated" type="checkbox" checked><span>Follow useful related opportunity pages<small>TodayInfo will fetch related DailyUpdate/ZA Bursaries detail pages instead of storing only the directory/index page.</small></span></label><label class="field wide preview-check"><input name="autoPublish" type="checkbox" checked><span>Auto-publish clean imports scoring 80% or higher<small>Expired items, missing source links, missing required fields, or missing application routes are still blocked and left in the Import Inbox.</small></span></label>
     <div class="wide notice">Each source page requests up to 100 records. Existing imports are remembered by source key; reviewed and promoted states are preserved. Source patterns also improve the rule-based import memory over time.</div>
     <div id="syncProgress" class="wide sync-progress hidden"><span class="sync-spinner"></span><div><strong>Syncing source…</strong><small>Large syncs can take longer. Keep this dialog open until the result appears.</small></div></div>
     <div class="form-actions"><button type="button" class="ghost" id="cancelFetch">Cancel</button><button class="primary" id="syncSubmit">Start deep sync</button></div>
@@ -324,7 +324,7 @@ async function openFetch(){
   $('#fetchForm').onsubmit=async e=>{
     e.preventDefault();
     const f=new FormData(e.currentTarget),p=presets.find(x=>x.id===f.get('preset'));
-    const body={kind:p?.kind||(p?.id||'pages'),year:f.get('year')||undefined,maxPages:Number(f.get('maxPages')||100),expand:true,autoPublish:f.get('autoPublish')==='on'};
+    const body={kind:p?.kind||(p?.id||'pages'),year:f.get('year')||undefined,maxPages:Number(f.get('maxPages')||100),expand:true,expandRelated:f.get('expandRelated')==='on',relatedLimit:150,autoPublish:f.get('autoPublish')==='on'};
     if(p?.tagSlug)body.tagSlug=p.tagSlug;
     const submit=$('#syncSubmit');submit.disabled=true;submit.textContent='Syncing…';$('#syncProgress').classList.remove('hidden');
     try{
