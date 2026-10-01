@@ -8,7 +8,7 @@ import { publicPost } from '../src/lib/serializers.mjs';
 import { ROLE_PERMISSIONS, ROLE_LABELS, hasPermission } from '../src/lib/rbac.mjs';
 import { resolvedDefinition } from '../src/lib/content-types.mjs';
 import { inspectDatabaseUrl, resolveStoreMode, collectDatabaseUrls } from '../src/lib/database-config.mjs';
-import { normalizeGeo, normalizeClassification, normalizeCountryCode, seoPath, filterPost } from '../src/lib/global-content.mjs';
+import { normalizeGeo, normalizeClassification, normalizeCountryCode, seoPath, filterPost, matchesSearch, queryFilters } from '../src/lib/global-content.mjs';
 import { publicationKey, PUBLICATION_SCHEMA } from '../src/lib/publication-service.mjs';
 import { publishedObjectKey } from '../src/lib/r2.mjs';
 import { PUBLISHED_INDEX_KEY, PUBLISHED_INDEX_SCHEMA } from '../src/lib/published-index.mjs';
@@ -29,6 +29,7 @@ import { buildTrafficAtlas, continentForCode } from '../src/lib/geo-analytics.mj
 import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload, sourcePublishingPolicy, importPublishingPolicy } from '../src/lib/source-catalog.mjs';
 import { parseDirectAnchors, fetchDirectSourceRecord, fetchDirectSourceFallback, directFallbackSupports } from '../src/lib/direct-source-fallback.mjs';
 import { fetchImports, sourceEndpointCandidates, probeLegacySources } from '../src/lib/importer.mjs';
+import { preparePrivateIngestItem, descriptiveOpportunitySlug } from '../src/lib/private-ingest.mjs';
 
 import { PostgresStore } from '../src/lib/store-postgres.mjs';
 test('SEO slugs stay extension-free and readable',()=>{
@@ -1091,4 +1092,66 @@ test('v0.8.5: CEO editing Import Inbox and Demand Queue controls remain intact',
   assert.equal(hasPermission('owner','imports.review'),true);
   assert.equal(hasPermission('owner','posts.edit'),true);
   assert.equal(hasPermission('owner','posts.publish'),true);
+});
+
+
+test('shared token search works with country and type across storage modes',()=>{
+  const post={
+    content_type:'job',title:'Graduate Software Developer',summary:'Entry level role',
+    body_markdown:'Build web applications',category:'Jobs',categories:['Jobs'],tags:['Technology'],
+    type_data:{company:'Example Tech'},geo:{country_code:'ZA',country_name:'South Africa',city:'Johannesburg'},
+    classification:{organisation:'Example Tech',fields_of_study:['Computer Science'],education_level:[],eligibility_tags:[],keywords:['graduate']}
+  };
+  assert.equal(matchesSearch(post,'software johannesburg'),true);
+  assert.equal(filterPost(post,{q:'software johannesburg',country:'ZA',type:'job'}),true);
+  assert.equal(filterPost(post,{q:'software johannesburg',country:'GB',type:'job'}),false);
+  assert.equal(queryFilters({country:'South Africa',type:'job',q:'software'}).country,'ZA');
+});
+
+test('private ingestion creates descriptive SEO slugs and structured rule-based content',()=>{
+  const item={
+    title:'Graduate Software Developer',company:'Example Tech',city:'Johannesburg',
+    source_url:'https://publisher.example/jobs/123',application_url:'https://careers.example.com/jobs/123',
+    requirements:['Degree or diploma','JavaScript'],closing_date:'2026-11-30'
+  };
+  const slug=descriptiveOpportunitySlug(item,'job','ZA');
+  assert.match(slug,/example-tech-graduate-software-developer-johannesburg-za-2026/);
+  const prepared=preparePrivateIngestItem(item,{type:'job',country_code:'ZA',country_name:'South Africa'});
+  assert.equal(prepared.draft.geo.country_code,'ZA');
+  assert.equal(prepared.draft.content_type,'job');
+  assert.match(prepared.draft.body_markdown,/## Overview/);
+  assert.match(prepared.draft.body_markdown,/## Requirements/);
+});
+
+test('private ingestion API is secret protected and enforces 50 jobs or 100 bursaries',()=>{
+  const route=fs.readFileSync(new URL('../src/routes/internal.mjs',import.meta.url),'utf8');
+  const server=fs.readFileSync(new URL('../src/server.mjs',import.meta.url),'utf8');
+  const config=fs.readFileSync(new URL('../src/config.mjs',import.meta.url),'utf8');
+  assert.match(route,/x-todayinfo-ingest-key/);
+  assert.match(route,/input\.type==='job'\?50:100/);
+  assert.match(route,/verifyApplicationUrl/);
+  assert.match(route,/config\.autoPublishMinScore/);
+  assert.match(server,/\/internal\/ingest\/v1/);
+  assert.match(config,/TODAYINFO_INGEST_KEY/);
+});
+
+test('CEO Import Inbox Demand Queue and content editor controls remain wired',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(ui,/\$\$\('\#nav button\[data-view\]'\)\.forEach/);
+  assert.doesNotMatch(ui,/\$\('\#nav button\[data-view\]'\)\.forEach/);
+  assert.match(ui,/id="saveImportCleanup"/);
+  assert.match(ui,/id="promoteImport"/);
+  assert.match(ui,/id="publishImport"/);
+  assert.match(ui,/fetch-demand/);
+  assert.match(ui,/review-demand/);
+  assert.match(ui,/openImportReview/);
+});
+
+test('public API exposes application prominently and paginates filtered search',()=>{
+  const serializer=fs.readFileSync(new URL('../src/lib/serializers.mjs',import.meta.url),'utf8');
+  const routes=fs.readFileSync(new URL('../src/routes/public.mjs',import.meta.url),'utf8');
+  assert.match(serializer,/label:'Apply on the official website'/);
+  assert.match(serializer,/application:\['bursary','scholarship','job','internship','learnership','opportunity'\]/);
+  assert.match(routes,/const payload=paginate\(items,req\.query\.page,req\.query\.limit\)/);
+  assert.match(routes,/req\.query\.query/);
 });
