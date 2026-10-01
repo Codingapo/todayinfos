@@ -9,6 +9,7 @@ import { config } from './config.mjs';
 import { authRouter } from './routes/auth.mjs';
 import { adminRouter } from './routes/admin.mjs';
 import { publicRouter } from './routes/public.mjs';
+import { retryPublicationQueue } from './lib/r2.mjs';
 
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
@@ -41,3 +42,15 @@ app.listen(config.port,()=>{
   }
   if(config.demoMode)console.log(`DEMO MODE login: ${config.demoAdminUsername} / ${config.demoAdminPassword} (development/testing only)`);
 });
+
+
+const publicationRetryTimer=setInterval(()=>{
+  retryPublicationQueue({limit:100}).then(result=>{
+    if(result.synced)console.log(`Publication retry synced ${result.synced} queued object(s).`);
+  }).catch(error=>console.warn(`Publication retry failed: ${error.message}`));
+},5*60*1000);
+publicationRetryTimer.unref?.();
+
+setTimeout(()=>{
+  retryPublicationQueue({limit:100}).catch(()=>{});
+},5000).unref?.();
