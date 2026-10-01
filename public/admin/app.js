@@ -67,7 +67,7 @@ const renderers={
         ${metric('Seen more than once',remembered,'deduplicated')}
         ${metric('Promoted',promoted,'draft or published')}
       </div>
-      <div class="toolbar"><input id="importSearch" class="search" placeholder="Search imported title, source or URL"><select id="importStatus" class="search" style="flex:0 0 170px"><option value="">All statuses</option><option>unreviewed</option><option>reviewing</option><option>promoted</option><option>ignored</option></select></div>
+      <div class="toolbar"><input id="importSearch" class="search" placeholder="Search imported title, source or URL"><select id="importStatus" class="search" style="flex:0 0 170px"><option value="">All statuses</option><option>unreviewed</option><option>reviewing</option><option>promoted</option></select></div>
       <section class="panel"><div class="panel-head"><div><h3>Private Import Inbox</h3><p class="panel-sub">Latest source records appear first. Archive, tag, category and pagination pages are filtered before review.</p></div></div><div id="importList" class="source-grid"></div></section>`;
 
     const render=(list)=>{
