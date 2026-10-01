@@ -40,7 +40,7 @@ app.use('/api/v1',cors({origin:'*',methods:['GET','POST','OPTIONS']}),publicRout
 app.use('/admin/api/auth',authRouter);
 app.use('/admin/api',adminRouter);
 app.use('/uploads',express.static(path.resolve(__dirname,'../uploads'),{fallthrough:false,maxAge:'1y',immutable:true}));
-app.use('/admin',express.static(path.resolve(__dirname,'../public/admin'),{index:false,maxAge:config.nodeEnv==='production'?'1h':0}));
+app.use('/admin',express.static(path.resolve(__dirname,'../public/admin'),{index:false,maxAge:0,setHeaders(res){res.setHeader('Cache-Control','no-store, no-cache, must-revalidate')}}));
 app.get(/^\/admin(?:\/.*)?$/,(req,res)=>res.sendFile(path.resolve(__dirname,'../public/admin/index.html')));
 app.get('/openapi.yaml',(req,res)=>res.sendFile(path.resolve(__dirname,'../public/openapi.yaml')));
 app.get('/',(req,res)=>res.json({name:'TodayInfo Managed API',version:'v1',admin:'/admin/',publicApi:'/api/v1',health:'/health',openapi:'/openapi.yaml'}));
