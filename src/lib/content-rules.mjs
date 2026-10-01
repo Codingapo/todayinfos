@@ -1,4 +1,5 @@
 import { slugify } from './utils.mjs';
+import { cleanForSource, improveDraftForSource, isSourceIndexRecord, sourceFamily } from './source-profiles.mjs';
 
 const BOILERPLATE_LINES = [
   /^post navigation$/i,/^leave a reply$/i,/^recent posts$/i,/^recent comments$/i,/^archives$/i,/^categories$/i,
@@ -32,6 +33,7 @@ export function isIndexLikeRecord(record={}) {
   if (/\/(category|tag|author)\//i.test(path)) return true;
   if (/\/page\/\d+\/?(?:$|[?#])/i.test(path)) return true;
   if (['archive','tag','category'].includes(pageType)) return true;
+  if (isSourceIndexRecord(record)) return true;
   return false;
 }
 
@@ -131,7 +133,9 @@ export function sourceRecommendations(record={},contentType=detectContentType(re
 export function ruleDraftFromRecord(record={}) {
   const content_type=detectContentType(record);
   const title=String(record.title||record.name||'Untitled import').replace(/\s+/g,' ').trim();
-  const content=cleanSourceText(record.contentText||record.content||record.description||record.excerpt||'');
+  const family=sourceFamily(record);
+  const sourceCleaned=cleanForSource(record.contentText||record.content||record.description||record.excerpt||'',family,record.title||record.name||'');
+  const content=cleanSourceText(sourceCleaned);
   const explicitSummary=cleanSourceText(record.description||record.excerpt||'');
   const summary=(explicitSummary || content.replace(/\n+/g,' ').slice(0,420)).slice(0,1000);
   const categories=cleanCategories(record.categories);
@@ -173,7 +177,7 @@ export function ruleDraftFromRecord(record={}) {
     body:cleanSourceText(s.body||s.content||''),links:[],images:[],documents:[]
   })).filter(x=>x.title && x.body);
 
-  return {
+  const draft={
     title,slug:slugify(record.slug||title),content_type,summary,body_markdown:content,
     posted_date:record.publishedAt||record.modifiedAt||record.posted_date||null,
     category:categories[0]||titleCaseType(content_type),categories,tags,
@@ -183,6 +187,7 @@ export function ruleDraftFromRecord(record={}) {
     main_image_url:firstImage(record),seo_title:title,seo_description:summary,type_data,
     is_trending:false,status:'draft'
   };
+  return improveDraftForSource(record,draft);
 }
 
 export function contentQuality(draft={}) {
