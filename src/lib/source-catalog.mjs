@@ -11,16 +11,18 @@ export const SOURCE_CATALOG=[
   {
     id:'dailyupdate',label:'DailyUpdate',category:'todayinfo_network',region:'South Africa',country_code:'ZA',
     content_types:['job','internship','learnership'],mode:'todayinfo_api',integration_status:'active',
-    description:'Long-form employment articles. TodayInfo rejects archive pages and extracts requirements, how-to-apply text and useful related opportunities.',
+    description:'Long-form employment articles. TodayInfo uses them for facts, requirements, application routes and discovery, but keeps narrative content for manual editorial review.',
+    publishing_policy:{mode:'facts_only_manual_edit',auto_publish:false,auto_rewrite:false,full_copy:false,attribution_required:true,verify_application_url:true,rights_status:'review_required',note:'Use extracted facts and official application details. Edit TodayInfo wording manually before publishing.'},
     homepage:'https://dailyupdate.co.za/',aliases:['dailyupdate','daily update'],
-    action:{type:'fetch',fetch:{kind:'dailyupdate/jobs',maxPages:100,expand:true,expandRelated:true,relatedLimit:150,autoPublish:true}}
+    action:{type:'fetch',fetch:{kind:'dailyupdate/jobs',maxPages:100,expand:true,expandRelated:true,relatedLimit:150,autoPublish:false}}
   },
   {
     id:'zabursaries',label:'ZA Bursaries',category:'todayinfo_network',region:'South Africa',country_code:'ZA',
     content_types:['bursary','scholarship'],mode:'todayinfo_api',integration_status:'active',
-    description:'Structured funding articles. TodayInfo extracts eligibility, supporting documents, closing dates and application routes while using monthly listing pages as discovery indexes.',
+    description:'Structured funding articles. TodayInfo extracts factual funding details and application routes, while monthly listing pages remain discovery indexes.',
+    publishing_policy:{mode:'facts_only_manual_edit',auto_publish:false,auto_rewrite:false,full_copy:false,attribution_required:true,verify_application_url:true,rights_status:'permission_not_verified',note:'Use factual funding details, dates, requirements and official application routes. Edit narrative wording manually before publishing.'},
     homepage:'https://www.zabursaries.co.za/',aliases:['zabursaries','za bursaries'],
-    action:{type:'fetch',fetch:{kind:'bursaries',maxPages:100,expand:true,expandRelated:true,relatedLimit:200,autoPublish:true}}
+    action:{type:'fetch',fetch:{kind:'bursaries',maxPages:100,expand:true,expandRelated:true,relatedLimit:200,autoPublish:false}}
   },
   {
     id:'psychometric-test',label:'Psychometric Test Topic',category:'todayinfo_network',region:'South Africa',country_code:'ZA',
@@ -33,16 +35,18 @@ export const SOURCE_CATALOG=[
   {
     id:'sanews',label:'SAnews',category:'south_africa_official',region:'South Africa',country_code:'ZA',
     content_types:['news','bursary','opportunity'],mode:'official_rss',integration_status:'active',
-    description:'Official South African Government News Agency feed. TodayInfo creates short attributed plain-English summaries in batches of up to 10.',
+    description:'Official South African Government News Agency feed for editorial discovery. TodayInfo keeps source credit and does not automatically rewrite or publish stories.',
+    publishing_policy:{mode:'manual_editorial_summary',auto_publish:false,auto_rewrite:false,full_copy:false,attribution_required:true,verify_facts:true,rights_status:'media_reuse_with_credit',note:'SAnews permits media reuse with credit. TodayInfo still keeps stories private until a person reviews or edits them.'},
     homepage:'https://www.sanews.gov.za/',aliases:['sanews','south african government news agency'],
-    action:{type:'news_batch',source:'sanews',limit:10}
+    action:{type:'news_discovery',source:'sanews',limit:10}
   },
   {
     id:'dsti-news',label:'DSTI News Feed',category:'south_africa_official',region:'South Africa',country_code:'ZA',
     content_types:['news','opportunity'],mode:'official_rss',integration_status:'active',
-    description:'Official Department of Science, Technology and Innovation RSS feed for news, announcements and opportunity discovery.',
+    description:'Official Department of Science, Technology and Innovation feed for editorial discovery. TodayInfo stores the lead and source facts for human review.',
+    publishing_policy:{mode:'manual_editorial_summary',auto_publish:false,auto_rewrite:false,full_copy:false,attribution_required:true,verify_facts:true,rights_status:'official_source_review_required',note:'Use the source for factual verification and write TodayInfo wording manually before publishing.'},
     homepage:'https://www.dsti.gov.za/',aliases:['dsti','department of science technology and innovation'],
-    action:{type:'news_batch',source:'dsti',limit:10}
+    action:{type:'news_discovery',source:'dsti',limit:10}
   },
   {
     id:'dpsa',label:'DPSA Public Service Vacancy Circular',category:'south_africa_official',region:'South Africa',country_code:'ZA',
@@ -211,10 +215,11 @@ export const SOURCE_CATALOG=[
 
 export function sourcePublishingPolicy(source={}){
   const base={ai_rewriting:false,human_editing:true,store_source_url:true,attribution_required:true};
+  if(source.publishing_policy)return{...base,...source.publishing_policy};
   if(source.id==='sanews')return{...base,mode:'reuse_with_credit',can_paraphrase:true,can_quote_or_reuse:true,auto_publish_news:false,note:'SAnews permits media reuse when SAnews is credited. TodayInfo still keeps review/editing before publication.'};
   if(['govza','dpsa'].includes(source.id))return{...base,mode:'facts_and_link',can_paraphrase:true,can_quote_or_reuse:false,auto_publish_news:false,note:'Use factual metadata and a short original summary with a source link. Do not copy full text for commercial use without permission.'};
   if(source.category==='south_africa_official')return{...base,mode:'summary_and_link',can_paraphrase:true,can_quote_or_reuse:false,auto_publish_news:false,note:'Create a short factual TodayInfo summary, preserve attribution and link to the official source. Human review remains required.'};
-  if(['public_job_apis','employer_ats'].includes(source.category))return{...base,mode:'structured_facts_and_link',can_paraphrase:false,can_quote_or_reuse:false,auto_publish_news:false,note:'Store structured job facts, requirements when permitted, and the real application/source link. Avoid copying full descriptions unless the provider terms allow it.'};
+  if(['public_job_apis','employer_ats'].includes(source.category))return{...base,mode:'structured_facts_and_link',can_paraphrase:false,can_quote_or_reuse:false,auto_publish:true,auto_publish_news:false,note:'Store structured job facts and the real application/source link. Do not invent or automatically rewrite narrative copy.'};
   if(['scholarships_funding','international_organisations'].includes(source.category))return{...base,mode:'summary_and_link',can_paraphrase:true,can_quote_or_reuse:false,auto_publish_news:false,note:'Use structured facts and a concise original summary with clear source attribution and official links.'};
   return{...base,mode:'structured_extract',can_paraphrase:true,can_quote_or_reuse:false,auto_publish_news:false,note:'Use TodayInfo extraction rules, keep provenance, and require human editing for rewritten narrative content.'};
 }
