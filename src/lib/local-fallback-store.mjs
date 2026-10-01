@@ -28,7 +28,6 @@ export class LocalFallbackStore {
     if(f.status)rows=rows.filter(p=>p.status===f.status);
     if(f.type)rows=rows.filter(p=>p.content_type===f.type);
     if(f.trending!==undefined)rows=rows.filter(p=>Boolean(p.is_trending)===Boolean(f.trending));
-    if(f.q){const n=String(f.q).toLowerCase();rows=rows.filter(p=>JSON.stringify(p).toLowerCase().includes(n))}
     if(f.tag)rows=rows.filter(p=>(p.tags||[]).map(slugify).includes(slugify(f.tag)));
     if(f.category)rows=rows.filter(p=>(p.categories||[]).map(slugify).includes(slugify(f.category))||slugify(p.category||'')===slugify(f.category));
     rows=rows.filter(p=>filterPost(p,f));
