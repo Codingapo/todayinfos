@@ -87,10 +87,34 @@ export function compactLocation(geo={}) {
   };
 }
 
+export function searchTokens(value=''){
+  return [...new Set(String(value||'').toLowerCase().split(/[^a-z0-9]+/).map(x=>x.trim()).filter(x=>x.length>1))].slice(0,20);
+}
+
+export function postSearchText(post={}){
+  return [
+    post.title,post.summary,post.body_markdown,post.category,...(post.categories||[]),...(post.tags||[]),
+    post.type_data?.company,post.type_data?.provider,post.type_data?.location,
+    post.geo?.country_code,post.geo?.country_name,post.geo?.region_name,post.geo?.city,post.geo?.location,
+    post.classification?.organisation,post.classification?.subcategory,post.classification?.opportunity_type,
+    ...(post.classification?.education_level||[]),...(post.classification?.fields_of_study||[]),
+    post.classification?.job_type,post.classification?.work_mode,...(post.classification?.eligibility_tags||[]),
+    ...(post.classification?.keywords||[])
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+
+export function matchesSearch(post={},query=''){
+  const terms=searchTokens(query);
+  if(!terms.length)return true;
+  const hay=postSearchText(post);
+  return terms.every(term=>hay.includes(term));
+}
+
 export function queryFilters(query={}) {
   const pick=(...keys)=>keys.map(k=>query[k]).find(v=>v!==undefined&&v!==null&&String(v).trim()!=='');
   return {
     q:pick('q','query','keywords'),
+    type:pick('type','content_type'),
     country:normalizeCountryCode(pick('country','country_code')),
     region:pick('region','region_name','province','state'),
     city:pick('city'),
@@ -117,6 +141,9 @@ export function filterPost(post={},filters={}) {
   const c=normalizeClassification(post.classification||{});
   const td=post.type_data||{};
   const lc=v=>String(v||'').toLowerCase();
+  if(filters.type&&post.content_type!==filters.type)return false;
+  if(filters.q&&!matchesSearch(post,filters.q))return false;
+  if(filters.category){const wanted=slugify(filters.category);if(slugify(post.category||'')!==wanted&&!(post.categories||[]).some(x=>slugify(x)===wanted))return false;}
   if(filters.country&&g.country_code!==normalizeCountryCode(filters.country))return false;
   if(filters.region&&!lc(g.region_name).includes(lc(filters.region))&&!lc(g.region_code).includes(lc(filters.region)))return false;
   if(filters.city&&!lc(g.city).includes(lc(filters.city)))return false;
@@ -143,7 +170,7 @@ export function filterPost(post={},filters={}) {
 }
 
 export const GLOBAL_FILTERS=[
-  'q','country','region','city','category','subcategory','organisation','opportunity_type',
+  'q','type','country','region','city','category','subcategory','organisation','opportunity_type',
   'education_level','field_of_study','job_type','work_mode','salary_min','salary_max','currency','stipend',
   'eligibility','tag','opportunity_status','closing_before','closing_after','posted_before','posted_after'
 ];
