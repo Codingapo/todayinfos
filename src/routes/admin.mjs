@@ -5,7 +5,8 @@ import { z } from 'zod';
 import { store } from '../lib/store.mjs';
 import { requireAuth, requireCsrf, permit } from '../lib/auth.mjs';
 import { fetchImports } from '../lib/importer.mjs';
-import { saveUpload, mediaKind } from '../lib/r2.mjs';
+import { saveUpload, mediaKind, retryPublicationQueue } from '../lib/r2.mjs';
+import { publishPostArtifact, unpublishPostArtifact } from '../lib/publication-service.mjs';
 import { sendInvite } from '../lib/resend.mjs';
 import { ROLE_PERMISSIONS } from '../lib/rbac.mjs';
 import { config } from '../config.mjs';
@@ -69,6 +70,19 @@ function normalizePost(input){
   });
   return{...input,tags:normalizeTags(input.tags),topics,type_data,geo,classification};
 }
+async function syncPublication(row,actor){
+  if(!row)return row;
+  if(row.status==='published'&&!row.deleted_at){
+    const publication=await publishPostArtifact(store,row);
+    return await store.updatePost(row.id,{publication},actor)||{...row,publication};
+  }
+  if(row.publication?.key){
+    const result=await unpublishPostArtifact(row);
+    const publication={...row.publication,sync_status:result.sync_status||'unpublished',last_synced_at:result.last_synced_at||row.publication.last_synced_at||null};
+    return await store.updatePost(row.id,{publication},actor)||{...row,publication};
+  }
+  return row;
+}
 
 adminRouter.get('/dashboard',permit('dashboard.view'),async(req,res)=>ok(res,await store.dashboard()));
 adminRouter.get('/content-types',permit('posts.view'),(req,res)=>ok(res,Object.fromEntries(contentTypes.map(t=>[t,resolvedDefinition(t)]))));
@@ -120,12 +134,14 @@ adminRouter.patch('/imports/:id',permit('imports.review'),async(req,res)=>{const
 adminRouter.post('/imports/:id/promote',permit('imports.review'),async(req,res)=>{const row=await store.promoteImport(req.params.id,req.user.id);if(!row)return res.status(404).json({error:'Import not found'});await audit(req,'import.promote','post',row.id,{source_import:req.params.id});res.status(201).json({data:row})});
 
 adminRouter.get('/posts',permit('posts.view'),async(req,res)=>ok(res,await store.listPosts({status:req.query.status,type:req.query.type,q:req.query.q,include_deleted:req.query.include_deleted==='true'})));
-adminRouter.post('/posts',permit('posts.create'),async(req,res)=>{const p=postSchema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid content',details:p.error.flatten()});const body=normalizePost(p.data);if(body.status==='published'){const issues=publishProblems(body);if(issues.length)return res.status(400).json({error:'Publishing checklist failed',details:{formErrors:issues}})}const row=await store.createPost(body,req.user.id);await audit(req,'post.create','post',row.id,{title:row.title,type:row.content_type});res.status(201).json({data:row})});
+adminRouter.post('/posts',permit('posts.create'),async(req,res)=>{const p=postSchema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid content',details:p.error.flatten()});const body=normalizePost(p.data);if(body.status==='published'){const issues=publishProblems(body);if(issues.length)return res.status(400).json({error:'Publishing checklist failed',details:{formErrors:issues}})}let row=await store.createPost(body,req.user.id);if(row.status==='published')row=await syncPublication(row,req.user.id);await audit(req,'post.create','post',row.id,{title:row.title,type:row.content_type,publication:row.publication?.sync_status||null});res.status(201).json({data:row})});
 adminRouter.get('/posts/:id',permit('posts.view'),async(req,res)=>{const row=await store.getPost(req.params.id);if(!row)return res.status(404).json({error:'Post not found'});ok(res,row)});
-adminRouter.patch('/posts/:id',permit('posts.edit'),async(req,res)=>{const p=postSchema.partial().safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid content update',details:p.error.flatten()});const current=await store.getPost(req.params.id);if(!current)return res.status(404).json({error:'Post not found'});const merged=normalizePost({...current,...p.data,content_type:p.data.content_type||current.content_type,type_data:{...(current.type_data||{}),...(p.data.type_data||{})}});if(p.data.status==='published'&&!['owner','super_admin','content_manager','hiring_manager'].includes(req.user.role))return res.status(403).json({error:'Your role cannot publish'});if(p.data.status==='published'){const issues=publishProblems(merged);if(issues.length)return res.status(400).json({error:'Publishing checklist failed',details:{formErrors:issues}})}const patch=Object.fromEntries(Object.keys(p.data).map(k=>[k,merged[k]]));const row=await store.updatePost(req.params.id,patch,req.user.id);await audit(req,p.data.status==='published'?'post.publish':'post.update','post',row.id,{fields:Object.keys(patch)});ok(res,row)});
-adminRouter.delete('/posts/:id',permit('posts.delete'),async(req,res)=>{const row=await store.trashPost(req.params.id,req.user.id);if(!row)return res.status(404).json({error:'Post not found'});await audit(req,'post.trash','post',row.id);ok(res,row)});
+adminRouter.patch('/posts/:id',permit('posts.edit'),async(req,res)=>{const p=postSchema.partial().safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid content update',details:p.error.flatten()});const current=await store.getPost(req.params.id);if(!current)return res.status(404).json({error:'Post not found'});const merged=normalizePost({...current,...p.data,content_type:p.data.content_type||current.content_type,type_data:{...(current.type_data||{}),...(p.data.type_data||{})},geo:{...(current.geo||{}),...(p.data.geo||{})},classification:{...(current.classification||{}),...(p.data.classification||{})}});if(p.data.status==='published'&&!['owner','super_admin','content_manager','hiring_manager'].includes(req.user.role))return res.status(403).json({error:'Your role cannot publish'});if((p.data.status==='published'||current.status==='published')&&merged.status==='published'){const issues=publishProblems(merged);if(issues.length)return res.status(400).json({error:'Publishing checklist failed',details:{formErrors:issues}})}const patch=Object.fromEntries(Object.keys(p.data).map(k=>[k,merged[k]]));let row=await store.updatePost(req.params.id,patch,req.user.id);row=await syncPublication(row,req.user.id);await audit(req,p.data.status==='published'?'post.publish':'post.update','post',row.id,{fields:Object.keys(patch),publication:row.publication?.sync_status||null});ok(res,row)});
+adminRouter.delete('/posts/:id',permit('posts.delete'),async(req,res)=>{let row=await store.trashPost(req.params.id,req.user.id);if(!row)return res.status(404).json({error:'Post not found'});row=await syncPublication(row,req.user.id);await audit(req,'post.trash','post',row.id,{publication:row.publication?.sync_status||null});ok(res,row)});
 adminRouter.post('/posts/:id/restore',permit('posts.edit'),async(req,res)=>{const row=await store.restorePost(req.params.id,req.user.id);if(!row)return res.status(404).json({error:'Post not found'});await audit(req,'post.restore','post',row.id);ok(res,row)});
 adminRouter.get('/posts/:id/revisions',permit('posts.view'),async(req,res)=>ok(res,await store.revisions(req.params.id)));
+
+adminRouter.post('/sync/publications',permit('posts.publish'),async(req,res)=>{const result=await retryPublicationQueue({limit:250});await audit(req,'publications.sync','system','r2',result);ok(res,result)});
 
 adminRouter.get('/analytics',permit('analytics.view'),async(req,res)=>ok(res,await store.analyticsSummary()));
 adminRouter.get('/team',permit('team.view'),async(req,res)=>ok(res,await store.listUsers()));
