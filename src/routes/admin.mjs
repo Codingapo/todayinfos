@@ -18,7 +18,7 @@ import { autoPublishDecision } from '../lib/auto-publish.mjs';
 import { CONTENT_LIMITS, SEO_GUIDANCE, zodValidationDetails } from '../lib/content-constraints.mjs';
 import { GLOBAL_HARVEST_PROVIDERS, harvestGlobalJobs } from '../lib/global-harvest.mjs';
 import { sourceHubPayload, importPublishingPolicy } from '../lib/source-catalog.mjs';
-import { harvestOfficialNews, discoverOfficialNews } from '../lib/news-harvest.mjs';
+import { discoverOfficialNews } from '../lib/news-harvest.mjs';
 import { enrichApplicationImport } from '../lib/application-intelligence.mjs';
 
 export const adminRouter=Router();
