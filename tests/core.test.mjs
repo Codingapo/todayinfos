@@ -48,13 +48,14 @@ test('prepared imports are structured drafts with no generated suggestions',()=>
 });
 
 test('public bursary response is explicit and frontend-ready',()=>{
-  const p=publicPost({id:'1',slug:'example-bursary',title:'Example Bursary',content_type:'bursary',summary:'Funding',body_markdown:'**Apply now**',posted_date:'2026-09-25',category:'Funding',categories:['Funding'],tags:['Bursaries','2026'],topics:[{key:'t1',title:'Who qualifies?',body:'Students.'}],related_links:[{title:'Official site',url:'https://example.com'}],related_ids:[],recommendation_ids:[],documents:[],navigation_links:[],type_data:{provider:'Example',closing_date:'2026-10-30',status_override:'open'},status:'published',created_at:'2026-09-25',updated_at:'2026-09-30'});
+  const p=publicPost({id:'1',slug:'example-bursary',title:'Example Bursary',content_type:'bursary',summary:'Funding',body_markdown:'**Apply now**',posted_date:'2026-09-25',category:'Funding',categories:['Funding'],tags:['Bursaries','2026'],topics:[{key:'t1',title:'Who qualifies?',body:'Students.'}],related_links:[{title:'Official site',url:'https://example.com'}],related_ids:[],recommendation_ids:[],recommendation_links:[{title:'Application guide',url:'https://example.com/guide'}],documents:[],navigation_links:[],type_data:{provider:'Example',closing_date:'2026-10-30',status_override:'open'},status:'published',created_at:'2026-09-25',updated_at:'2026-09-30'});
   assert.equal(p.type,'bursary');
   assert.equal(p.metadata.status,'open');
   assert.equal(p.metadata.closing_date,'2026-10-30');
   assert.equal(p.topic_navigation[0].anchor,'#t1');
   assert.equal(p.tags[0].url,'/tags/bursaries');
   assert.equal(p.related_links[0].title,'Official site');
+  assert.equal(p.recommendation_links[0].title,'Application guide');
 });
 
 test('dynamic content definitions show only type-specific fields',()=>{
@@ -103,45 +104,36 @@ test('rule-prepared content gets useful fallback tags and quality feedback',()=>
 });
 
 
-test('source recommendations keep useful relatives and drop application/social noise',()=>{
-  const rows=sourceRecommendations({
-    title:'NSFAS Bursary 2026',
-    url:'https://source.example/nsfas-bursary-2026',
-    applicationLinks:[{url:'https://apply.example/nsfas'}],
-    relatedLinks:[
-      {title:'University funding guide',url:'https://source.example/funding-guide'},
-      {title:'Apply now',url:'https://apply.example/nsfas'}
-    ],
+test('source recommendations preserve related opportunities but skip junk and application links',()=>{
+  const record={
+    title:'Example Bursary 2026',pageType:'bursary',url:'https://source.test/example-bursary',
+    applicationLinks:[{url:'https://source.test/apply'}],
     links:[
-      {title:'Facebook',url:'https://facebook.com/example'},
-      {title:'More bursaries',url:'https://source.example/bursaries/latest'}
+      {title:'Apply now',url:'https://source.test/apply'},
+      {title:'Another Engineering Bursary 2026',url:'https://source.test/engineering-bursary'},
+      {title:'Privacy Policy',url:'https://source.test/privacy'},
+      {title:'Bursaries',url:'https://source.test/category/bursaries/'},
+      {title:'Facebook',url:'https://facebook.com/source'}
     ]
-  },'bursary');
-  assert.ok(rows.some(x=>x.url==='https://source.example/funding-guide'));
-  assert.ok(rows.some(x=>x.url==='https://source.example/bursaries/latest'));
-  assert.ok(!rows.some(x=>x.url==='https://apply.example/nsfas'));
-  assert.ok(!rows.some(x=>/facebook/.test(x.url)));
+  };
+  const recs=sourceRecommendations(record,'bursary');
+  assert.deepEqual(recs,[{title:'Another Engineering Bursary 2026',url:'https://source.test/engineering-bursary',type:'source_recommendation'}]);
+  const draft=ruleDraftFromRecord(record);
+  assert.equal(draft.recommendation_links.length,1);
 });
 
-test('public detail exposes custom recommendation links',()=>{
-  const p=publicPost({
-    id:'r1',slug:'sample-news',title:'Sample News',content_type:'news',
-    summary:'Example',body_markdown:'Useful update content.',posted_date:'2026-10-01',
-    category:'News',categories:['News'],tags:['Update'],topics:[],related_links:[],
-    related_ids:[],recommendation_ids:[],
-    recommendation_links:[{title:'Official follow-up',url:'https://example.com/follow-up'}],
-    documents:[],navigation_links:[],type_data:{},status:'published',
-    created_at:'2026-10-01',updated_at:'2026-10-01'
-  });
-  assert.equal(p.recommendation_links[0].title,'Official follow-up');
-  assert.equal(p.recommendation_links[0].url,'https://example.com/follow-up');
-});
-
-test('Ignore workflow is absent from admin API and browser UI',()=>{
-  const route=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+test('ignore is no longer an active admin import workflow',()=>{
+  const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
   const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
-  assert.doesNotMatch(route,/adminRouter\.delete\('\/imports\/:id'/);
-  assert.doesNotMatch(route,/review_status:z\.enum\(\[[^\]]*ignored/);
-  assert.doesNotMatch(ui,/ignore-import|ignoreImport|>Ignore</);
-  assert.match(ui,/recommendation_links:collectRepeatRows/);
+  assert.doesNotMatch(admin,/adminRouter\.delete\('\/imports\/:id'/);
+  assert.doesNotMatch(admin,/review_status:z\.enum\(\[[^\]]*ignored/);
+  assert.doesNotMatch(ui,/ignore-import|Ignore import|ignoreImport/);
+});
+
+test('explicit source related links are preserved even when their title is not generic family wording',()=>{
+  const recs=sourceRecommendations({
+    title:'Example Bursary 2026',pageType:'bursary',url:'https://source.test/bursary',
+    relatedLinks:[{title:'Application Guide for Students',url:'https://source.test/student-guide'}]
+  },'bursary');
+  assert.deepEqual(recs,[{title:'Application Guide for Students',url:'https://source.test/student-guide',type:'source_related'}]);
 });
