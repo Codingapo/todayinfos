@@ -1,4 +1,4 @@
-import { resolveStoreMode } from './lib/database-config.mjs';
+import { inspectDatabaseUrl, resolveStoreMode } from './lib/database-config.mjs';
 
 const envFlag = (name) => {
   const raw = process.env[name];
@@ -14,7 +14,13 @@ const requestedDataStore = legacyDemo === true
   ? 'demo'
   : (process.env.DATA_STORE || 'auto');
 
-const databaseUrl = process.env.DATABASE_URL || '';
+const databaseCandidates=[
+  process.env.DATABASE_URL,
+  ...(process.env.DATABASE_URLS||'').split(/[\n,;]+/),
+  ...Array.from({length:20},(_,i)=>process.env[`DATABASE_URL_${i+1}`])
+].map(x=>String(x||'').trim()).filter(Boolean);
+const databaseUrls=[...new Set(databaseCandidates.filter(x=>inspectDatabaseUrl(x).valid))];
+const databaseUrl=databaseUrls[0]||process.env.DATABASE_URL||'';
 const storeResolution = resolveStoreMode({ requestedMode: requestedDataStore, databaseUrl });
 const jwtSecret = process.env.JWT_SECRET || 'todayinfo-dev-only-change-me';
 const nodeEnv = process.env.NODE_ENV || 'development';
@@ -35,6 +41,7 @@ export const config = {
 
   sourceApiBase: (process.env.SOURCE_API_BASE || 'https://todayinfo-zpshgscq.manus.space/api/v1').replace(/\/$/, ''),
   databaseUrl,
+  databaseUrls,
   databaseSsl: String(process.env.DATABASE_SSL ?? 'true').toLowerCase() !== 'false',
   supabase: {
     url: (process.env.SUPABASE_URL1 || '').replace(/\/$/, ''),
