@@ -233,9 +233,18 @@ export function categorizedSources(){
   }));
 }
 
-function matchesSource(row,source){
+export function matchesSource(row,source){
   const text=`${row?.source_name||''} ${row?.source_url||''} ${row?.source?.source_name||''} ${row?.source?.source_url||''}`.toLowerCase();
   return (source.aliases||[source.id]).some(alias=>text.includes(String(alias).toLowerCase()));
+}
+
+export function sourceForImport(row={}){
+  return SOURCE_CATALOG.find(source=>matchesSource(row,source))||null;
+}
+
+export function importPublishingPolicy(row={}){
+  const source=sourceForImport(row);
+  return source?sourcePublishingPolicy(source):{ai_rewriting:false,human_editing:true,store_source_url:true,attribution_required:true,mode:'unknown_source_review',auto_publish:false,note:'Unknown source — review manually before publishing.'};
 }
 
 export function sourceCatalogWithStats({imports=[],posts=[]}={}){
