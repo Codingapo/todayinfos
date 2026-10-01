@@ -6,6 +6,7 @@ applyTheme(savedTheme||'light');
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate=v=>{if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})};
 const dateInput=v=>{if(!v)return'';const d=new Date(v);return Number.isNaN(d.getTime())?'':d.toISOString().slice(0,10)};
+const adminOpportunityStatus=p=>{const td=p?.type_data||{},override=String(td.status_override||'auto').toLowerCase();if(override&&override!=='auto')return override;const close=td.closing_date?new Date(td.closing_date):null;if(close&&!Number.isNaN(close.getTime())){const days=Math.ceil((close-Date.now())/86400000);if(days<0)return'closed';if(days<=7)return'closing_soon';return'open'}return'unknown'};
 const splitList=v=>[...new Set(String(v||'').split(',').map(x=>x.trim().replace(/^#/,'')).filter(Boolean))];
 const bytes=n=>{const x=Number(n||0);if(!x)return'';if(x<1024)return`${x} B`;if(x<1048576)return`${(x/1024).toFixed(1)} KB`;return`${(x/1048576).toFixed(1)} MB`};
 const icon=(name)=>{const paths={trash:'<path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',restore:'<path d="M4 12a8 8 0 1 0 2.34-5.66L4 8.68M4 4v4.68h4.68"/>',edit:'<path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0-3-3L5 17v3ZM13.5 6.5l3 3"/>',eye:'<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/>'};return `<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[name]||''}</g></svg>`};
@@ -53,7 +54,7 @@ async function loadContentTypes(){
   ]);
   state.contentTypes=types;state.constraints=constraints;
 }
-const VIEW_META={overview:['COMMAND CENTER','Overview'],imports:['CONTENT PIPELINE','Import Inbox'],demand:['AUDIENCE DEMAND','Demand Queue'],posts:['CONTENT','Content Library'],media:['FILES','Media & Documents'],analytics:['INSIGHTS','Analytics'],team:['ACCESS','Team & Roles'],settings:['SYSTEM','Settings'],audit:['SECURITY','Audit Log']};
+const VIEW_META={overview:['COMMAND CENTER','Overview'],sources:['SOURCE INTELLIGENCE','Source Hub'],imports:['CONTENT PIPELINE','Import Inbox'],demand:['AUDIENCE DEMAND','Demand Queue'],posts:['CONTENT','Content Library'],media:['FILES','Media & Documents'],analytics:['INSIGHTS','Analytics'],team:['ACCESS','Team & Roles'],settings:['SYSTEM','Settings'],audit:['SECURITY','Audit Log']};
 async function navigate(view){state.view=view;$('#sidebar').classList.remove('open');$$('#nav button[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===view));const [eye,title]=VIEW_META[view]||['TODAYINFO',view];$('#viewEyebrow').textContent=eye;$('#viewTitle').textContent=title;$('#content').innerHTML='<div class="empty">Loading…</div>';try{await renderers[view]()}catch(err){$('#content').innerHTML=`<div class="error-box">${esc(err.message)}</div>`}}
 
 function metric(label,value,note=''){return`<div class="metric"><small>${esc(label)}</small><strong>${Number(value||0).toLocaleString()}</strong>${note?`<em>${esc(note)}</em>`:''}</div>`}
@@ -143,6 +144,62 @@ const renderers={
     <div class="grid2"><section class="panel chart-panel"><div class="panel-head"><div><p class="eyebrow">OPPORTUNITIES</p><h3>Bursary status</h3></div><span class="chart-kicker">${totalB} total</span></div><div class="donut-wrap"><div class="donut" style="--pct:${pct}%"><strong>${pct}%</strong></div><div class="donut-legend"><div class="legend-row"><span class="dot"></span><span>Open</span><b>${d.cards.open_bursaries||0}</b></div><div class="legend-row"><span class="dot dim"></span><span>Closed</span><b>${d.cards.closed_bursaries||0}</b></div></div></div></section><section class="panel chart-panel"><div class="panel-head"><div><p class="eyebrow">PUBLISHING</p><h3>Content mix</h3></div><span class="chart-kicker">${d.cards.published_posts||0} live</span></div>${bars(d.content_mix)}</section></div>
     <div class="grid2" style="margin-top:16px"><section class="panel"><div class="panel-head"><div><p class="eyebrow">USER DEMAND</p><h3>What should we fetch next?</h3></div><button class="ghost" id="overviewDemand2">View all</button></div>${priority.length?`<div class="priority-list">${priority.slice(0,6).map(x=>`<div class="priority-row ${x.priority}"><div><span class="priority-flag">${esc(x.priority)}</span><strong>${esc(x.prepared_draft?.title||x.source_payload?.title||x.source_slug||'Discovered content')}</strong><small>${Number(x.demand_clicks||0)} user click(s) · ${esc(x.source_name||'source')}</small></div><b>${Number(x.priority_score||0).toLocaleString()}</b></div>`).join('')}</div>`:'<div class="empty">No missing-content demand yet.</div>'}</section><section class="panel"><div class="panel-head"><div><p class="eyebrow">PERFORMANCE</p><h3>Top content</h3></div></div>${d.top_posts?.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Title</th><th>Type</th><th>Views</th><th>Reads</th></tr></thead><tbody>${d.top_posts.map(p=>`<tr><td><strong>${esc(p.title)}</strong></td><td>${badge(p.content_type,p.content_type)}</td><td>${p.views}</td><td>${p.reads}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No published analytics yet.</div>'}</section></div>`;$('#overviewDemand').onclick=$('#overviewDemand2').onclick=()=>navigate('demand')},
 
+  async sources(){
+    const hub=await api('/sources/hub');
+    $('#content').innerHTML=`
+      <div class="source-hub-hero">
+        <div><p class="eyebrow">SOURCE INTELLIGENCE</p><h1>Fetch deeply, keep the useful pages.</h1><p>TodayInfo understands source families instead of treating every page the same. Regional sources can follow useful related pages; global feeds are normalized, deduplicated and checked before publishing.</p></div>
+        <div class="seed-stat"><small>Permanent verified seed</small><strong>${hub.permanent_seeds?.expected_records||80}</strong><span>records restored on startup</span></div>
+      </div>
+      <section class="panel source-hub-panel">
+        <div class="panel-head"><div><p class="eyebrow">REGIONAL SOURCES</p><h3>Deep source fetch</h3><p class="panel-sub">These buttons fetch the main source plus useful linked opportunity pages.</p></div></div>
+        <div class="source-hub-grid">
+          ${(hub.regional||[]).map(x=>`<article class="source-hub-card" data-source="${esc(x.id)}"><div class="source-logo">${x.id==='dailyupdate'?'DU':x.id==='zabursaries'?'ZA':'#'}</div><div class="grow"><span class="source-state">Structured source</span><h3>${esc(x.label)}</h3><p>${esc(x.description)}</p><div class="source-capabilities"><span>Deduplicate</span><span>Follow related</span><span>80% gate</span></div></div><button class="primary run-source" data-id="${esc(x.id)}">Fetch pages</button></article>`).join('')}
+        </div>
+      </section>
+      <section class="panel global-harvest-panel">
+        <div class="panel-head"><div><p class="eyebrow">GLOBAL HARVEST</p><h3>Build the worldwide opportunity index</h3><p class="panel-sub">Only recent public listings are accepted. Every provider remains attributed and each normalized record goes through TodayInfo cleaning before publication.</p></div></div>
+        <form id="harvestForm" class="harvest-form">
+          <div class="harvest-target"><label class="field">Target records<input name="target" type="number" min="1" max="5000" value="1000"></label><label class="field">Recent within<input name="maxAgeDays" type="number" min="1" max="120" value="60"><small>days</small></label></div>
+          <div class="provider-grid">
+            ${(hub.global||[]).map(x=>`<label class="provider-option"><input type="checkbox" name="provider" value="${esc(x.id)}" ${['arbeitnow','jobicy'].includes(x.id)?'checked':''}><span><strong>${esc(x.label)}</strong><small>${esc(x.kind.replaceAll('_',' '))}${x.attribution?' · source attribution kept':''}</small></span></label>`).join('')}
+          </div>
+          <div class="form-grid optional-boards"><label class="field wide">Lever board names (optional)<input name="leverSites" placeholder="company-one, company-two"><small>Only use public Lever board site names you want TodayInfo to follow.</small></label><label class="field wide">Ashby board names (optional)<input name="ashbyBoards" placeholder="CompanyOne, CompanyTwo"><small>Only listed public Ashby postings are harvested.</small></label></div>
+          <label class="preview-check"><input name="autoPublish" type="checkbox" checked><span>Auto-publish records that pass the 80%+ cleanliness and hard publishing checks<small>Everything else remains private in Import Inbox.</small></span></label>
+          <div class="harvest-actions"><button type="submit" class="primary" id="harvestRun">Start global harvest</button><button type="button" class="ghost" id="openImportsFromSources">Open Import Inbox</button></div>
+          <div id="harvestResult" class="harvest-result hidden"></div>
+        </form>
+      </section>`;
+
+    $('#openImportsFromSources').onclick=()=>navigate('imports');
+    $('.run-source').forEach(btn=>btn.onclick=async()=>{
+      const source=(hub.regional||[]).find(x=>x.id===btn.dataset.id);if(!source)return;
+      const old=btn.textContent;btn.disabled=true;btn.textContent='Fetching…';
+      try{
+        const r=await api('/imports/fetch',{method:'POST',body:source.fetch});
+        const published=r.auto_publish?.published?.length||0;
+        toast(`${source.label}: ${r.inserted||0} new · ${r.relatedPagesFetched||0} related pages · ${published} published`);
+        await navigate('imports');
+      }catch(err){toast(err.message,true);btn.disabled=false;btn.textContent=old}
+    });
+    $('#harvestForm').onsubmit=async e=>{
+      e.preventDefault();const form=e.currentTarget,fd=new FormData(form);
+      const providers=fd.getAll('provider');if(!providers.length)return toast('Choose at least one global source',true);
+      const body={
+        target:Number(fd.get('target')||1000),maxAgeDays:Number(fd.get('maxAgeDays')||60),providers,
+        leverSites:splitList(fd.get('leverSites')),ashbyBoards:splitList(fd.get('ashbyBoards')),
+        autoPublish:fd.get('autoPublish')==='on'
+      };
+      const button=$('#harvestRun'),box=$('#harvestResult');button.disabled=true;button.textContent='Harvesting…';box.classList.remove('hidden');box.innerHTML='<span class="sync-spinner"></span><div><strong>Global harvest running</strong><small>Fetching public feeds, normalizing and deduplicating records.</small></div>';
+      try{
+        const r=await api('/harvest/global',{method:'POST',body});
+        box.innerHTML=`<div><strong>${Number(r.accepted||0).toLocaleString()} accepted</strong><small>${Number(r.published?.length||0).toLocaleString()} published now · ${Number(r.review?.length||0).toLocaleString()} shown for review · snapshots retained</small></div>`;
+        toast(`Global harvest complete: ${r.accepted||0} accepted · ${r.published?.length||0} published`);
+      }catch(err){box.innerHTML=`<div><strong>Harvest stopped</strong><small>${esc(err.message)}</small></div>`;toast(err.message,true)}
+      finally{button.disabled=false;button.textContent='Start global harvest'}
+    };
+  },
+
   async demand(){const rows=await api('/imports/priority?limit=200');const highest=rows.filter(x=>x.priority==='highest').length;$('#navDemandCount').textContent=highest;$('#content').innerHTML=`
     <div class="import-hero demand-hero"><div><p class="eyebrow">AUDIENCE DEMAND</p><h2>Missing content users actually want</h2><p>TodayInfo remembers opportunity links found in DailyUpdate, ZA Bursaries and related content. If a visitor clicks a missing link, it becomes HIGHEST PRIORITY here.</p></div><button class="primary" id="demandSync">↻ Deep sync sources</button></div>
     <div class="cards import-stats">${metric('Highest priority',highest,'clicked by users')}${metric('High priority',rows.filter(x=>x.priority==='high').length,'clean or changed')}${metric('Draft leads',rows.length,'private')}${metric('Demand clicks',rows.reduce((n,x)=>n+Number(x.demand_clicks||0),0),'missing-content clicks')}</div>
@@ -197,7 +254,48 @@ const renderers={
     $('#importList').onclick=async e=>{const b=e.target.closest('button');if(!b)return;const id=b.dataset.id;try{if(b.classList.contains('promote-import')){const post=await api(`/imports/${id}/promote`,{method:'POST',body:{}});toast('Promoted to a private draft');await renderers.imports();openPostEditor(post)}else if(b.classList.contains('review-import'))openImportReview(rows.find(x=>x.id===id))}catch(err){toast(err.message,true)}}
   },
 
-  async posts(){state.posts=await api('/posts?include_deleted=true');$('#content').innerHTML=`<div class="toolbar"><input id="postSearch" class="search" placeholder="Search title, tag or content"><select id="postType" class="search" style="flex:0 0 180px"><option value="">All content types</option>${Object.entries(state.contentTypes).map(([k,v])=>`<option value="${k}">${esc(v.label)}</option>`).join('')}</select><select id="postStatus" class="search" style="flex:0 0 150px"><option value="">All statuses</option><option>draft</option><option>published</option><option>archived</option><option>trash</option></select><button class="primary" id="createPost">＋ Create</button></div><section class="panel"><div class="panel-head"><h3>Content Library</h3></div><div id="postTable"></div></section>`;const render=list=>{$('#postTable').innerHTML=list.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Content</th><th>Type</th><th>Status</th><th>Tags</th><th>Views</th><th>Reads</th><th>Updated</th><th></th></tr></thead><tbody>${list.map(p=>`<tr><td><strong>${esc(p.title)}</strong><small>/${esc(p.slug)}</small></td><td>${badge(p.content_type,p.content_type)}</td><td>${badge(p.status,p.status)}</td><td>${(p.tags||[]).slice(0,3).map(t=>`<span class="chip">#${esc(t)}</span>`).join('')}</td><td>${Number(p.views||0).toLocaleString()}</td><td>${Number(p.reads||0).toLocaleString()}</td><td>${fmtDate(p.updated_at)}</td><td><div class="table-actions"><button class="ghost edit-post" data-id="${p.id}">Edit</button>${p.status==='trash'?`<button class="icon-action restore-post soft" type="button" aria-label="Restore ${esc(p.title)}" title="Restore">${icon('restore')}</button>`:`<button class="icon-action trash-post danger" type="button" aria-label="Move ${esc(p.title)} to trash" title="Move to trash">${icon('trash')}</button>`}</div></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No content found.</div>'};render(state.posts);const filter=()=>{const q=$('#postSearch').value.toLowerCase(),t=$('#postType').value,s=$('#postStatus').value;render(state.posts.filter(p=>(!t||p.content_type===t)&&(!s||p.status===s)&&(!q||`${p.title} ${p.summary} ${(p.tags||[]).join(' ')}`.toLowerCase().includes(q))))};$('#postSearch').oninput=filter;$('#postType').onchange=filter;$('#postStatus').onchange=filter;$('#createPost').onclick=()=>openTypePicker();$('#postTable').onclick=async e=>{const b=e.target.closest('button');if(!b)return;const p=state.posts.find(x=>x.id===b.dataset.id);try{if(b.classList.contains('edit-post'))openPostEditor(await api(`/posts/${p.id}`));else if(b.classList.contains('trash-post')){if(confirm(`Move “${p.title}” to trash?`)){await api(`/posts/${p.id}`,{method:'DELETE',body:{}});toast('Moved to trash');await renderers.posts()}}else if(b.classList.contains('restore-post')){await api(`/posts/${p.id}/restore`,{method:'POST',body:{}});toast('Restored as draft');await renderers.posts()}}catch(err){toast(err.message,true)}}},
+  async posts(){
+    state.posts=await api('/posts?include_deleted=true');
+    const countries=[...new Map(state.posts.map(p=>[p.geo?.country_code||'',p.geo?.country_name||p.geo?.country_code||'']).filter(x=>x[0])).entries()].sort((a,b)=>String(a[1]).localeCompare(String(b[1])));
+    const sources=[...new Set(state.posts.map(p=>p.source?.source_name).filter(Boolean))].sort();
+    $('#content').innerHTML=`
+      <div class="library-hero"><div><p class="eyebrow">CONTENT LIBRARY</p><h2>Find anything without digging.</h2><p>Filter by country, content type, publishing state, opportunity state or source. The filters work together.</p></div><button class="primary" id="createPost">＋ Create content</button></div>
+      <div class="filter-deck">
+        <label><span>Search</span><input id="postSearch" class="search" placeholder="Title, tag, organisation…"></label>
+        <label><span>Country</span><select id="postCountry" class="search"><option value="">All countries</option>${countries.map(([code,name])=>`<option value="${esc(code)}">${esc(name)} (${esc(code)})</option>`).join('')}</select></label>
+        <label><span>Type</span><select id="postType" class="search"><option value="">All types</option>${Object.entries(state.contentTypes).map(([k,v])=>`<option value="${k}">${esc(v.label)}</option>`).join('')}</select></label>
+        <label><span>Publishing</span><select id="postStatus" class="search"><option value="">All statuses</option><option>draft</option><option>published</option><option>archived</option><option>trash</option></select></label>
+        <label><span>Opportunity</span><select id="opStatus" class="search"><option value="">Any opportunity state</option><option value="open">Open</option><option value="closing_soon">Closing soon</option><option value="closed">Closed</option><option value="upcoming">Upcoming</option><option value="unknown">Unknown</option></select></label>
+        <label><span>Source</span><select id="postSource" class="search"><option value="">All sources</option>${sources.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select></label>
+        <label><span>Sort</span><select id="postSort" class="search"><option value="updated">Recently updated</option><option value="closing">Closing soonest</option><option value="views">Most viewed</option><option value="country">Country A–Z</option></select></label>
+        <button id="clearPostFilters" class="ghost filter-clear" type="button">Clear filters</button>
+      </div>
+      <section class="panel"><div class="panel-head"><div><h3>Content Library</h3><p class="panel-sub" id="postCount"></p></div></div><div id="postTable"></div></section>`;
+
+    const render=list=>{
+      $('#postCount').textContent=`${list.length.toLocaleString()} of ${state.posts.length.toLocaleString()} records`;
+      $('#postTable').innerHTML=list.length?`<div class="table-wrap"><table class="table content-table"><thead><tr><th>Content</th><th>Country</th><th>Type</th><th>Opportunity</th><th>Status</th><th>Source</th><th>Views</th><th>Updated</th><th></th></tr></thead><tbody>${list.map(p=>`<tr><td><strong>${esc(p.title)}</strong><small>/${esc(p.slug)}</small><div class="mini-tags">${(p.tags||[]).slice(0,3).map(t=>`<span class="chip">#${esc(t)}</span>`).join('')}</div></td><td><span class="country-pill">${esc(p.geo?.country_code||'—')}</span><small>${esc(p.geo?.country_name||'')}</small></td><td>${badge(p.content_type,p.content_type)}</td><td>${badge(adminOpportunityStatus(p),adminOpportunityStatus(p))}</td><td>${badge(p.status,p.status)}</td><td><span class="source-name">${esc(p.source?.source_name||'Manual')}</span></td><td>${Number(p.views||0).toLocaleString()}</td><td>${fmtDate(p.updated_at)}</td><td><div class="table-actions"><button class="ghost edit-post" data-id="${p.id}">Edit</button>${p.status==='trash'?`<button class="icon-action restore-post soft" type="button" data-id="${p.id}" aria-label="Restore ${esc(p.title)}" title="Restore">${icon('restore')}</button>`:`<button class="icon-action trash-post danger" type="button" data-id="${p.id}" aria-label="Move ${esc(p.title)} to trash" title="Move to trash">${icon('trash')}</button>`}</div></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No content matches these filters.</div>';
+    };
+
+    const filter=()=>{
+      const q=$('#postSearch').value.toLowerCase(),country=$('#postCountry').value,type=$('#postType').value,status=$('#postStatus').value,opp=$('#opStatus').value,source=$('#postSource').value,sort=$('#postSort').value;
+      let list=state.posts.filter(p=>
+        (!country||p.geo?.country_code===country)&&(!type||p.content_type===type)&&(!status||p.status===status)&&
+        (!opp||adminOpportunityStatus(p)===opp)&&(!source||(p.source?.source_name||'')===source)&&
+        (!q||`${p.title} ${p.summary} ${p.classification?.organisation||''} ${(p.tags||[]).join(' ')} ${p.geo?.country_name||''}`.toLowerCase().includes(q))
+      );
+      if(sort==='views')list.sort((a,b)=>Number(b.views||0)-Number(a.views||0));
+      else if(sort==='country')list.sort((a,b)=>String(a.geo?.country_name||'').localeCompare(String(b.geo?.country_name||'')));
+      else if(sort==='closing')list.sort((a,b)=>String(a.type_data?.closing_date||'9999').localeCompare(String(b.type_data?.closing_date||'9999')));
+      else list.sort((a,b)=>String(b.updated_at||'').localeCompare(String(a.updated_at||'')));
+      render(list);
+    };
+    ['postSearch','postCountry','postType','postStatus','opStatus','postSource','postSort'].forEach(id=>{const el=$('#'+id);el[el.tagName==='INPUT'?'oninput':'onchange']=filter});
+    $('#clearPostFilters').onclick=()=>{['postSearch','postCountry','postType','postStatus','opStatus','postSource'].forEach(id=>$('#'+id).value='');$('#postSort').value='updated';filter()};
+    $('#createPost').onclick=()=>openTypePicker();
+    filter();
+    $('#postTable').onclick=async e=>{const b=e.target.closest('button');if(!b)return;const p=state.posts.find(x=>x.id===b.dataset.id);if(!p)return;try{if(b.classList.contains('edit-post'))openPostEditor(await api(`/posts/${p.id}`));else if(b.classList.contains('trash-post')){if(confirm(`Move “${p.title}” to trash?`)){await api(`/posts/${p.id}`,{method:'DELETE',body:{}});toast('Moved to trash');await renderers.posts()}}else if(b.classList.contains('restore-post')){await api(`/posts/${p.id}/restore`,{method:'POST',body:{}});toast('Restored as draft');await renderers.posts()}}catch(err){toast(err.message,true)}}
+  },
 
   async media(){const rows=await api('/media');$('#content').innerHTML=`<section class="panel"><div class="panel-head"><div><h3>Media & Documents</h3><p class="panel-sub">Uploads work in demo mode. If SUPABASE_URL1 and SUPABASE_KEY are configured, Supabase Storage is used during testing too.</p></div><div class="actions"><button class="primary" id="mediaUploadBtn">＋ Upload</button></div></div><div class="media-grid">${rows.length?rows.map(m=>`<article class="media-card"><div class="media-thumb">${m.media_kind==='image'?`<img src="${esc(m.url)}" alt="">`:'<span style="font-size:2rem">📄</span>'}</div><div class="media-info"><strong>${esc(m.title||m.key)}</strong><small>${esc(m.mime_type||'file')} ${bytes(m.size_bytes)}</small><div style="margin-top:10px"><button class="ghost copy-url" data-url="${esc(m.url)}">Copy URL</button></div></div></article>`).join(''):'<div class="empty wide">No uploads yet.</div>'}</div></section>`;$('#mediaUploadBtn').onclick=()=>openMediaUpload();$$('.copy-url').forEach(b=>b.onclick=async()=>{await navigator.clipboard.writeText(b.dataset.url);toast('URL copied')})},
 
@@ -217,7 +315,7 @@ async function openFetch(){
     <label class="field wide">What do you want to fetch?<select name="preset">${presets.map(p=>`<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}</select><small>Psychometric Test remains a dedicated tag source.</small></label>
     <label class="field">Year filter<input name="year" inputmode="numeric" value="${currentYear}" placeholder="${currentYear}"><small>Clear this field to fetch every year.</small></label>
     <label class="field">How deep should we sync?<select name="maxPages"><option value="10">10 source pages</option><option value="25">25 source pages</option><option value="50">50 source pages</option><option value="100" selected>100 source pages / everything available</option></select></label>
-    <label class="field wide preview-check"><input name="autoPublish" type="checkbox" checked><span>Auto-publish clean imports scoring 80% or higher<small>Expired items, missing source links, missing required fields, or missing application routes are still blocked and left in the Import Inbox.</small></span></label>
+    <label class="field wide preview-check"><input name="expandRelated" type="checkbox" checked><span>Follow useful related opportunity pages<small>TodayInfo will fetch related DailyUpdate/ZA Bursaries detail pages instead of storing only the directory/index page.</small></span></label><label class="field wide preview-check"><input name="autoPublish" type="checkbox" checked><span>Auto-publish clean imports scoring 80% or higher<small>Expired items, missing source links, missing required fields, or missing application routes are still blocked and left in the Import Inbox.</small></span></label>
     <div class="wide notice">Each source page requests up to 100 records. Existing imports are remembered by source key; reviewed and promoted states are preserved. Source patterns also improve the rule-based import memory over time.</div>
     <div id="syncProgress" class="wide sync-progress hidden"><span class="sync-spinner"></span><div><strong>Syncing source…</strong><small>Large syncs can take longer. Keep this dialog open until the result appears.</small></div></div>
     <div class="form-actions"><button type="button" class="ghost" id="cancelFetch">Cancel</button><button class="primary" id="syncSubmit">Start deep sync</button></div>
@@ -226,7 +324,7 @@ async function openFetch(){
   $('#fetchForm').onsubmit=async e=>{
     e.preventDefault();
     const f=new FormData(e.currentTarget),p=presets.find(x=>x.id===f.get('preset'));
-    const body={kind:p?.kind||(p?.id||'pages'),year:f.get('year')||undefined,maxPages:Number(f.get('maxPages')||100),expand:true,autoPublish:f.get('autoPublish')==='on'};
+    const body={kind:p?.kind||(p?.id||'pages'),year:f.get('year')||undefined,maxPages:Number(f.get('maxPages')||100),expand:true,expandRelated:f.get('expandRelated')==='on',relatedLimit:150,autoPublish:f.get('autoPublish')==='on'};
     if(p?.tagSlug)body.tagSlug=p.tagSlug;
     const submit=$('#syncSubmit');submit.disabled=true;submit.textContent='Syncing…';$('#syncProgress').classList.remove('hidden');
     try{

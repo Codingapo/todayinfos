@@ -8,18 +8,20 @@ import { publicPost } from '../src/lib/serializers.mjs';
 import { ROLE_PERMISSIONS, hasPermission } from '../src/lib/rbac.mjs';
 import { resolvedDefinition } from '../src/lib/content-types.mjs';
 import { inspectDatabaseUrl, resolveStoreMode, collectDatabaseUrls } from '../src/lib/database-config.mjs';
-import { normalizeGeo, normalizeClassification, seoPath, filterPost } from '../src/lib/global-content.mjs';
+import { normalizeGeo, normalizeClassification, normalizeCountryCode, seoPath, filterPost } from '../src/lib/global-content.mjs';
 import { publicationKey, PUBLICATION_SCHEMA } from '../src/lib/publication-service.mjs';
 import { publishedObjectKey } from '../src/lib/r2.mjs';
 import { PUBLISHED_INDEX_KEY, PUBLISHED_INDEX_SCHEMA } from '../src/lib/published-index.mjs';
 import { FederatedStore, availabilityError } from '../src/lib/federated-store.mjs';
 import { searchScore, trendScore, deriveVisitorSignals } from '../src/lib/ranking.mjs';
-import { loadSouthAfricaReferenceSeed } from '../src/lib/reference-seed.mjs';
+import { loadSouthAfricaReferenceSeed, loadAfricaReferenceSeed, loadAllReferenceSeeds } from '../src/lib/reference-seed.mjs';
 import { autoPublishDecision } from '../src/lib/auto-publish.mjs';
 import { applyLearningHints, learnIntoProfile, learningQualityBonus } from '../src/lib/import-learning.mjs';
 import { sourceFamily, improveDraftForSource, isSourceIndexRecord, discoverSourceLinks } from '../src/lib/source-profiles.mjs';
 import { demandPriority, clickedDiscoveryRow } from '../src/lib/demand-priority.mjs';
 import { CONTENT_LIMITS, SEO_GUIDANCE, zodValidationDetails } from '../src/lib/content-constraints.mjs';
+import { relationScore, smartRelated } from '../src/lib/related-content.mjs';
+import { GLOBAL_HARVEST_PROVIDERS } from '../src/lib/global-harvest.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
   assert.equal(slugify('University of Limpopo — Applications 2027!'),'university-of-limpopo-applications-2027');
@@ -531,4 +533,76 @@ test('content editor disables save while submitting and restores it after errors
   assert.match(ui,/save\.disabled=true/);
   assert.match(ui,/save\.disabled=false/);
   assert.match(ui,/Saving…/);
+});
+
+
+test('Africa reference seed adds forty permanent opportunities across eight countries',()=>{
+  const seed=loadAfricaReferenceSeed();
+  assert.equal(seed.rows.length,40);
+  assert.equal(seed.metadata.countries.length,8);
+  assert.equal(seed.rows.filter(x=>x.detected_type==='job').length,16);
+  assert.equal(seed.rows.filter(x=>x.detected_type==='internship').length,7);
+  assert.equal(seed.rows.filter(x=>x.detected_type==='bursary').length,16);
+  assert.equal(seed.rows.filter(x=>x.detected_type==='learnership').length,1);
+  assert.deepEqual(new Set(seed.rows.map(x=>x.prepared_draft.geo.country_code)),new Set(['KE','NG','GH','UG','TZ','ZM','ZW','BW']));
+});
+
+test('all permanent reference datasets total eighty records',()=>{
+  const all=loadAllReferenceSeeds();
+  assert.equal(all.record_count,80);
+  assert.equal(all.datasets.length,2);
+  assert.equal(loadSouthAfricaReferenceSeed().rows.length,40);
+});
+
+test('Africa and major-market country names normalize to ISO-style codes',()=>{
+  assert.equal(normalizeCountryCode('Kenya'),'KE');
+  assert.equal(normalizeCountryCode('Ghana'),'GH');
+  assert.equal(normalizeCountryCode('Uganda'),'UG');
+  assert.equal(normalizeCountryCode('Tanzania'),'TZ');
+  assert.equal(normalizeCountryCode('Zambia'),'ZM');
+  assert.equal(normalizeCountryCode('Zimbabwe'),'ZW');
+  assert.equal(normalizeCountryCode('Botswana'),'BW');
+  assert.equal(normalizeCountryCode('Germany'),'DE');
+});
+
+test('smart related content strongly prefers shared organisation country tags and type',()=>{
+  const base={id:'a',status:'published',content_type:'bursary',geo:{country_code:'ZA'},tags:['NSFAS','Engineering'],categories:['Bursaries'],classification:{organisation:'Example Fund',fields_of_study:['Engineering']}};
+  const strong={id:'b',status:'published',content_type:'bursary',geo:{country_code:'ZA'},tags:['NSFAS','Engineering'],categories:['Bursaries'],classification:{organisation:'Example Fund',fields_of_study:['Engineering']}};
+  const weak={id:'c',status:'published',content_type:'job',geo:{country_code:'GB'},tags:['Retail'],categories:['Jobs'],classification:{organisation:'Other Org'}};
+  assert.ok(relationScore(base,strong)>relationScore(base,weak));
+  assert.equal(smartRelated(base,[weak,strong],{limit:1})[0].post.id,'b');
+});
+
+test('global harvest exposes public-feed and public-board providers without requiring AI',()=>{
+  const ids=GLOBAL_HARVEST_PROVIDERS.map(x=>x.id);
+  assert.deepEqual(ids,['arbeitnow','jobicy','remoteok','lever','ashby']);
+  assert.ok(GLOBAL_HARVEST_PROVIDERS.filter(x=>x.attribution).length>=3);
+});
+
+test('Source Hub dashboard exposes regional related-page fetch and global harvest controls',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  const html=fs.readFileSync(new URL('../public/admin/index.html',import.meta.url),'utf8');
+  const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+  assert.match(html,/data-view="sources"/);
+  assert.match(ui,/Fetch pages/);
+  assert.match(ui,/Start global harvest/);
+  assert.match(ui,/Follow useful related opportunity pages/);
+  assert.match(admin,/\/sources\/hub/);
+  assert.match(admin,/\/harvest\/global/);
+  assert.match(admin,/expandRelated:z\.boolean/);
+});
+
+test('Content Library has country source opportunity and sort filters',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(ui,/id="postCountry"/);
+  assert.match(ui,/id="postSource"/);
+  assert.match(ui,/id="opStatus"/);
+  assert.match(ui,/id="postSort"/);
+});
+
+test('deep sync importer can fetch discovered related detail pages',()=>{
+  const src=fs.readFileSync(new URL('../src/lib/importer.mjs',import.meta.url),'utf8');
+  assert.match(src,/expandRelatedRecords/);
+  assert.match(src,/relatedPagesFetched/);
+  assert.match(src,/\/extract\?url=/);
 });

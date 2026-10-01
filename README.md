@@ -1,4 +1,4 @@
-# TodayInfo Control Center v0.5
+# TodayInfo Control Center v0.6
 
 A Node.js admin dashboard and structured publishing API for TodayInfo.
 
@@ -458,3 +458,65 @@ The dashboard Demand Queue can then fetch that URL using the existing source ext
 ### Reference content
 
 The permanent 40-record South Africa reference dataset is now guaranteed to be published at startup and synchronized through the JSON/R2/local publication pipeline. Unchanged reference posts are not rewritten on every restart.
+
+
+## v0.6 — Source Hub and Global Harvest
+
+### Permanent regional data
+
+TodayInfo now ships with two permanent reference datasets:
+
+```text
+data/seeds/south-africa-opportunities-drafts.json
+data/seeds/africa-opportunities-drafts.json
+```
+
+Together they provide 80 permanent reference opportunities. Startup deduplicates them, publishes them and synchronizes their JSON artifacts without rewriting unchanged records every restart.
+
+### Source Hub
+
+The admin dashboard now has a Source Hub for:
+
+- DailyUpdate — deep fetch + useful related opportunity pages.
+- ZA Bursaries — bursary detail fetch + linked bursary/scholarship pages.
+- Psychometric Test — existing first-class topic fetch.
+- Global Harvest — public job-feed and public ATS-board adapters.
+
+### Global Harvest
+
+Supported adapters:
+
+```text
+arbeitnow
+jobicy
+remoteok
+lever
+ashby
+```
+
+Example admin request:
+
+```json
+{
+  "target": 1000,
+  "maxAgeDays": 60,
+  "providers": ["arbeitnow", "jobicy"],
+  "autoPublish": true
+}
+```
+
+Endpoint:
+
+```text
+POST /admin/api/harvest/global
+```
+
+The request may target up to 5,000 normalized records. Real source counts may be lower. TodayInfo deliberately does not fabricate records to hit a requested number.
+
+### Smart related information
+
+Published detail pages now calculate related content from deterministic structured similarity rather than AI. Manual choices still have the strongest priority, followed by shared organisation, country, type, categories, tags, field of study, education level and work mode.
+
+### Content Library filters
+
+The admin library can now filter simultaneously by country, source, type, publishing status and opportunity status, plus search and sorting.

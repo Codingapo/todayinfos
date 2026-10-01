@@ -121,6 +121,23 @@ async function expandTagRecords(records, tagSlug) {
   return expanded;
 }
 
+
+async function expandRelatedRecords(records,limit=100){
+  const discovered=discoverSourceLinks(records).slice(0,Math.min(250,Math.max(1,Number(limit)||100)));
+  const expanded=[];let fetched=0,failed=0;
+  for(let i=0;i<discovered.length;i+=4){
+    const chunk=discovered.slice(i,i+4);
+    const payloads=await Promise.all(chunk.map(async item=>{
+      try{
+        const payload=await fetchJson(`${config.sourceApiBase}/extract?url=${encodeURIComponent(item.url)}`);
+        fetched+=1;return extractRecords(payload);
+      }catch{failed+=1;return []}
+    }));
+    for(const batch of payloads)expanded.push(...batch);
+  }
+  return{records:expanded,fetched,failed,discovered:discovered.length};
+}
+
 export async function fetchImports(options={}) {
   const endpoint = endpointFor(options);
   const isCollection = ['pages','bursaries','articles','dailyupdate','dailyupdate/jobs'].includes(options.kind);
@@ -139,6 +156,13 @@ export async function fetchImports(options={}) {
 
   if (options.kind === 'tag' && options.expand !== false) {
     records.push(...await expandTagRecords(records, options.tagSlug || 'psychometric-test'));
+  }
+
+  let relatedPagesFetched=0,relatedPagesFailed=0,relatedLinksDiscovered=0;
+  if(options.expandRelated){
+    const expanded=await expandRelatedRecords(records,options.relatedLimit||100);
+    relatedPagesFetched=expanded.fetched;relatedPagesFailed=expanded.failed;relatedLinksDiscovered=expanded.discovered;
+    records.push(...expanded.records);
   }
 
   const rawRecords = records.length;
@@ -238,6 +262,9 @@ export async function fetchImports(options={}) {
       rawRecords,
       keptRecords: rows.length,
       discoveredDrafts: discoveryRows.length,
+      relatedLinksDiscovered,
+      relatedPagesFetched,
+      relatedPagesFailed,
       duplicates,
       skippedIndexPages,
       skippedYear,
