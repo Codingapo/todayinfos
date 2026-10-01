@@ -7,10 +7,11 @@ import { markdownToBlocks, renderBlocksHtml, extractInlineTags } from '../src/li
 import { publicPost } from '../src/lib/serializers.mjs';
 import { ROLE_PERMISSIONS, hasPermission } from '../src/lib/rbac.mjs';
 import { resolvedDefinition } from '../src/lib/content-types.mjs';
-import { inspectDatabaseUrl, resolveStoreMode } from '../src/lib/database-config.mjs';
+import { inspectDatabaseUrl, resolveStoreMode, collectDatabaseUrls } from '../src/lib/database-config.mjs';
 import { normalizeGeo, normalizeClassification, seoPath, filterPost } from '../src/lib/global-content.mjs';
 import { publicationKey, PUBLICATION_SCHEMA } from '../src/lib/publication-service.mjs';
 import { publishedObjectKey } from '../src/lib/r2.mjs';
+import { FederatedStore, availabilityError } from '../src/lib/federated-store.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
   assert.equal(slugify('University of Limpopo — Applications 2027!'),'university-of-limpopo-applications-2027');
@@ -198,4 +199,41 @@ test('published JSON artifact keys are global and country aware',()=>{
     'published/gb/jobs/remote-role.json'
   );
   assert.equal(PUBLICATION_SCHEMA,'todayinfo.content.v1');
+});
+
+
+test('multi-database configuration accepts many valid databases and removes duplicates',()=>{
+  const env={
+    DATABASE_URL:'postgresql://user:pass@db1.example.com:5432/main',
+    DATABASE_URLS:'postgresql://user:pass@db2.example.com:5432/main,postgresql://user:pass@db1.example.com:5432/main',
+    DATABASE_URL_3:'postgresql://user:pass@db3.example.com:5432/main',
+    DATABASE_URL_4:'postgresql://user:pass@host:5432/main'
+  };
+  const urls=collectDatabaseUrls(env,{max:5});
+  assert.equal(urls.length,3);
+  assert.match(urls[1],/db2\.example\.com/);
+});
+
+test('federated public reads merge content from multiple databases',async()=>{
+  const primary={listPosts:async()=>[{id:'1',slug:'za-post',title:'ZA',status:'published',geo:{country_code:'ZA'},updated_at:'2026-10-01'}]};
+  const reader={listPosts:async()=>[{id:'2',slug:'uk-post',title:'UK',status:'published',geo:{country_code:'GB'},updated_at:'2026-10-01'}]};
+  const fallback={cached:[],cachePosts(rows){this.cached=rows},listPosts:async()=>[]};
+  const fed=new FederatedStore({primary,readers:[reader],fallback});
+  const rows=await fed.listPosts({status:'published'});
+  assert.equal(rows.length,2);
+  assert.equal(fallback.cached.length,2);
+});
+
+test('federated writes use local fallback only for availability failures',async()=>{
+  const primary={updatePost:async()=>{const e=new Error('getaddrinfo ENOTFOUND db');e.code='ENOTFOUND';throw e}};
+  const fallback={
+    queued:[],
+    updatePost:async(id,patch)=>({id,slug:'cached',status:'published',...patch}),
+    enqueueDatabaseOperation(method,args){this.queued.push({method,args})}
+  };
+  const fed=new FederatedStore({primary,readers:[],fallback});
+  const row=await fed.updatePost('p1',{title:'Offline update'},'admin');
+  assert.equal(row._database_fallback,true);
+  assert.equal(fallback.queued[0].method,'updatePost');
+  assert.equal(availabilityError(Object.assign(new Error('timeout'),{code:'ETIMEDOUT'})),true);
 });
