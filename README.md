@@ -1,4 +1,4 @@
-# TodayInfo Control Center v0.3
+# TodayInfo Control Center v0.4
 
 A Node.js admin dashboard and structured publishing API for TodayInfo.
 
@@ -306,3 +306,66 @@ For PostgreSQL deployments, review and run `migrations/002_import_memory.sql` af
 - When source data contains explicit related/recommended links, they are preserved during import.
 - Generic source links are only kept as recommendations when rules show they are the same content family (for example bursary-to-bursary or job-to-job), which avoids navigation/social/ad noise.
 - Public detail JSON exposes these custom/source recommendations as `recommendation_links` while selected TodayInfo pages remain in `recommendations`.
+
+
+## v0.4 — Global published-content API
+
+TodayInfo remains backward compatible, but the API can now represent and filter opportunities globally.
+
+Example public routes:
+
+```text
+/api/v1/za/bursaries
+/api/v1/gb/jobs
+/api/v1/us/scholarships
+/api/v1/search?country=ZA&region=Gauteng&field_of_study=Engineering
+/api/v1/trending/ZA/Gauteng
+/api/v1/facets?country=ZA
+/api/v1/locations
+```
+
+Published detail responses contain explicit `location`, `classification`, `metadata`, `seo`, tags, topics, related links, related content, recommendations and navigation. Old routes such as `/api/v1/bursaries` and `/api/v1/jobs` remain valid.
+
+### Published storage
+
+When content is published or an already-published page is edited:
+
+```text
+Dashboard
+   ↓
+local JSON artifact
+   ↓
+Cloudflare R2
+   ↓
+published manifest/index
+   ↓
+database publication metadata
+```
+
+If R2 is unavailable, the local JSON and a retry queue are retained. The server retries queued R2 operations automatically.
+
+### Multiple databases
+
+Use one primary database plus optional additional content databases:
+
+```env
+DATABASE_URL=postgresql://...
+DATABASE_URLS=postgresql://db2...,postgresql://db3...
+DATABASE_URL_4=postgresql://...
+DATABASE_URL_5=postgresql://...
+```
+
+The implementation accepts up to 20 numbered database URLs and presents one API to the frontend. The primary database remains the authority for admin accounts and writes; additional databases participate in public content reads.
+
+During a database connectivity outage, the API can use its local published index and R2 manifest. Availability-related content writes are queued locally and retried when the primary database returns.
+
+### Required production migrations
+
+Before enabling the new PostgreSQL-backed features against a real Supabase project, review and apply:
+
+```text
+migrations/004_global_content.sql
+migrations/005_published_artifacts.sql
+```
+
+Do not run migrations blindly against an existing database without first comparing its schema.
