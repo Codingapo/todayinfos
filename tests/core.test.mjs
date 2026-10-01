@@ -26,7 +26,7 @@ import { applicationCandidates, buildApplicationGuide } from '../src/lib/applica
 import { plainEnglishNewsDraft } from '../src/lib/plain-content.mjs';
 import { NEWS_FEEDS } from '../src/lib/news-harvest.mjs';
 import { buildTrafficAtlas, continentForCode } from '../src/lib/geo-analytics.mjs';
-import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload, sourcePublishingPolicy } from '../src/lib/source-catalog.mjs';
+import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload, sourcePublishingPolicy, importPublishingPolicy } from '../src/lib/source-catalog.mjs';
 import { sourceEndpointCandidates, probeLegacySources } from '../src/lib/importer.mjs';
 
 import { PostgresStore } from '../src/lib/store-postgres.mjs';
@@ -805,7 +805,7 @@ test('traffic atlas aggregates countries into continents and action counts',()=>
 
 test('dashboard exposes official-news batches direct-link processing and world traffic atlas',()=>{
   const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
-  assert.match(ui,/Fetch 10 news/);
+  assert.match(ui,/Discover 10/);
   assert.match(ui,/Process 10/);
   assert.match(ui,/Checking apply links/);
   assert.match(ui,/WORLD TRAFFIC ATLAS/);
@@ -868,22 +868,33 @@ test('repair: Source Hub publishes explicit non-AI reuse and paraphrase policies
   const sanews=SOURCE_CATALOG.find(x=>x.id==='sanews');
   const gov=SOURCE_CATALOG.find(x=>x.id==='govza');
   const jobs=SOURCE_CATALOG.find(x=>x.id==='greenhouse');
+  const daily=SOURCE_CATALOG.find(x=>x.id==='dailyupdate');
+  const bursaries=SOURCE_CATALOG.find(x=>x.id==='zabursaries');
   const a=sourcePublishingPolicy(sanews),b=sourcePublishingPolicy(gov),c=sourcePublishingPolicy(jobs);
   assert.equal(a.ai_rewriting,false);
-  assert.equal(a.mode,'reuse_with_credit');
+  assert.equal(a.mode,'manual_editorial_summary');
   assert.equal(a.can_paraphrase,true);
+  assert.equal(a.auto_publish,false);
   assert.equal(b.mode,'facts_and_link');
   assert.equal(c.mode,'structured_facts_and_link');
   assert.equal(c.can_paraphrase,false);
+  assert.equal(c.auto_publish,true);
+  assert.equal(sourcePublishingPolicy(daily).auto_publish,false);
+  assert.equal(sourcePublishingPolicy(daily).can_paraphrase,false);
+  assert.equal(sourcePublishingPolicy(bursaries).auto_publish,false);
+  assert.equal(sourcePublishingPolicy(bursaries).can_paraphrase,false);
 });
 
-test('repair: official news harvest is draft-first and never auto-publishes from Source Hub',()=>{
+test('repair: official news is discovery-first and never auto-publishes or auto-rewrites',()=>{
   const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
   const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
-  assert.match(ui,/autoPublish:false/);
-  assert.match(ui,/prepared as private drafts for review/);
-  assert.match(admin,/Invalid news harvest options/);
-  assert.match(admin,/autoPublish:z\.boolean\(\)\.optional\(\)\.default\(false\)/);
+  const news=fs.readFileSync(new URL('../src/lib/news-harvest.mjs',import.meta.url),'utf8');
+  assert.match(ui,/Discover 10/);
+  assert.match(ui,/manual editing required/);
+  assert.match(admin,/discoverOfficialNews/);
+  assert.match(admin,/manual_review_required:true/);
+  assert.match(news,/manual_editorial_summary/);
+  assert.match(news,/auto_rewrite:false/);
 });
 
 test('repair: CEO Owner still has full edit review promote and publish permissions',()=>{
@@ -969,4 +980,59 @@ test('v0.8.3: admin assets cannot keep stale repaired JavaScript',()=>{
   const server=fs.readFileSync(new URL('../src/server.mjs',import.meta.url),'utf8');
   assert.match(server,/maxAge:0/);
   assert.match(server,/no-store, no-cache, must-revalidate/);
+});
+
+
+test('v0.8.4: direct website fallbacks keep jobs bursaries and demand details fetchable',()=>{
+  const importer=fs.readFileSync(new URL('../src/lib/importer.mjs',import.meta.url),'utf8');
+  const fallback=fs.readFileSync(new URL('../src/lib/direct-source-fallback.mjs',import.meta.url),'utf8');
+  assert.match(importer,/fetchDirectSourceFallback/);
+  assert.match(importer,/fetchDirectUrlFallback/);
+  assert.match(importer,/endpointFallbackUsed/);
+  assert.match(importer,/endpointAttempts/);
+  assert.match(fallback,/dailyupdate\.co\.za/);
+  assert.match(fallback,/zabursaries\.co\.za/);
+  assert.match(fallback,/fetchDirectUrlFallback/);
+  assert.match(fallback,/fetchDirectSourceFallback/);
+});
+
+test('v0.8.4: narrative sources require review while structured APIs can auto-publish',()=>{
+  const daily=importPublishingPolicy({source_name:'DailyUpdate',source_url:'https://dailyupdate.co.za/example-job/'});
+  const bursary=importPublishingPolicy({source_name:'ZA Bursaries',source_url:'https://www.zabursaries.co.za/example-bursary/'});
+  const greenhouse=importPublishingPolicy({source_name:'Greenhouse · example',source_url:'https://boards.greenhouse.io/example/jobs/1'});
+  assert.equal(daily.auto_publish,false);
+  assert.equal(daily.ai_rewriting,false);
+  assert.equal(bursary.auto_publish,false);
+  assert.equal(greenhouse.auto_publish,true);
+});
+
+test('v0.8.4: source policy is enforced by all automatic publish paths',()=>{
+  const admin=fs.readFileSync(new URL('../src/routes/admin.mjs',import.meta.url),'utf8');
+  const occurrences=(admin.match(/Source policy requires manual review/g)||[]).length;
+  assert.ok(occurrences>=3);
+  assert.match(admin,/importPublishingPolicy/);
+});
+
+test('v0.8.4: CEO controls and demand queue remain present after source repair',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(ui,/class="ghost review-import"/);
+  assert.match(ui,/class="primary promote-import"/);
+  assert.match(ui,/Fetch & process/);
+  assert.match(ui,/Review/);
+  assert.match(ui,/class="ghost edit-post"/);
+  assert.match(ui,/openPostEditor/);
+  assert.match(ui,/Save cleanup/);
+  assert.match(ui,/Save & promote to draft/);
+  assert.equal(hasPermission('owner','imports.review'),true);
+  assert.equal(hasPermission('owner','posts.edit'),true);
+  assert.equal(hasPermission('owner','posts.publish'),true);
+});
+
+test('v0.8.4: Source Hub shows non-AI publishing policy and fallback diagnostics',()=>{
+  const ui=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(ui,/AI rewriting:/);
+  assert.match(ui,/Auto publish:/);
+  assert.match(ui,/Rights:/);
+  assert.match(ui,/Check jobs & bursaries health/);
+  assert.match(ui,/Discover 10/);
 });
