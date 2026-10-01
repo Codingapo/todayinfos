@@ -156,58 +156,27 @@ const renderers={
 
   async sources(){
     const hub=await api('/sources/hub');
+    const categories=hub.categories||[];
+    const activeHarvest=(hub.sources||[]).filter(x=>x.action?.type==='harvest'&&x.integration_status==='active');
+    const statusLabel=s=>({active:'Active',discovery:'Discovery',credentials_required:'Needs credentials',licence_required:'Licence required'}[s]||String(s||'Catalogued').replaceAll('_',' '));
+    const sourceCard=x=>`<article class="source-catalog-card" data-source-card data-hay="${esc([x.label,x.category,x.region,...(x.content_types||[])].join(' ').toLowerCase())}">
+      <div class="source-card-top"><div class="source-logo">${esc((x.label||'TI').split(/\s+/).slice(0,2).map(v=>v[0]).join('').toUpperCase())}</div><div class="grow"><div class="source-card-labels"><span class="source-status ${esc(x.integration_status)}">${esc(statusLabel(x.integration_status))}</span><span class="source-mode">${esc(String(x.mode||'source').replaceAll('_',' '))}</span></div><h3>${esc(x.label)}</h3><p>${esc(x.description||'')}</p></div></div>
+      <div class="source-meta"><span>${esc(x.region||'Global')}</span><span>${esc((x.content_types||[]).join(' · ')||'mixed content')}</span></div>
+      <div class="source-stats"><span><b>${Number(x.stats?.imports||0)}</b> imports</span><span><b>${Number(x.stats?.published||0)}</b> published</span><span><b>${Number(x.stats?.average_quality||0)}%</b> avg clean</span></div>
+      <div class="source-actions">${x.action?.type==='fetch'&&can('imports.fetch')?`<button class="primary run-source" data-id="${esc(x.id)}">Fetch now</button>`:''}${x.action?.type==='harvest'&&can('imports.fetch')?`<button class="ghost choose-harvest" data-id="${esc(x.id)}">Use in harvest</button>`:''}<a class="ghost source-home" href="${esc(x.homepage||'#')}" target="_blank" rel="noopener noreferrer">Source ↗</a></div>
+    </article>`;
     $('#content').innerHTML=`
-      <div class="source-hub-hero">
-        <div><p class="eyebrow">SOURCE INTELLIGENCE</p><h1>Fetch deeply, keep the useful pages.</h1><p>TodayInfo understands source families instead of treating every page the same. Regional sources can follow useful related pages; global feeds are normalized, deduplicated and checked before publishing.</p></div>
-        <div class="seed-stat"><small>Permanent verified seed</small><strong>${hub.permanent_seeds?.expected_records||80}</strong><span>records restored on startup</span></div>
-      </div>
-      <section class="panel source-hub-panel">
-        <div class="panel-head"><div><p class="eyebrow">REGIONAL SOURCES</p><h3>Deep source fetch</h3><p class="panel-sub">These buttons fetch the main source plus useful linked opportunity pages.</p></div></div>
-        <div class="source-hub-grid">
-          ${(hub.regional||[]).map(x=>`<article class="source-hub-card" data-source="${esc(x.id)}"><div class="source-logo">${x.id==='dailyupdate'?'DU':x.id==='zabursaries'?'ZA':'#'}</div><div class="grow"><span class="source-state">Structured source</span><h3>${esc(x.label)}</h3><p>${esc(x.description)}</p><div class="source-capabilities"><span>Deduplicate</span><span>Follow related</span><span>80% gate</span></div></div><button class="primary run-source" data-id="${esc(x.id)}">Fetch pages</button></article>`).join('')}
-        </div>
-      </section>
-      <section class="panel global-harvest-panel">
-        <div class="panel-head"><div><p class="eyebrow">GLOBAL HARVEST</p><h3>Build the worldwide opportunity index</h3><p class="panel-sub">Only recent public listings are accepted. Every provider remains attributed and each normalized record goes through TodayInfo cleaning before publication.</p></div></div>
-        <form id="harvestForm" class="harvest-form">
-          <div class="harvest-target"><label class="field">Target records<input name="target" type="number" min="1" max="5000" value="1000"></label><label class="field">Recent within<input name="maxAgeDays" type="number" min="1" max="120" value="60"><small>days</small></label></div>
-          <div class="provider-grid">
-            ${(hub.global||[]).map(x=>`<label class="provider-option"><input type="checkbox" name="provider" value="${esc(x.id)}" ${['arbeitnow','jobicy'].includes(x.id)?'checked':''}><span><strong>${esc(x.label)}</strong><small>${esc(x.kind.replaceAll('_',' '))}${x.attribution?' · source attribution kept':''}</small></span></label>`).join('')}
-          </div>
-          <div class="form-grid optional-boards"><label class="field wide">Lever board names (optional)<input name="leverSites" placeholder="company-one, company-two"><small>Only use public Lever board site names you want TodayInfo to follow.</small></label><label class="field wide">Ashby board names (optional)<input name="ashbyBoards" placeholder="CompanyOne, CompanyTwo"><small>Only listed public Ashby postings are harvested.</small></label></div>
-          <label class="preview-check"><input name="autoPublish" type="checkbox" checked><span>Auto-publish records that pass the 80%+ cleanliness and hard publishing checks<small>Everything else remains private in Import Inbox.</small></span></label>
-          <div class="harvest-actions"><button type="submit" class="primary" id="harvestRun">Start global harvest</button><button type="button" class="ghost" id="openImportsFromSources">Open Import Inbox</button></div>
-          <div id="harvestResult" class="harvest-result hidden"></div>
-        </form>
-      </section>`;
+      <div class="source-hub-hero"><div><p class="eyebrow">SOURCE INTELLIGENCE</p><h1>One hub, many source families.</h1><p>TodayInfo now categorizes sources by origin and capability. Active integrations can fetch immediately; research, credential and licence-dependent sources remain clearly separated so the system never pretends they are live.</p></div><div class="source-summary-grid"><div><small>Catalogued</small><strong>${hub.totals?.sources||0}</strong></div><div><small>Active</small><strong>${hub.totals?.active||0}</strong></div><div><small>Discovery</small><strong>${hub.totals?.discovery||0}</strong></div><div><small>Permanent records</small><strong>${hub.totals?.permanent_records||80}</strong></div></div></div>
+      <div class="source-toolbar"><input id="sourceSearch" class="search" placeholder="Search source, region or content type"><select id="sourceCategory" class="search"><option value="">All categories</option>${categories.map(c=>`<option value="${esc(c.id)}">${esc(c.label)}</option>`).join('')}</select><select id="sourceStatus" class="search"><option value="">All statuses</option><option value="active">Active</option><option value="discovery">Discovery</option><option value="credentials_required">Needs credentials</option><option value="licence_required">Licence required</option></select></div>
+      <div id="sourceCategories">${categories.map(c=>`<section class="panel source-category" data-category="${esc(c.id)}"><div class="panel-head"><div><p class="eyebrow">SOURCE CATEGORY</p><h3>${esc(c.label)}</h3><p class="panel-sub">${esc(c.description)}</p></div><span class="chart-kicker">${c.sources?.length||0} sources</span></div><div class="source-catalog-grid">${(c.sources||[]).map(sourceCard).join('')}</div></section>`).join('')}</div>
+      ${can('imports.fetch')?`<section class="panel global-harvest-panel"><div class="panel-head"><div><p class="eyebrow">ACTIVE HARVEST</p><h3>Fetch public job APIs & employer boards</h3><p class="panel-sub">Every result is normalized, deduplicated and sent through TodayInfo's 80%+ publishing gate. Employer-board fields are optional until that provider is selected.</p></div></div><form id="harvestForm" class="harvest-form"><div class="harvest-target"><label class="field">Target records<input name="target" type="number" min="1" max="5000" value="1000"></label><label class="field">Recent within<input name="maxAgeDays" type="number" min="1" max="120" value="60"><small>days</small></label></div><div class="provider-grid">${activeHarvest.map(x=>`<label class="provider-option"><input type="checkbox" name="provider" value="${esc(x.id)}" ${['arbeitnow','jobicy'].includes(x.id)?'checked':''}><span><strong>${esc(x.label)}</strong><small>${esc(String(x.mode||'public source').replaceAll('_',' '))} · attribution/source retained</small></span></label>`).join('')}</div><div class="form-grid optional-boards"><label class="field wide">Lever board slugs<input name="leverSites" placeholder="company-one, company-two"></label><label class="field wide">Ashby board names<input name="ashbyBoards" placeholder="CompanyOne, CompanyTwo"></label><label class="field wide">Greenhouse board tokens<input name="greenhouseBoards" placeholder="stripe, example-board"></label><label class="field wide">Workable account subdomains<input name="workableAccounts" placeholder="company-one, company-two"></label><label class="field wide">SmartRecruiters company identifiers<input name="smartRecruitersCompanies" placeholder="company-one, company-two"></label></div><label class="preview-check"><input name="autoPublish" type="checkbox" checked><span>Auto-publish records that pass the 80%+ cleanliness and hard publishing checks<small>Everything else remains private in Import Inbox.</small></span></label><div class="harvest-actions"><button type="submit" class="primary" id="harvestRun">Start harvest</button><button type="button" class="ghost" id="openImportsFromSources">Open Import Inbox</button></div><div id="harvestResult" class="harvest-result hidden"></div></form></section>`:''}`;
 
-    $('#openImportsFromSources').onclick=()=>navigate('imports');
-    $('.run-source').forEach(btn=>btn.onclick=async()=>{
-      const source=(hub.regional||[]).find(x=>x.id===btn.dataset.id);if(!source)return;
-      const old=btn.textContent;btn.disabled=true;btn.textContent='Fetching…';
-      try{
-        const r=await api('/imports/fetch',{method:'POST',body:source.fetch});
-        const published=r.auto_publish?.published?.length||0;
-        toast(`${source.label}: ${r.inserted||0} new · ${r.relatedPagesFetched||0} related pages · ${published} published`);
-        await navigate('imports');
-      }catch(err){toast(err.message,true);btn.disabled=false;btn.textContent=old}
-    });
-    $('#harvestForm').onsubmit=async e=>{
-      e.preventDefault();const form=e.currentTarget,fd=new FormData(form);
-      const providers=fd.getAll('provider');if(!providers.length)return toast('Choose at least one global source',true);
-      const body={
-        target:Number(fd.get('target')||1000),maxAgeDays:Number(fd.get('maxAgeDays')||60),providers,
-        leverSites:splitList(fd.get('leverSites')),ashbyBoards:splitList(fd.get('ashbyBoards')),
-        autoPublish:fd.get('autoPublish')==='on'
-      };
-      const button=$('#harvestRun'),box=$('#harvestResult');button.disabled=true;button.textContent='Harvesting…';box.classList.remove('hidden');box.innerHTML='<span class="sync-spinner"></span><div><strong>Global harvest running</strong><small>Fetching public feeds, normalizing and deduplicating records.</small></div>';
-      try{
-        const r=await api('/harvest/global',{method:'POST',body});
-        box.innerHTML=`<div><strong>${Number(r.accepted||0).toLocaleString()} accepted</strong><small>${Number(r.published?.length||0).toLocaleString()} published now · ${Number(r.review?.length||0).toLocaleString()} shown for review · snapshots retained</small></div>`;
-        toast(`Global harvest complete: ${r.accepted||0} accepted · ${r.published?.length||0} published`);
-      }catch(err){box.innerHTML=`<div><strong>Harvest stopped</strong><small>${esc(err.message)}</small></div>`;toast(err.message,true)}
-      finally{button.disabled=false;button.textContent='Start global harvest'}
-    };
+    const filterSources=()=>{const q=$('#sourceSearch').value.trim().toLowerCase(),category=$('#sourceCategory').value,status=$('#sourceStatus').value;$$('[data-source-card]').forEach(card=>{const source=(hub.sources||[]).find(x=>card.querySelector('.run-source,.choose-harvest')?.dataset.id===x.id)||null;const matchQ=!q||card.dataset.hay.includes(q);const parent=card.closest('[data-category]');const matchCategory=!category||parent?.dataset.category===category;const sourceId=card.querySelector('[data-id]')?.dataset.id;const item=(hub.sources||[]).find(x=>x.id===sourceId)||null;const matchStatus=!status||item?.integration_status===status;card.hidden=!(matchQ&&matchCategory&&matchStatus)});$$('.source-category').forEach(section=>section.hidden=![...section.querySelectorAll('[data-source-card]')].some(x=>!x.hidden))};
+    $('#sourceSearch').oninput=filterSources;$('#sourceCategory').onchange=filterSources;$('#sourceStatus').onchange=filterSources;
+    $$('.run-source').forEach(btn=>btn.onclick=async()=>{const source=(hub.sources||[]).find(x=>x.id===btn.dataset.id);if(!source?.action?.fetch)return;const old=btn.textContent;btn.disabled=true;btn.textContent='Fetching…';try{const r=await api('/imports/fetch',{method:'POST',body:source.action.fetch});toast(`${source.label}: ${r.inserted||0} new · ${r.relatedPagesFetched||0} related · ${r.auto_publish?.published?.length||0} published`);await navigate('imports')}catch(err){toast(err.message,true);btn.disabled=false;btn.textContent=old}});
+    $$('.choose-harvest').forEach(btn=>btn.onclick=()=>{const input=$(`#harvestForm input[name="provider"][value="${CSS.escape(btn.dataset.id)}"]`);if(input){input.checked=true;$('#harvestForm').scrollIntoView({behavior:'smooth',block:'start'});toast(`${btn.dataset.id} selected for harvest`)}});
+    $('#openImportsFromSources')?.addEventListener('click',()=>navigate('imports'));
+    if($('#harvestForm'))$('#harvestForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,fd=new FormData(form);const providers=fd.getAll('provider');if(!providers.length)return toast('Choose at least one active source',true);const body={target:Number(fd.get('target')||1000),maxAgeDays:Number(fd.get('maxAgeDays')||60),providers,leverSites:splitList(fd.get('leverSites')),ashbyBoards:splitList(fd.get('ashbyBoards')),greenhouseBoards:splitList(fd.get('greenhouseBoards')),workableAccounts:splitList(fd.get('workableAccounts')),smartRecruitersCompanies:splitList(fd.get('smartRecruitersCompanies')),autoPublish:fd.get('autoPublish')==='on'};const button=$('#harvestRun'),box=$('#harvestResult');button.disabled=true;button.textContent='Harvesting…';box.classList.remove('hidden');box.innerHTML='<span class="sync-spinner"></span><div><strong>Harvest running</strong><small>Fetching, normalizing and deduplicating public listings.</small></div>';try{const r=await api('/harvest/global',{method:'POST',body});box.innerHTML=`<div><strong>${Number(r.accepted||0).toLocaleString()} accepted</strong><small>${Number(r.published?.length||0).toLocaleString()} published · ${Number(r.review?.length||0).toLocaleString()} kept for review</small></div>`;toast(`Harvest complete: ${r.accepted||0} accepted · ${r.published?.length||0} published`)}catch(err){box.innerHTML=`<div><strong>Harvest stopped</strong><small>${esc(err.message)}</small></div>`;toast(err.message,true)}finally{button.disabled=false;button.textContent='Start harvest'}};
   },
 
   async demand(){const rows=await api('/imports/priority?limit=200');const highest=rows.filter(x=>x.priority==='highest').length;$('#navDemandCount').textContent=highest;$('#content').innerHTML=`
