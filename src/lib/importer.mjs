@@ -59,7 +59,7 @@ async function fetchJson(url,{attempts=3}={}) {
 }
 
 export const sourceEndpointCandidates=kind=>{
-  if(kind==='dailyupdate/jobs')return['/dailyupdate/jobs','/dailyupdate','/articles'];
+  if(kind==='dailyupdate/jobs')return['/dailyupdate/jobs','/dailyupdate','/articles','/search?q=jobs'];
   if(kind==='bursaries')return['/bursaries','/search?q=bursary'];
   return[endpointFor({kind})];
 };
@@ -296,5 +296,34 @@ export async function fetchImports(options={}) {
       maxPages,
       usedEndpoint:options._usedEndpoint||endpoint
     }
+  };
+}
+
+
+async function probeUrl(url,{accept='application/json'}={}){
+  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),10000);
+  try{
+    const res=await fetch(url,{headers:{accept,'user-agent':'TodayInfo-Source-Health/0.8.2'},signal:controller.signal});
+    return{url,ok:res.ok,status:res.status,content_type:res.headers.get('content-type')||null};
+  }catch(error){return{url,ok:false,status:null,error:error.message}}
+  finally{clearTimeout(timer)}
+}
+
+export async function probeLegacySources(){
+  const checks=await Promise.all([
+    probeUrl(`${config.sourceApiBase}/bursaries?page=1&limit=1`),
+    probeUrl(`${config.sourceApiBase}/dailyupdate/jobs?page=1&limit=1`),
+    probeUrl('https://www.zabursaries.co.za/',{accept:'text/html'}),
+    probeUrl('https://dailyupdate.co.za/category/vacancies/',{accept:'text/html'})
+  ]);
+  return{
+    checked_at:new Date().toISOString(),
+    source_api_base:config.sourceApiBase,
+    checks:[
+      {id:'api-bursaries',label:'TodayInfo source API · Bursaries',...checks[0]},
+      {id:'api-dailyupdate',label:'TodayInfo source API · DailyUpdate jobs',...checks[1]},
+      {id:'web-zabursaries',label:'ZA Bursaries website',...checks[2]},
+      {id:'web-dailyupdate',label:'DailyUpdate vacancies website',...checks[3]}
+    ]
   };
 }
