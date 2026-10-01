@@ -491,3 +491,89 @@ test('dashboard exposes demand queue and richer analytics',()=>{
   assert.match(ui,/Visitors by country/);
   assert.match(ui,/Fetch & process/);
 });
+
+
+test('DailyUpdate source profile extracts job-specific fields and rejects archive pages',()=>{
+  const record={
+    sourceId:'dailyupdate',
+    url:'https://dailyupdate.co.za/jobs/example-job/',
+    title:'Example Company Jobs 2026',
+    contentText:'Table of Contents\nRequirements\nGrade 12\nComputer literacy\nHow to Apply\nUse the official careers portal.',
+    links:[{title:'Apply now',url:'https://careers.example.com/apply'}]
+  };
+  assert.equal(sourceFamily(record),'dailyupdate');
+  assert.equal(isSourceIndexRecord({...record,url:'https://dailyupdate.co.za/page/3/',title:'Page 3'}),true);
+  const d=improveDraftForSource(record,{content_type:'other',body_markdown:'',type_data:{}});
+  assert.equal(d.content_type,'job');
+  assert.match(d.type_data.requirements,/Grade 12/);
+  assert.equal(d.type_data.application_url,'https://careers.example.com/apply');
+  assert.doesNotMatch(d.body_markdown,/Table of Contents/);
+});
+
+test('ZA Bursaries source profile extracts eligibility, documents, closing date and application route',()=>{
+  const record={
+    sourceId:'zabursaries',
+    url:'https://www.zabursaries.co.za/example-bursary/',
+    title:'Example Bursary 2026',
+    contentText:'Eligibility Requirements\nSouth African citizen\nFull-time student\nSupporting Documents\nID copy\nAcademic record\nHow to Apply\nComplete the official form.\nClosing Date\n30 October 2026',
+    links:[{title:'Application form',url:'https://fund.example.org/apply'}]
+  };
+  assert.equal(sourceFamily(record),'zabursaries');
+  const d=improveDraftForSource(record,{content_type:'bursary',body_markdown:'',type_data:{}});
+  assert.equal(d.content_type,'bursary');
+  assert.match(d.type_data.eligibility,/South African citizen/);
+  assert.match(d.type_data.supporting_documents,/ID copy/);
+  assert.equal(d.type_data.closing_date,'2026-10-30');
+  assert.equal(d.type_data.application_url,'https://fund.example.org/apply');
+});
+
+test('ZA Bursaries monthly deadline pages are discovery indexes, not publishable opportunities',()=>{
+  const record={
+    sourceId:'zabursaries',
+    title:'Bursaries Closing in October 2026',
+    url:'https://www.zabursaries.co.za/bursaries-closing-in-october-2026/',
+    links:[
+      {title:'Example Engineering Bursary',url:'https://www.zabursaries.co.za/example-engineering-bursary/'},
+      {title:'Contact',url:'https://www.zabursaries.co.za/contact/'}
+    ]
+  };
+  assert.equal(isSourceIndexRecord(record),true);
+  const found=discoverSourceLinks([record]);
+  assert.equal(found.length,1);
+  assert.equal(found[0].suggested_type,'bursary');
+});
+
+test('visitor clicks make missing discovered content highest priority',()=>{
+  const normal=demandPriority({clicks:0,quality:90});
+  const clicked=demandPriority({clicks:1,quality:10});
+  assert.equal(clicked.priority,'highest');
+  assert.ok(clicked.priority_score>normal.priority_score);
+  const row=clickedDiscoveryRow({url:'https://example.org/missing-job',title:'Missing Job',suggestedType:'job',sourcePostId:'p1'});
+  assert.equal(row.review_status,'unreviewed');
+  assert.equal(row.detected_type,'job');
+  assert.match(row.quality_issues[0],/Visitor requested/);
+});
+
+test('public serializer exposes tracking payloads for related and application clicks',()=>{
+  const p=publicPost({
+    id:'track1',slug:'tracked-job',title:'Tracked Job',content_type:'job',summary:'',body_markdown:'Details',
+    posted_date:'2026-10-01',category:'Jobs',categories:['Jobs'],tags:['Jobs'],topics:[],
+    related_links:[{title:'Related role',url:'https://example.org/related'}],related_ids:[],recommendation_ids:[],
+    recommendation_links:[{title:'Recommended role',url:'https://example.org/recommended'}],documents:[],navigation_links:[],
+    type_data:{company:'Example',application_url:'https://example.org/apply',status_override:'open'},
+    geo:{country_code:'ZA'},classification:{organisation:'Example'},status:'published',created_at:'2026-10-01',updated_at:'2026-10-01'
+  });
+  assert.equal(p.related_links[0].tracking.event_type,'related_click');
+  assert.equal(p.recommendation_links[0].tracking.event_type,'recommendation_click');
+  assert.equal(p.application_tracking.event_type,'application_click');
+  assert.equal(p.tracking.endpoint,'/api/v1/analytics/events');
+});
+
+test('admin dashboard includes demand queue and richer analytics views',()=>{
+  const html=fs.readFileSync(new URL('../public/admin/index.html',import.meta.url),'utf8');
+  const js=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(html,/Demand Queue/);
+  assert.match(js,/Missing content users actually want/);
+  assert.match(js,/Top searches/);
+  assert.match(js,/Visitors by country/);
+});
