@@ -302,7 +302,7 @@ For PostgreSQL deployments, review and run `migrations/002_import_memory.sql` af
 
 - The Import Inbox no longer has an **Ignore** action.
 - Legacy ignored imports are returned to `unreviewed` by `migrations/003_recommendations.sql`.
-- Recommendations support both selected TodayInfo posts and custom readable title + URL entries.
+- Recommendations now support both selected TodayInfo posts and custom readable title + URL entries.
 - When source data contains explicit related/recommended links, they are preserved during import.
-- Generic source links are only kept as recommendations when rules show they are the same content family, which avoids navigation/social/ad noise.
+- Generic source links are only kept as recommendations when rules show they are the same content family (for example bursary-to-bursary or job-to-job), which avoids navigation/social/ad noise.
 - Public detail JSON exposes these custom/source recommendations as `recommendation_links` while selected TodayInfo pages remain in `recommendations`.
