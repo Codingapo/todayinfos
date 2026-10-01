@@ -42,6 +42,28 @@ export class FederatedStore {
     return rows;
   }
 
+  async trendingPosts(filters={}){
+    const settled=await Promise.allSettled(this.readers.map(store=>store.trendingPosts(filters)));
+    const successes=settled.filter(x=>x.status==='fulfilled');
+    if(!successes.length)return this.fallback.trendingPosts(filters);
+    const map=new Map();
+    for(const result of successes)for(const row of result.value||[]){
+      const key=dedupeKey(row);const existing=map.get(key);
+      if(!existing||Number(row.trending_score||0)>Number(existing.trending_score||0))map.set(key,row);
+    }
+    const rows=[...map.values()].sort((a,b)=>Number(b.trending_score||0)-Number(a.trending_score||0));
+    this.fallback.cachePosts(rows);return rows;
+  }
+
+  async visitorEvents(visitorId,limit=200){
+    const settled=await Promise.allSettled(this.readers.map(store=>store.visitorEvents(visitorId,limit)));
+    const successes=settled.filter(x=>x.status==='fulfilled');
+    if(!successes.length)return this.fallback.visitorEvents(visitorId,limit);
+    const map=new Map();
+    for(const result of successes)for(const event of result.value||[])map.set(event.id||`${event.created_at}|${event.event_type}|${event.post_id||''}`,event);
+    return [...map.values()].sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||''))).slice(0,limit);
+  }
+
   async getPost(id){
     const result=await this.#publicRead('getPost',[id]);
     if(result.fallback)return result.fallback;
