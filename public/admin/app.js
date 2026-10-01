@@ -83,7 +83,7 @@ const renderers={
             <div class="import-meta"><span>Seen ${memory}×</span><span>Last seen ${fmtDate(x.last_seen_at||x.updated_at)}</span>${x.source_record_date?`<span>Source date ${fmtDate(x.source_record_date)}</span>`:''}</div>
             ${x.quality_issues?.length?`<small class="quality-note">${esc(x.quality_issues.slice(0,2).join(' · '))}</small>`:''}
           </div>
-          <div class="actions"><button class="ghost review-import" data-id="${x.id}">Review</button>${x.review_status!=='promoted'?`<button class="primary promote-import" data-id="${x.id}">Promote</button>`:''}<button class="danger ignore-import" data-id="${x.id}">Ignore</button></div>
+          <div class="actions"><button class="ghost review-import" data-id="${x.id}">Review</button>${x.review_status!=='promoted'?`<button class="primary promote-import" data-id="${x.id}">Promote</button>`:''}</div>
         </article>`;
       }).join(''):'<div class="empty wide">Nothing matches this filter.</div>'
     };
