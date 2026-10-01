@@ -58,7 +58,13 @@ export class PostgresStore{
     }
     return{inserted,changed,unchanged,total:rows.length};
   }
-  async listImports(f={}){const p=[];const w=[];if(f.status){p.push(f.status);w.push(`review_status=$${p.length}`)}if(f.type){p.push(f.type);w.push(`detected_type=$${p.length}`)}if(f.q){p.push(`%${f.q}%`);w.push(`(coalesce(source_name,'') ilike $${p.length} or coalesce(source_slug,'') ilike $${p.length} or source_payload::text ilike $${p.length})`)}return(await this.q(`select * from raw_imports ${w.length?'where '+w.join(' and '):''} order by coalesce(source_record_date,last_seen_at,updated_at) desc limit 5000`,p)).rows}
+  async listImports(f={}){
+    const p=[];const w=[];const add=(value,sql)=>{p.push(value);w.push(sql(p.length))};
+    if(f.status)add(f.status,n=>`review_status=$${n}`);
+    if(f.type)add(f.type,n=>`detected_type=$${n}`);
+    if(f.q)add(`%${f.q}%`,n=>`(coalesce(source_name,'') ilike $${n} or coalesce(source_slug,'') ilike $${n} or coalesce(source_url,'') ilike $${n} or source_payload::text ilike $${n})`);
+    return(await this.q(`select * from raw_imports ${w.length?'where '+w.join(' and '):''} order by coalesce(source_record_date,last_seen_at,updated_at) desc limit 5000`,p)).rows;
+  }
   async priorityImports({limit=100}={}){
     const imports=(await this.q(`select * from raw_imports where review_status in ('unreviewed','reviewing') order by coalesce(source_record_date,last_seen_at,updated_at) desc limit 5000`)).rows;
     const clicks=(await this.q(`select meta->>'target_url' target_url,count(*)::int clicks,max(created_at) last_clicked_at from analytics_events where event_type in ('related_click','recommendation_click') and coalesce(meta->>'target_url','')<>'' group by 1`)).rows;
@@ -71,28 +77,33 @@ export class PostgresStore{
   async updateImport(id,p){const allowed=new Set(['review_status','detected_type','prepared_draft','promoted_post_id','source_changed']);const keys=Object.keys(p).filter(k=>allowed.has(k));if(!keys.length)return this.getImport(id);const vals=keys.map(k=>JSON_FIELDS.has(k)?json(p[k]):p[k]);const sets=keys.map((k,n)=>`${k}=$${n+2}${JSON_FIELDS.has(k)?'::jsonb':''}`).join(',');return(await this.q(`update raw_imports set ${sets},updated_at=now() where id=$1 returning *`,[id,...vals])).rows[0]||null}
 
   async listPosts(f={}){
-    const p=[];const w=[];
+    const p=[];const w=[];const add=(value,sql)=>{p.push(value);w.push(sql(p.length))};
     if(!f.include_deleted)w.push('deleted_at is null');
-    if(f.status){p.push(f.status);w.push(`status=${p.length}`)}
-    if(f.type){p.push(f.type);w.push(`content_type=${p.length}`)}
-    if(f.trending!==undefined){p.push(Boolean(f.trending));w.push(`is_trending=${p.length}`)}
-    if(f.q){p.push(`%${f.q}%`);w.push(`(title ilike ${p.length} or summary ilike ${p.length} or body_markdown ilike ${p.length} or type_data::text ilike ${p.length} or geo::text ilike ${p.length} or classification::text ilike ${p.length} or array_to_string(tags,' ') ilike ${p.length})`)}
-    if(f.tag){p.push(slugify(f.tag));w.push(`exists(select 1 from unnest(tags)t where regexp_replace(lower(t),'[^a-z0-9]+','-','g')=${p.length})`)}
-    if(f.category){p.push(slugify(f.category));w.push(`(regexp_replace(lower(coalesce(category,'')),'[^a-z0-9]+','-','g')=${p.length} or exists(select 1 from unnest(categories)t where regexp_replace(lower(t),'[^a-z0-9]+','-','g')=${p.length}))`)}
-    if(f.country){p.push(normalizeCountryCode(f.country));w.push(`upper(coalesce(geo->>'country_code',''))=${p.length}`)}
-    if(f.region){p.push(`%${f.region}%`);w.push(`(coalesce(geo->>'region_name','') ilike ${p.length} or coalesce(geo->>'region_code','') ilike ${p.length})`)}
-    if(f.city){p.push(`%${f.city}%`);w.push(`coalesce(geo->>'city','') ilike ${p.length}`)}
-    if(f.subcategory){p.push(f.subcategory);w.push(`lower(coalesce(classification->>'subcategory',''))=lower(${p.length})`)}
-    if(f.organisation){p.push(`%${f.organisation}%`);w.push(`coalesce(classification->>'organisation','') ilike ${p.length}`)}
-    if(f.opportunity_type){p.push(f.opportunity_type);w.push(`lower(coalesce(classification->>'opportunity_type',''))=lower(${p.length})`)}
-    if(f.job_type){p.push(f.job_type);w.push(`lower(coalesce(classification->>'job_type',''))=lower(${p.length})`)}
-    if(f.work_mode){p.push(f.work_mode);w.push(`lower(coalesce(classification->>'work_mode',''))=lower(${p.length})`)}
-    if(f.education_level){p.push(`%${f.education_level}%`);w.push(`coalesce(classification->'education_level','[]'::jsonb)::text ilike ${p.length}`)}
-    if(f.field_of_study){p.push(`%${f.field_of_study}%`);w.push(`coalesce(classification->'fields_of_study','[]'::jsonb)::text ilike ${p.length}`)}
-    if(f.closing_before){p.push(f.closing_before);w.push(`nullif(type_data->>'closing_date','')::date <= ${p.length}::date`)}
-    if(f.closing_after){p.push(f.closing_after);w.push(`nullif(type_data->>'closing_date','')::date >= ${p.length}::date`)}
-    if(f.posted_before){p.push(f.posted_before);w.push(`posted_date::date <= ${p.length}::date`)}
-    if(f.posted_after){p.push(f.posted_after);w.push(`posted_date::date >= ${p.length}::date`)}
+    if(f.status)add(f.status,n=>`status=$${n}`);
+    if(f.type)add(f.type,n=>`content_type=$${n}`);
+    if(f.trending!==undefined)add(Boolean(f.trending),n=>`is_trending=$${n}`);
+    if(f.q)add(`%${f.q}%`,n=>`(title ilike $${n} or summary ilike $${n} or body_markdown ilike $${n} or type_data::text ilike $${n} or geo::text ilike $${n} or classification::text ilike $${n} or array_to_string(tags,' ') ilike $${n})`);
+    if(f.tag)add(slugify(f.tag),n=>`exists(select 1 from unnest(tags)t where regexp_replace(lower(t),'[^a-z0-9]+','-','g')=$${n})`);
+    if(f.category)add(slugify(f.category),n=>`(regexp_replace(lower(coalesce(category,'')),'[^a-z0-9]+','-','g')=$${n} or exists(select 1 from unnest(categories)t where regexp_replace(lower(t),'[^a-z0-9]+','-','g')=$${n}))`);
+    if(f.country)add(normalizeCountryCode(f.country),n=>`upper(coalesce(geo->>'country_code',''))=$${n}`);
+    if(f.region)add(`%${f.region}%`,n=>`(coalesce(geo->>'region_name','') ilike $${n} or coalesce(geo->>'region_code','') ilike $${n})`);
+    if(f.city)add(`%${f.city}%`,n=>`coalesce(geo->>'city','') ilike $${n}`);
+    if(f.subcategory)add(f.subcategory,n=>`lower(coalesce(classification->>'subcategory',''))=lower($${n})`);
+    if(f.organisation)add(`%${f.organisation}%`,n=>`coalesce(classification->>'organisation','') ilike $${n}`);
+    if(f.opportunity_type)add(f.opportunity_type,n=>`lower(coalesce(classification->>'opportunity_type',''))=lower($${n})`);
+    if(f.job_type)add(f.job_type,n=>`lower(coalesce(classification->>'job_type',''))=lower($${n})`);
+    if(f.work_mode)add(f.work_mode,n=>`lower(coalesce(classification->>'work_mode',''))=lower($${n})`);
+    if(f.education_level)add(`%${f.education_level}%`,n=>`coalesce(classification->'education_level','[]'::jsonb)::text ilike $${n}`);
+    if(f.field_of_study)add(`%${f.field_of_study}%`,n=>`coalesce(classification->'fields_of_study','[]'::jsonb)::text ilike $${n}`);
+    if(f.salary_min!==undefined&&f.salary_min!==null&&f.salary_min!=='')add(Number(f.salary_min),n=>`coalesce(nullif(classification->'salary'->>'max','')::numeric,nullif(classification->'salary'->>'min','')::numeric,0)>=$${n}`);
+    if(f.salary_max!==undefined&&f.salary_max!==null&&f.salary_max!=='')add(Number(f.salary_max),n=>`coalesce(nullif(classification->'salary'->>'min','')::numeric,nullif(classification->'salary'->>'max','')::numeric,0)<=$${n}`);
+    if(f.currency)add(String(f.currency).toUpperCase(),n=>`upper(coalesce(classification->'salary'->>'currency',''))=$${n}`);
+    if(f.stipend!==undefined&&f.stipend!==null&&f.stipend!=='')add(['1','true','yes'].includes(String(f.stipend).toLowerCase()),n=>`coalesce((classification->'salary'->>'stipend')::boolean,false)=$${n}`);
+    if(f.eligibility)add(`%${f.eligibility}%`,n=>`coalesce(classification->'eligibility_tags','[]'::jsonb)::text ilike $${n}`);
+    if(f.closing_before)add(f.closing_before,n=>`nullif(type_data->>'closing_date','')::date <= $${n}::date`);
+    if(f.closing_after)add(f.closing_after,n=>`nullif(type_data->>'closing_date','')::date >= $${n}::date`);
+    if(f.posted_before)add(f.posted_before,n=>`posted_date::date <= $${n}::date`);
+    if(f.posted_after)add(f.posted_after,n=>`posted_date::date >= $${n}::date`);
     let rows=(await this.q(`select posts.*,(select count(*)::int from analytics_events a where a.post_id=posts.id and a.event_type='view') views,(select count(*)::int from analytics_events a where a.post_id=posts.id and a.event_type='read') reads from posts ${w.length?'where '+w.join(' and '):''} order by coalesce(published_at,posted_date,updated_at) desc limit 5000`,p)).rows;
     rows=rows.filter(row=>filterPost(row,f));
     if(f.opportunity_status)rows=rows.filter(row=>calculateOpportunityStatus(row.type_data||{})===f.opportunity_status);
