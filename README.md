@@ -629,3 +629,16 @@ The CEO Analytics screen includes a clickable world traffic atlas and continent 
 ### SEO quality rule
 
 TodayInfo is designed to add user value rather than create lightly transformed copies. Extra pages should exist because they provide useful structure such as verified application routes, eligibility, application steps, source attribution, location and clear summaries.
+
+
+## v0.8.2 — Import resilience hardening
+
+This is a small compatibility follow-up to the v0.8.1 dashboard repair.
+
+- Import Inbox and Demand Queue now inspect the actual PostgreSQL/Supabase `raw_imports` schema instead of assuming every newer memory column has already been migrated.
+- Older databases can continue listing, searching and updating imports.
+- Legacy upserts only write columns that actually exist.
+- Demand Queue can still render when click-analytics aggregation is temporarily unavailable.
+- Admin assets are served with no-cache/no-store headers so Render deployments immediately use the repaired dashboard JavaScript.
+
+All v0.8.1 editor, CEO, Source Hub, fetch fallback and source-policy behavior is preserved.
