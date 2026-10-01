@@ -62,6 +62,7 @@ create table if not exists posts (
   type_data jsonb not null default '{}'::jsonb,
   geo jsonb not null default '{}'::jsonb,
   classification jsonb not null default '{}'::jsonb,
+  publication jsonb not null default '{}'::jsonb,
   main_image_url text,
   seo_title text,
   seo_description text,
