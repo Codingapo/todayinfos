@@ -344,7 +344,65 @@ async function openFetch(){
   }
 }
 
-function openImportReview(row){if(!row)return toast('This import is no longer available. Refresh the inbox and try again.',true);const d=row.prepared_draft||{};modal('Review imported content','PRIVATE IMPORT',`<div class="editor-shell"><div class="notice">This is source data only. Promote it to create a private draft, then clean and publish from the structured editor. Source recommendations found during fetching are kept with the draft.</div><section class="editor-section"><div class="editor-section-head"><span class="section-number">1</span><div><h4>Source</h4><p>${esc(row.source_name||'')}</p></div></div><div class="editor-section-body form-grid"><label class="field">Detected type<select id="importType">${Object.entries(state.contentTypes).map(([k,v])=>`<option value="${k}" ${k===row.detected_type?'selected':''}>${esc(v.label)}</option>`).join('')}</select></label><label class="field">Source slug<input value="${esc(row.source_slug||'')}" readonly></label><label class="field wide">Prepared title<input value="${esc(d.title||'')}" readonly></label><label class="field wide">Prepared summary<textarea readonly>${esc(d.summary||'')}</textarea></label><label class="field wide">Source URL<input value="${esc(row.source_url||'')}" readonly></label><div class="field wide"><span>Fetched recommendations</span><div class="fetched-recommendations">${(d.recommendation_links||[]).length?(d.recommendation_links||[]).map(x=>`<div class="relation-card"><div class="grow"><strong>${esc(x.title)}</strong><small>${esc(x.url)}</small></div></div>`).join(''):'<div class="notice">No source recommendations were detected for this item.</div>'}</div></div></div></section><div class="form-actions"><button class="primary" id="promoteImport">Promote to private draft</button></div></div>`);$('#importType').onchange=async e=>{try{await api(`/imports/${row.id}`,{method:'PATCH',body:{detected_type:e.target.value,prepared_draft:{...d,content_type:e.target.value}}});toast('Type updated')}catch(err){toast(err.message,true)}};$('#promoteImport').onclick=async()=>{try{const post=await api(`/imports/${row.id}/promote`,{method:'POST',body:{}});toast('Promoted to private draft');closeModal();await openPostEditor(post)}catch(err){toast(err.message,true)}}}
+function openImportReview(row){
+  const d=row.prepared_draft||{},td=d.type_data||{},type=row.detected_type||d.content_type||'other';
+  const org=td.provider||td.company||d.classification?.organisation||'';
+  modal('Review & clean imported content','PRIVATE IMPORT',`<form id="importReviewForm" class="editor-shell">
+    <div class="notice">Clean this source record here before promoting. Nothing becomes public until you choose Publish and the publishing checklist passes.</div>
+    <section class="editor-section"><div class="editor-section-head"><span class="section-number">1</span><div><h4>Source</h4><p>${esc(row.source_name||'')}</p></div></div>
+      <div class="editor-section-body form-grid">
+        <label class="field">Detected type<select name="detected_type">${Object.entries(state.contentTypes).map(([k,v])=>`<option value="${k}" ${k===type?'selected':''}>${esc(v.label)}</option>`).join('')}</select></label>
+        <label class="field">Source slug<input value="${esc(row.source_slug||'')}" readonly></label>
+        <label class="field wide">Source URL<input value="${esc(row.source_url||'')}" readonly></label>
+      </div>
+    </section>
+    <section class="editor-section"><div class="editor-section-head"><span class="section-number">2</span><div><h4>Clean content</h4><p>Edit the prepared draft directly.</p></div></div>
+      <div class="editor-section-body form-grid">
+        <label class="field wide">Title<input name="title" value="${esc(d.title||'')}" required></label>
+        <label class="field wide">Short description<textarea name="summary" rows="4">${esc(d.summary||'')}</textarea></label>
+        <label class="field wide">Main content<textarea name="body_markdown" rows="14">${esc(d.body_markdown||'')}</textarea></label>
+        <label class="field wide">Tags<input name="tags" value="${esc((d.tags||[]).join(', '))}" placeholder="Jobs, South Africa, 2026"></label>
+        <label class="field">Organisation / provider<input name="organisation" value="${esc(org)}"></label>
+        <label class="field">Closing date<input type="date" name="closing_date" value="${dateInput(td.closing_date)}"></label>
+        <label class="field wide">Application URL<input name="application_url" value="${esc(td.application_url||'')}" placeholder="https://official-application-page.example/..."></label>
+      </div>
+    </section>
+    <section class="editor-section"><div class="editor-section-head"><span class="section-number">3</span><div><h4>Source recommendations</h4><p>These remain editable after promotion.</p></div></div>
+      <div class="editor-section-body"><div class="fetched-recommendations">${(d.recommendation_links||[]).length?(d.recommendation_links||[]).map(x=>`<div class="relation-card"><div class="grow"><strong>${esc(x.title)}</strong><small>${esc(x.url)}</small></div></div>`).join(''):'<div class="notice">No source recommendations were detected for this item.</div>'}</div></div>
+    </section>
+    <div id="importReviewError" class="error-box hidden"></div>
+    <div class="sticky-save">
+      <button type="button" class="ghost" id="saveImportCleanup">Save cleanup</button>
+      <button type="button" class="soft" id="promoteImport">Promote to draft</button>
+      ${can('posts.publish')?'<button type="button" class="primary" id="publishImport">Publish</button>':''}
+    </div>
+  </form>`);
+
+  const form=$('#importReviewForm');
+  const cleanedDraft=()=>{
+    const fd=new FormData(form),nextType=String(fd.get('detected_type')||type),nextTd={...(d.type_data||{})};
+    const orgValue=String(fd.get('organisation')||'').trim();
+    if(['bursary','scholarship'].includes(nextType)){nextTd.provider=orgValue;delete nextTd.company}
+    else if(['job','internship','learnership'].includes(nextType)){nextTd.company=orgValue;delete nextTd.provider}
+    if(fd.get('closing_date'))nextTd.closing_date=fd.get('closing_date');else delete nextTd.closing_date;
+    const app=String(fd.get('application_url')||'').trim();if(app)nextTd.application_url=app;else delete nextTd.application_url;
+    return {
+      ...d,content_type:nextType,title:String(fd.get('title')||'').trim(),summary:String(fd.get('summary')||''),
+      body_markdown:String(fd.get('body_markdown')||''),tags:splitList(fd.get('tags')),type_data:nextTd
+    };
+  };
+  const saveCleanup=async()=>{
+    const nextType=String(new FormData(form).get('detected_type')||type),draft=cleanedDraft();
+    const saved=await api(`/imports/${row.id}`,{method:'PATCH',body:{detected_type:nextType,review_status:'reviewing',prepared_draft:draft}});
+    row={...row,...saved};row.prepared_draft=saved.prepared_draft||draft;row.detected_type=saved.detected_type||nextType;
+    toast('Import cleanup saved');return row;
+  };
+  const fail=err=>{const box=$('#importReviewError');box.innerHTML=`<strong>Could not complete this action.</strong><p>${esc(err.message)}</p>`;box.classList.remove('hidden');box.scrollIntoView({behavior:'smooth',block:'center'});toast(err.message,true)};
+
+  $('#saveImportCleanup').onclick=async()=>{try{await saveCleanup()}catch(err){fail(err)}};
+  $('#promoteImport').onclick=async()=>{try{await saveCleanup();const post=await api(`/imports/${row.id}/promote`,{method:'POST',body:{}});toast('Promoted to private draft');closeModal();state.posts=[];openPostEditor(post)}catch(err){fail(err)}};
+  $('#publishImport')?.addEventListener('click',async()=>{try{await saveCleanup();const post=await api(`/imports/${row.id}/publish`,{method:'POST',body:{}});toast('Published successfully');closeModal();state.posts=[];await navigate('posts');openPostEditor(post)}catch(err){fail(err)}});
+}
 
 async function openTypePicker(){await loadContentTypes();modal('What would you like to update?','NEW CONTENT',`<form id="typeStartForm" class="form-grid"><label class="field wide">What would you like to update?<select id="startType" required><option value="">Choose one…</option><option value="bursary">Bursary</option><option value="news">News</option><option value="job">Job</option><option value="other-group">Other supported content</option></select><small>Only the fields relevant to your choice will appear in the editor.</small></label><label class="field wide hidden" id="otherTypeWrap">Choose the other content type<select id="otherType"><option value="internship">Internship</option><option value="learnership">Learnership</option><option value="announcement">Announcement</option><option value="story">Story</option><option value="other">Other / flexible page</option></select></label><div class="wide" id="typePreview"><div class="notice">Choose a content type to continue.</div></div><div class="form-actions"><button type="button" class="ghost" id="typeCancel">Cancel</button><button class="primary">Continue to editor →</button></div></form>`);const sel=$('#startType'),wrap=$('#otherTypeWrap'),other=$('#otherType'),preview=$('#typePreview');const update=()=>{wrap.classList.toggle('hidden',sel.value!=='other-group');const type=sel.value==='other-group'?other.value:sel.value;const d=state.contentTypes[type];preview.innerHTML=d?`<div class="source-card"><span class="type-icon" style="font-size:1.6rem">${d.icon||'◫'}</span><div class="grow"><h4>${esc(d.label)}</h4><p>${esc(d.description||'')}</p></div></div>`:'<div class="notice">Choose a content type to continue.</div>'};sel.onchange=update;other.onchange=update;$('#typeCancel').onclick=closeModal;$('#typeStartForm').onsubmit=e=>{e.preventDefault();if(!sel.value)return toast('Choose what you would like to update',true);const type=sel.value==='other-group'?other.value:sel.value;openPostEditor({content_type:type,status:'draft',tags:[],topics:[],related_links:[],related_ids:[],recommendation_ids:[],recommendation_links:[],documents:[],navigation_links:[],type_data:{}},type)}}
 
