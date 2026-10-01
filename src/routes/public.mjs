@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { store } from '../lib/store.mjs';
 import { publicPost } from '../lib/serializers.mjs';
 import { paginate } from '../lib/utils.mjs';
-import { GLOBAL_FILTERS, normalizeCountryCode, queryFilters, rootForType } from '../lib/global-content.mjs';
+import { GLOBAL_FILTERS, normalizeCountryCode, queryFilters } from '../lib/global-content.mjs';
+import { loadPostArtifact } from '../lib/publication-service.mjs';
 
 export const publicRouter=Router();
 
@@ -54,10 +55,12 @@ publicRouter.get('/trending',async(req,res)=>sendList(req,res,{trending:true}));
 publicRouter.get('/dailyupdate/jobs',async(req,res)=>sendList(req,res,{types:['job']}));
 
 async function detailPayload(row){
+  const artifact=await loadPostArtifact(row);
+  if(artifact)return artifact;
   const base=publicPost(row);const related=[];const recs=[];
   for(const id of row.related_ids||[]){const p=await store.getPost(id);if(p&&p.status==='published'&&!p.deleted_at)related.push(publicPost(p,{compact:true}))}
   for(const id of row.recommendation_ids||[]){const p=await store.getPost(id);if(p&&p.status==='published'&&!p.deleted_at)recs.push(publicPost(p,{compact:true}))}
-  return{...base,related_content:related,recommendations:recs};
+  return{...base,related_content:related,recommendations:recs,_artifact:{provider:'database-fallback'}};
 }
 
 const expected={
