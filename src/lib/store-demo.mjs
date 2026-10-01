@@ -99,7 +99,7 @@ export class DemoStore{
       topics:i.topics||[],related_links:i.related_links||[],related_ids:i.related_ids||[],
       recommendation_ids:i.recommendation_ids||[],recommendation_links:i.recommendation_links||[],
       documents:i.documents||[],navigation_links:i.navigation_links||[],type_data:i.type_data||{},
-      geo:i.geo||{},classification:i.classification||{},
+      geo:i.geo||{},classification:i.classification||{},publication:i.publication||{},
       main_image_url:i.main_image_url||null,seo_title:i.seo_title||'',seo_description:i.seo_description||'',
       source:i.source||null,status:i.status||'draft',is_trending:Boolean(i.is_trending),created_by:actor,updated_by:actor,
       published_at:i.status==='published'?ts:null,created_at:ts,updated_at:ts,deleted_at:null
