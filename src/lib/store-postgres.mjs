@@ -4,7 +4,7 @@ import { calculateOpportunityStatus } from './content-rules.mjs';
 import { filterPost, normalizeCountryCode } from './global-content.mjs';
 const {Pool}=pg;
 const json=v=>v==null?null:JSON.stringify(v);
-const JSON_FIELDS=new Set(['source_payload','prepared_draft','topics','related_links','recommendation_links','documents','navigation_links','type_data','geo','classification','source']);
+const JSON_FIELDS=new Set(['source_payload','prepared_draft','topics','related_links','recommendation_links','documents','navigation_links','type_data','geo','classification','publication','source']);
 
 export class PostgresStore{
   constructor({connectionString,ssl=true}){this.pool=new Pool({connectionString,ssl:ssl?{rejectUnauthorized:false}:false,max:10,idleTimeoutMillis:30000})}
@@ -92,20 +92,20 @@ export class PostgresStore{
     const slug=await this.#uniqueSlug(i.slug||i.title);
     return(await this.q(`insert into posts(
       title,slug,content_type,summary,body_markdown,posted_date,category,categories,tags,topics,related_links,
-      related_ids,recommendation_ids,recommendation_links,documents,navigation_links,type_data,geo,classification,
+      related_ids,recommendation_ids,recommendation_links,documents,navigation_links,type_data,geo,classification,publication,
       main_image_url,seo_title,seo_description,source,status,is_trending,created_by,updated_by,published_at
     ) values(
       $1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12,$13,$14::jsonb,$15::jsonb,$16::jsonb,$17::jsonb,
-      $18::jsonb,$19::jsonb,$20,$21,$22,$23::jsonb,$24,$25,$26,$26,case when $24='published' then now() else null end
+      $18::jsonb,$19::jsonb,$20::jsonb,$21,$22,$23,$24::jsonb,$25,$26,$27,$27,case when $25='published' then now() else null end
     ) returning *`,[
       i.title,slug,i.content_type||'other',i.summary||'',i.body_markdown||'',i.posted_date||null,i.category||'',
       i.categories||[],i.tags||[],json(i.topics||[]),json(i.related_links||[]),i.related_ids||[],i.recommendation_ids||[],
       json(i.recommendation_links||[]),json(i.documents||[]),json(i.navigation_links||[]),json(i.type_data||{}),
-      json(i.geo||{}),json(i.classification||{}),i.main_image_url||null,i.seo_title||'',i.seo_description||'',
+      json(i.geo||{}),json(i.classification||{}),json(i.publication||{}),i.main_image_url||null,i.seo_title||'',i.seo_description||'',
       json(i.source||null),i.status||'draft',Boolean(i.is_trending),actor
     ])).rows[0]
   }
-  async updatePost(id,p,actor){const allowed=new Set(['title','slug','content_type','summary','body_markdown','posted_date','category','categories','tags','topics','related_links','related_ids','recommendation_ids','recommendation_links','documents','navigation_links','type_data','geo','classification','main_image_url','seo_title','seo_description','status','is_trending','deleted_at']);const patch={...p};const old=await this.getPost(id);if(!old)return null;if(patch.slug&&patch.slug!==old.slug){patch.slug=await this.#uniqueSlug(patch.slug,id);await this.q(`insert into redirects(from_slug,to_slug) values($1,$2) on conflict(from_slug) do update set to_slug=excluded.to_slug`,[old.slug,patch.slug])}const keys=Object.keys(patch).filter(k=>allowed.has(k));if(!keys.length)return old;await this.q(`insert into post_revisions(post_id,snapshot,actor_id) values($1,$2::jsonb,$3)`,[id,json(old),actor]);const vals=keys.map(k=>JSON_FIELDS.has(k)?json(patch[k]):patch[k]);const sets=keys.map((k,n)=>`${k}=$${n+2}${JSON_FIELDS.has(k)?'::jsonb':''}`).join(',');return(await this.q(`update posts set ${sets},updated_by=$${keys.length+2},updated_at=now(),published_at=case when status='published' and published_at is null then now() else published_at end where id=$1 returning *`,[id,...vals,actor])).rows[0]||null}
+  async updatePost(id,p,actor){const allowed=new Set(['title','slug','content_type','summary','body_markdown','posted_date','category','categories','tags','topics','related_links','related_ids','recommendation_ids','recommendation_links','documents','navigation_links','type_data','geo','classification','publication','main_image_url','seo_title','seo_description','status','is_trending','deleted_at']);const patch={...p};const old=await this.getPost(id);if(!old)return null;if(patch.slug&&patch.slug!==old.slug){patch.slug=await this.#uniqueSlug(patch.slug,id);await this.q(`insert into redirects(from_slug,to_slug) values($1,$2) on conflict(from_slug) do update set to_slug=excluded.to_slug`,[old.slug,patch.slug])}const keys=Object.keys(patch).filter(k=>allowed.has(k));if(!keys.length)return old;await this.q(`insert into post_revisions(post_id,snapshot,actor_id) values($1,$2::jsonb,$3)`,[id,json(old),actor]);const vals=keys.map(k=>JSON_FIELDS.has(k)?json(patch[k]):patch[k]);const sets=keys.map((k,n)=>`${k}=$${n+2}${JSON_FIELDS.has(k)?'::jsonb':''}`).join(',');return(await this.q(`update posts set ${sets},updated_by=$${keys.length+2},updated_at=now(),published_at=case when status='published' and published_at is null then now() else published_at end where id=$1 returning *`,[id,...vals,actor])).rows[0]||null}
   async trashPost(id,a){return this.updatePost(id,{deleted_at:new Date().toISOString(),status:'trash'},a)}
   async restorePost(id,a){return this.updatePost(id,{deleted_at:null,status:'draft'},a)}
   async revisions(id){return(await this.q('select * from post_revisions where post_id=$1 order by created_at desc',[id])).rows}
