@@ -5,6 +5,7 @@ import { id, nowIso, uniqueSlug, slugify } from './utils.mjs';
 import { calculateOpportunityStatus } from './content-rules.mjs';
 import { filterPost } from './global-content.mjs';
 import { rankTrending } from './ranking.mjs';
+import { demandPriority, normalizeTargetUrl } from './demand-priority.mjs';
 
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const DB_FILE=path.resolve(__dirname,'../../data/demo-db.json');
@@ -36,7 +37,8 @@ export class DemoStore{
     const published=this.db.posts.filter(p=>p.status==='published'&&!p.deleted_at);const today=new Date().toISOString().slice(0,10);const ev=this.db.analytics.filter(e=>e.created_at.startsWith(today));
     const openB=published.filter(p=>p.content_type==='bursary'&&postStatus(p)==='open').length;const closedB=published.filter(p=>p.content_type==='bursary'&&postStatus(p)==='closed').length;
     const mix={};for(const p of published)mix[p.content_type]=(mix[p.content_type]||0)+1;const viewsByType={};for(const e of ev.filter(x=>x.event_type==='view')){const p=this.db.posts.find(x=>x.id===e.post_id);const t=p?.content_type||'other';viewsByType[t]=(viewsByType[t]||0)+1}
-    return{cards:{open_bursaries:openB,closed_bursaries:closedB,published_posts:published.length,visitors_today:new Set(ev.map(e=>e.visitor_id).filter(Boolean)).size,reads_today:ev.filter(e=>e.event_type==='read').length,raw_imports_waiting:this.db.imports.filter(i=>i.review_status==='unreviewed').length},content_mix:mix,views_by_type:viewsByType,recent_activity:this.db.audit.slice(-12).reverse(),top_posts:published.map(p=>({id:p.id,title:p.title,slug:p.slug,content_type:p.content_type,views:this.db.analytics.filter(e=>e.post_id===p.id&&e.event_type==='view').length,reads:this.db.analytics.filter(e=>e.post_id===p.id&&e.event_type==='read').length})).sort((a,b)=>b.views-a.views).slice(0,8)}
+    const priority=await this.priorityImports({limit:8});
+    return{cards:{open_bursaries:openB,closed_bursaries:closedB,published_posts:published.length,visitors_today:new Set(ev.map(e=>e.visitor_id).filter(Boolean)).size,reads_today:ev.filter(e=>e.event_type==='read').length,searches_today:ev.filter(e=>e.event_type==='search').length,application_clicks_today:ev.filter(e=>e.event_type==='application_click').length,related_clicks_today:ev.filter(e=>['related_click','recommendation_click'].includes(e.event_type)).length,highest_priority:priority.filter(x=>x.priority==='highest').length,raw_imports_waiting:this.db.imports.filter(i=>i.review_status==='unreviewed').length},content_mix:mix,views_by_type:viewsByType,priority_imports:priority,recent_activity:this.db.audit.slice(-12).reverse(),top_posts:published.map(p=>({id:p.id,title:p.title,slug:p.slug,content_type:p.content_type,views:this.db.analytics.filter(e=>e.post_id===p.id&&e.event_type==='view').length,reads:this.db.analytics.filter(e=>e.post_id===p.id&&e.event_type==='read').length})).sort((a,b)=>b.views-a.views).slice(0,8)}
   }
 
   async upsertImports(rows){
@@ -70,6 +72,18 @@ export class DemoStore{
     return{inserted,changed,unchanged,total:rows.length};
   }
   async listImports({status,type,q}={}){let rows=[...this.db.imports];if(status)rows=rows.filter(x=>x.review_status===status);if(type)rows=rows.filter(x=>x.detected_type===type);if(q){const n=String(q).toLowerCase();rows=rows.filter(x=>JSON.stringify(x).toLowerCase().includes(n))}return rows.sort((a,b)=>String(b.updated_at).localeCompare(String(a.updated_at)))}
+  async priorityImports({limit=100}={}){
+    const clickEvents=this.db.analytics.filter(e=>['related_click','recommendation_click'].includes(e.event_type)&&normalizeTargetUrl(e.meta?.target_url));
+    return this.db.imports
+      .filter(x=>['unreviewed','reviewing'].includes(x.review_status))
+      .map(row=>{
+        const target=normalizeTargetUrl(row.source_url);const matches=clickEvents.filter(e=>normalizeTargetUrl(e.meta?.target_url)===target);
+        const p=demandPriority({clicks:matches.length,fetchCount:row.fetch_count,quality:row.quality_score,sourceChanged:row.source_changed,lastClickedAt:matches.map(x=>x.created_at).sort().at(-1)||null});
+        return {...row,...p};
+      })
+      .sort((a,b)=>b.priority_score-a.priority_score||String(b.last_seen_at||b.updated_at||'').localeCompare(String(a.last_seen_at||a.updated_at||'')))
+      .slice(0,Math.min(500,Math.max(1,Number(limit)||100)));
+  }
   async getImport(v){return this.db.imports.find(i=>i.id===v)||null}
   async updateImport(v,p){const row=await this.getImport(v);if(!row)return null;Object.assign(row,p,{updated_at:nowIso()});this.#save();return row}
 
