@@ -82,7 +82,7 @@ function relationUrl(item={}) {
   return String(item?.url||item?.href||item?.link||'').trim();
 }
 function relationLooksUseful(title,url,contentType='other') {
-  const hay=\`${title} ${url}\`.toLowerCase();
+  const hay=`${title} ${url}`.toLowerCase();
   if(!title || !isSafeUrl(url)) return false;
   if(/facebook|twitter|instagram|linkedin|whatsapp|youtube|tiktok|mailto:|tel:/i.test(hay)) return false;
   if(/privacy|terms|cookie|contact|about us|login|register|newsletter|advertis|sponsor/i.test(hay)) return false;
@@ -111,7 +111,7 @@ export function sourceRecommendations(record={},contentType=detectContentType(re
     const key=url.replace(/\/$/,'');
     if(!key || key===self || key===String(application||'').replace(/\/$/,'')) return;
     if(!title || !isSafeUrl(url)) return;
-    const hay=\`${title} ${url}\`.toLowerCase();
+    const hay=`${title} ${url}`.toLowerCase();
     if(/facebook|twitter|instagram|linkedin|whatsapp|youtube|tiktok|mailto:|tel:/i.test(hay)) return;
     if(/privacy|terms|cookie|contact|about us|login|register|newsletter|advertis|sponsor/i.test(hay)) return;
     if(/\/(tag|category|author|page)\/|\/feed\/?$/i.test(url)) return;
