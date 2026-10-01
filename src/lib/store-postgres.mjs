@@ -58,7 +58,13 @@ export class PostgresStore{
     }
     return{inserted,changed,unchanged,total:rows.length};
   }
-  async listImports(f={}){const p=[];const w=[];if(f.status){p.push(f.status);w.push(`review_status=$${p.length}`)}if(f.type){p.push(f.type);w.push(`detected_type=$${p.length}`)}if(f.q){p.push(`%${f.q}%`);w.push(`(coalesce(source_name,'') ilike ${p.length} or coalesce(source_slug,'') ilike ${p.length} or coalesce(source_url,'') ilike ${p.length} or source_payload::text ilike ${p.length})`)}return(await this.q(`select * from raw_imports ${w.length?'where '+w.join(' and '):''} order by coalesce(source_record_date,last_seen_at,updated_at) desc limit 5000`,p)).rows}
+  async listImports(f={}){
+    const p=[];const w=[];const add=(value,sql)=>{p.push(value);w.push(sql(p.length))};
+    if(f.status)add(f.status,n=>`review_status=$${n}`);
+    if(f.type)add(f.type,n=>`detected_type=$${n}`);
+    if(f.q)add(`%${f.q}%`,n=>`(coalesce(source_name,'') ilike $${n} or coalesce(source_slug,'') ilike $${n} or coalesce(source_url,'') ilike $${n} or source_payload::text ilike $${n})`);
+    return(await this.q(`select * from raw_imports ${w.length?'where '+w.join(' and '):''} order by coalesce(source_record_date,last_seen_at,updated_at) desc limit 5000`,p)).rows;
+  }
   async priorityImports({limit=100}={}){
     const imports=(await this.q(`select * from raw_imports where review_status in ('unreviewed','reviewing') order by coalesce(source_record_date,last_seen_at,updated_at) desc limit 5000`)).rows;
     const clicks=(await this.q(`select meta->>'target_url' target_url,count(*)::int clicks,max(created_at) last_clicked_at from analytics_events where event_type in ('related_click','recommendation_click') and coalesce(meta->>'target_url','')<>'' group by 1`)).rows;
