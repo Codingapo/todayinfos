@@ -1,0 +1,1000 @@
+{
+  "dataset_title": "South Africa Jobs and Bursaries — Verified Opportunity Drafts",
+  "researched_on": "2026-10-01",
+  "scope": "South Africa only; 20 jobs and 20 bursaries; cleaned from opened source pages.",
+  "record_count": 40,
+  "jobs": 20,
+  "bursaries": 20,
+  "publishing_note": "All records are draft-only. Review every source link, deadline, eligibility rule and application route before publishing.",
+  "records": [
+    {
+      "id": "job-01",
+      "title": "Director: National School Nutrition Programme (NSNP) (DBE/66/2026)",
+      "slug": "director-national-school-nutrition-programme-nsnp-dbe-66-2026",
+      "content_type": "job",
+      "summary": "The South African Department of Basic Education is recruiting a Director: National School Nutrition Programme (NSNP) (DBE/66/2026) in Pretoria. The role leads national coordination, oversight and monitoring of the NSNP Conditional Grant, including policy, implementation of school feeding, nutrition education and sustainable food production, provincial support, reporting, risk management and stakeholder coordination. Salary is R1,317,384 per year. Applications close 5 October 2026.",
+      "body_markdown": "## Overview\n\nThe South African Department of Basic Education is recruiting a Director: National School Nutrition Programme (NSNP) (DBE/66/2026) in Pretoria. The role leads national coordination, oversight and monitoring of the NSNP Conditional Grant, including policy, implementation of school feeding, nutrition education and sustainable food production, provincial support, reporting, risk management and stakeholder coordination. Salary is R1,317,384 per year. Applications close 5 October 2026.\n\n## Location\n\nPretoria, South Africa\n\n## Requirements\n\n- NQF Level 7 qualification recognised by SAQA.\n- Five years’ experience at middle/senior managerial level.\n- In-depth experience in school nutrition, nutrition or food-security programming, conditional-grant management, or a comparable large-scale public-sector programme, with sound understanding of the National School Nutrition Programme.\n- Experience in policy formulation and implementation and in managing diverse stakeholders and communities.\n- Strong analytical, strategic, research, programme and project-management skills; knowledge of education-sector interfaces, nutrition/dietetics, and applicable public-service legislation and policies.\n- Valid driver’s licence and willingness to travel extensively; strong computer literacy and ability to work collaboratively.\n\n## How to apply\n\nSubmit the most recently approved Z83 Application for Employment Form (page 2 signed) and a detailed CV only. Indicate the post and reference DBE/66/2026. Apply by post to Private Bag X895, Pretoria, 0001; hand-deliver to the Department of Basic Education, 222 Struben Street, Pretoria; or email Sechele.O@dbe.gov.za, Segowa.M@dbe.gov.za, Kumalo.N@dbe.gov.za, or Skosana.th@dbe.gov.za. Certified supporting documents are requested from shortlisted candidates.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[Public Service Vacancy Circular 34 of 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "South African Department of Basic Education",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "South African Department of Basic Education",
+        "provider": "",
+        "location": "Pretoria, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "NQF Level 7 qualification recognised by SAQA.\nFive years’ experience at middle/senior managerial level.\nIn-depth experience in school nutrition, nutrition or food-security programming, conditional-grant management, or a comparable large-scale public-sector programme, with sound understanding of the National School Nutrition Programme.\nExperience in policy formulation and implementation and in managing diverse stakeholders and communities.\nStrong analytical, strategic, research, programme and project-management skills; knowledge of education-sector interfaces, nutrition/dietetics, and applicable public-service legislation and policies.\nValid driver’s licence and willingness to travel extensively; strong computer literacy and ability to work collaboratively.",
+        "how_to_apply": "Submit the most recently approved Z83 Application for Employment Form (page 2 signed) and a detailed CV only. Indicate the post and reference DBE/66/2026. Apply by post to Private Bag X895, Pretoria, 0001; hand-deliver to the Department of Basic Education, 222 Struben Street, Pretoria; or email Sechele.O@dbe.gov.za, Segowa.M@dbe.gov.za, Kumalo.N@dbe.gov.za, or Skosana.th@dbe.gov.za. Certified supporting documents are requested from shortlisted candidates.",
+        "application_url": ""
+      },
+      "main_image_url": null,
+      "seo_title": "Director: National School Nutrition Programme (NSNP) (DBE/66/2026)",
+      "seo_description": "The South African Department of Basic Education is recruiting a Director: National School Nutrition Programme (NSNP) (DBE/66/2026) in Pretoria. The role leads national coordination, oversight and monitoring of the NSNP Conditional Grant, including policy, implementation of school feeding, nutrition education and sustainable food production, provincial support, reporting, risk management and stakeholder coordination. Salary is R1,317,384 per year. Applications close 5 October 2026.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "Public Service Vacancy Circular 34 of 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "Verified against the official gov.za circular and the DPSA Circular 34 page on 2026-10-01. The official notice provides postal, hand-delivery and email application routes but no dedicated online application URL, so application_url is empty. The circular says the Z83 must be the latest approved version; old forms result in disqualification. SMS applicants require a Nyukela pre-entry certificate and shortlisted candidates undergo assessments and suitability checks."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-02",
+      "title": "Audit and Risk Committee Members (x5) (DBE/68/2026)",
+      "slug": "audit-and-risk-committee-members-x5-dbe-68-2026",
+      "content_type": "job",
+      "summary": "The Department of Basic Education is recruiting five Audit and Risk Committee Members for a four-year renewable contract in the Office of the Director-General. Members will participate in committee deliberations, review internal controls and governance processes, oversee audit plans and outcomes, monitor audit recommendations, and review financial and performance reporting.",
+      "body_markdown": "## Overview\n\nThe Department of Basic Education is recruiting five Audit and Risk Committee Members for a four-year renewable contract in the Office of the Director-General. Members will participate in committee deliberations, review internal controls and governance processes, oversee audit plans and outcomes, monitor audit recommendations, and review financial and performance reporting.\n\n## Location\n\nPretoria, South Africa\n\n## Requirements\n\n- NQF Level 6 qualification in Accounting, Auditing, Finance, Compliance, Business Management, Risk Management, IT or Law, recognised by SAQA.\n- Committee Chairperson: minimum of 10 years of senior/executive management experience.\n- Audit Committee Members: 5–10 years of senior/executive management experience.\n- Combined committee experience in auditing, governance, risk management, information and communication technology, organisational performance management, performance information, external auditing or legal matters.\n- Prior audit, risk or anti-fraud committee experience is strongly preferred.\n- Competencies include independence, integrity, objectivity, reliability, knowledge of governance processes, risk-management principles and internal control, communication and leadership skills, and knowledge of the education sector.\n\n## How to apply\n\nSubmit the most recently approved, fully completed and signed Z83 application form with a detailed CV only. Applications may be sent by post to Private Bag X895, Pretoria, 0001; hand-delivered to the Department of Basic Education, 222 Struben Street, Pretoria; or emailed to Sechele.O@dbe.gov.za, Segowa.M@dbe.gov.za, or Kumalo.N@dbe.gov.za. Indicate the post and reference number DBE/68/2026. The old Z83 form will result in disqualification.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[Public Service Vacancy Circular, Publication No. 34 of 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "South African Department of Basic Education",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "South African Department of Basic Education",
+        "provider": "",
+        "location": "Pretoria, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "NQF Level 6 qualification in Accounting, Auditing, Finance, Compliance, Business Management, Risk Management, IT or Law, recognised by SAQA.\nCommittee Chairperson: minimum of 10 years of senior/executive management experience.\nAudit Committee Members: 5–10 years of senior/executive management experience.\nCombined committee experience in auditing, governance, risk management, information and communication technology, organisational performance management, performance information, external auditing or legal matters.\nPrior audit, risk or anti-fraud committee experience is strongly preferred.\nCompetencies include independence, integrity, objectivity, reliability, knowledge of governance processes, risk-management principles and internal control, communication and leadership skills, and knowledge of the education sector.",
+        "how_to_apply": "Submit the most recently approved, fully completed and signed Z83 application form with a detailed CV only. Applications may be sent by post to Private Bag X895, Pretoria, 0001; hand-delivered to the Department of Basic Education, 222 Struben Street, Pretoria; or emailed to Sechele.O@dbe.gov.za, Segowa.M@dbe.gov.za, or Kumalo.N@dbe.gov.za. Indicate the post and reference number DBE/68/2026. The old Z83 form will result in disqualification.",
+        "application_url": ""
+      },
+      "main_image_url": null,
+      "seo_title": "Audit and Risk Committee Members (x5) (DBE/68/2026)",
+      "seo_description": "The Department of Basic Education is recruiting five Audit and Risk Committee Members for a four-year renewable contract in the Office of the Director-General. Members will participate in committee deliberations, review internal controls and governance processes, oversee audit plans and outcomes, monitor audit recommendations, and review financial and performance reporting.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "Public Service Vacancy Circular, Publication No. 34 of 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "Confirmed in the official Government of South Africa circular and cross-checked against the Department of Basic Education first-party notice. The source provides postal, hand-delivery and email application methods but no dedicated application webpage URL, so application_url is empty. Pretoria location and the South African government/DBE source establish that the opportunity is in South Africa. Closing date is 5 October 2026; status is closing_soon as verified on 1 October 2026."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-03",
+      "title": "Deputy Director: Chief Information Security Officer (DBE/69/2026)",
+      "slug": "deputy-director-chief-information-security-officer-dbe-69-2026",
+      "content_type": "job",
+      "summary": "The Department of Basic Education is recruiting a Deputy Director: Chief Information Security Officer in its Business Intelligence branch, Chief Directorate: Information and Management Systems, Directorate: Government Information Technology Office. The Level 12 post pays R1,101,468 per annum and covers cybersecurity governance, security controls, data protection, incident response, vulnerability management, third-party risk, disaster recovery and information-security training.",
+      "body_markdown": "## Overview\n\nThe Department of Basic Education is recruiting a Deputy Director: Chief Information Security Officer in its Business Intelligence branch, Chief Directorate: Information and Management Systems, Directorate: Government Information Technology Office. The Level 12 post pays R1,101,468 per annum and covers cybersecurity governance, security controls, data protection, incident response, vulnerability management, third-party risk, disaster recovery and information-security training.\n\n## Location\n\nPretoria, South Africa\n\n## Requirements\n\n- NQF level 6 post-matric qualification in Information Technology, Information Systems or an equivalent qualification recognised by SAQA.\n- Four years’ relevant experience as an Assistant Director or equivalent.\n- At least two certifications from ITIL, COBIT, CISA, CISM, CISSP, CRISC or ISO 27001, plus at least five years’ experience as a Chief Information Security Officer or Information Security Officer.\n- Experience managing networks and knowledge of enterprise/technology architecture, ICT systems and processes, Microsoft, virtualised and cloud environments, business continuity management, the E-government strategy and roadmap, data classification and vulnerability management.\n- Valid driver’s licence.\n- Applicants must use the most recently approved Z83 form, completed in full and signed on page 2, with a detailed CV; certified qualifications and other documents are requested from shortlisted candidates.\n\n## How to apply\n\nSubmit the completed, signed latest Z83 form and detailed CV by post to Private Bag X895, Pretoria, 0001; hand-deliver to the Department of Basic Education, 222 Struben Street, Pretoria; or email the application to Sechele.O@dbe.gov.za, Segowa.M@dbe.gov.za, Kumalo.N@dbe.gov.za or Skosana.th@dbe.gov.za. Clearly state the post and reference DBE/69/2026. The notice says applicants should visit www.education.gov.za for departmental information.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[PUBLIC SERVICE VACANCY CIRCULAR — PUBLICATION NO 34 OF 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "South African Department of Basic Education",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "South African Department of Basic Education",
+        "provider": "",
+        "location": "Pretoria, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "NQF level 6 post-matric qualification in Information Technology, Information Systems or an equivalent qualification recognised by SAQA.\nFour years’ relevant experience as an Assistant Director or equivalent.\nAt least two certifications from ITIL, COBIT, CISA, CISM, CISSP, CRISC or ISO 27001, plus at least five years’ experience as a Chief Information Security Officer or Information Security Officer.\nExperience managing networks and knowledge of enterprise/technology architecture, ICT systems and processes, Microsoft, virtualised and cloud environments, business continuity management, the E-government strategy and roadmap, data classification and vulnerability management.\nValid driver’s licence.\nApplicants must use the most recently approved Z83 form, completed in full and signed on page 2, with a detailed CV; certified qualifications and other documents are requested from shortlisted candidates.",
+        "how_to_apply": "Submit the completed, signed latest Z83 form and detailed CV by post to Private Bag X895, Pretoria, 0001; hand-deliver to the Department of Basic Education, 222 Struben Street, Pretoria; or email the application to Sechele.O@dbe.gov.za, Segowa.M@dbe.gov.za, Kumalo.N@dbe.gov.za or Skosana.th@dbe.gov.za. Clearly state the post and reference DBE/69/2026. The notice says applicants should visit www.education.gov.za for departmental information.",
+        "application_url": "https://www.education.gov.za/LinkClick.aspx?fileticket=CASwVLAfHNc%3D&tabid=241&portalid=0&mid=14680"
+      },
+      "main_image_url": null,
+      "seo_title": "Deputy Director: Chief Information Security Officer (DBE/69/2026)",
+      "seo_description": "The Department of Basic Education is recruiting a Deputy Director: Chief Information Security Officer in its Business Intelligence branch, Chief Directorate: Information and Management Systems, Directorate: Government Information Technology Office. The Level 12 post pays R1,101,468 per annum and covers cybersecurity governance, security controls, data protection, incident response, vulnerability management, third-party risk, disaster recovery and information-security training.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "PUBLIC SERVICE VACANCY CIRCULAR — PUBLICATION NO 34 OF 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "Verified against the official gov.za circular and the Department of Basic Education’s first-party vacancy notice. The DBE notice confirms the post and 5 October 2026 closing date. No separate online application endpoint is provided; application_url is the exact first-party DBE vacancy notice URL containing the application instructions. The opportunity is based in Pretoria, South Africa; the sources do not state an explicit South-African-citizens-only restriction. The status is closing_soon because verification occurred on 1 October 2026, four days before closing."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-04",
+      "title": "Deputy Director: Debt, Revenue and Financial Compliance (DBE/70/2026)",
+      "slug": "deputy-director-debt-revenue-and-financial-compliance-dbe-70-2026",
+      "content_type": "job",
+      "summary": "The South African Department of Basic Education is recruiting a Deputy Director: Debt, Revenue and Financial Compliance (Level 11; R932,292 per annum) in its Finance and Administration Branch, Chief Directorate: Financial Management Services, Directorate: Financial Services, based in Pretoria. The role manages accounts receivable and revenue collection, financial controls and reconciliations, audit recommendations, expenditure registers, operational risk and related compliance functions.",
+      "body_markdown": "## Overview\n\nThe South African Department of Basic Education is recruiting a Deputy Director: Debt, Revenue and Financial Compliance (Level 11; R932,292 per annum) in its Finance and Administration Branch, Chief Directorate: Financial Management Services, Directorate: Financial Services, based in Pretoria. The role manages accounts receivable and revenue collection, financial controls and reconciliations, audit recommendations, expenditure registers, operational risk and related compliance functions.\n\n## Location\n\nPretoria, South Africa\n\n## Requirements\n\n- NQF level 6 qualification or equivalent recognised by SAQA in Financial Accounting, Financial Management or Management Accounting.\n- Four years’ relevant experience as an Assistant Director in debt and revenue management.\n- In-depth knowledge of Debt/Loss Control officer responsibilities and public-sector financial administration, including the PFMA and Treasury Regulations.\n- Ability to develop and apply policies; computer literacy; planning, organisational, communication, numeracy and accuracy skills.\n- People-management and leadership skills, and a good understanding of BAS, PERSAL and other computer systems.\n\n## How to apply\n\nSubmit the most recently approved Z83 Application for Employment Form, completed in full and signed on page 2, together with a detailed CV only; indicate the post and reference number. Apply by post to Private Bag X895, Pretoria, 0001; hand-deliver to the Department of Basic Education, 222 Struben Street, Pretoria; or email the application to Sechele.O@dbe.gov.za/Segowa.M@dbe.gov.za/Kumalo.N@dbe.gov.za./Skosana.th@dbe.gov.za as printed in the circular. Do not use the old Z83. Certified supporting documents are requested from shortlisted candidates.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[PUBLIC SERVICE VACANCY CIRCULAR — PUBLICATION NO 34 OF 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "South African Department of Basic Education",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "South African Department of Basic Education",
+        "provider": "",
+        "location": "Pretoria, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "NQF level 6 qualification or equivalent recognised by SAQA in Financial Accounting, Financial Management or Management Accounting.\nFour years’ relevant experience as an Assistant Director in debt and revenue management.\nIn-depth knowledge of Debt/Loss Control officer responsibilities and public-sector financial administration, including the PFMA and Treasury Regulations.\nAbility to develop and apply policies; computer literacy; planning, organisational, communication, numeracy and accuracy skills.\nPeople-management and leadership skills, and a good understanding of BAS, PERSAL and other computer systems.",
+        "how_to_apply": "Submit the most recently approved Z83 Application for Employment Form, completed in full and signed on page 2, together with a detailed CV only; indicate the post and reference number. Apply by post to Private Bag X895, Pretoria, 0001; hand-deliver to the Department of Basic Education, 222 Struben Street, Pretoria; or email the application to Sechele.O@dbe.gov.za/Segowa.M@dbe.gov.za/Kumalo.N@dbe.gov.za./Skosana.th@dbe.gov.za as printed in the circular. Do not use the old Z83. Certified supporting documents are requested from shortlisted candidates.",
+        "application_url": ""
+      },
+      "main_image_url": null,
+      "seo_title": "Deputy Director: Debt, Revenue and Financial Compliance (DBE/70/2026)",
+      "seo_description": "The South African Department of Basic Education is recruiting a Deputy Director: Debt, Revenue and Financial Compliance (Level 11; R932,292 per annum) in its Finance and Administration Branch, Chief Directorate: Financial Management Services, Directorate: Financial Services, based in Pretoria. The role manages accounts receivable and revenue collection, financial controls and reconciliations, audit recommendations, expenditure registers, operational risk and related compliance functions.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "PUBLIC SERVICE VACANCY CIRCULAR — PUBLICATION NO 34 OF 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "Verified against the official gov.za circular and the DPSA first-party Circular 34 page/DBE annexure. The advert gives postal, hand-delivery and email channels but no web application URL, so application_url is empty. Closing date is 5 October 2026; as verified on 1 October 2026, status is closing_soon. The circular states that applications must use the new Z83 and that SMS appointments require a Nyukela pre-entry certificate; shortlisted applicants undergo assessments and suitability/security checks."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-05",
+      "title": "Senior Registry Clerk (DBE/71/2026)",
+      "slug": "senior-registry-clerk-dbe-71-2026",
+      "content_type": "job",
+      "summary": "The Department of Basic Education is recruiting a Senior Registry Clerk (DBE/71/2026) in its Finance and Administration Branch, Chief Directorate: Finance Management Services, Directorate: Financial Services, based in Pretoria. The salary is R237,453 per annum (Level 5). Duties include handling basic PERSAL enquiries, opening and maintaining personnel files, receiving and posting documents, and maintaining registers and files.",
+      "body_markdown": "## Overview\n\nThe Department of Basic Education is recruiting a Senior Registry Clerk (DBE/71/2026) in its Finance and Administration Branch, Chief Directorate: Finance Management Services, Directorate: Financial Services, based in Pretoria. The salary is R237,453 per annum (Level 5). Duties include handling basic PERSAL enquiries, opening and maintaining personnel files, receiving and posting documents, and maintaining registers and files.\n\n## Location\n\nPretoria, South Africa\n\n## Requirements\n\n- Senior Certificate or equivalent qualification.\n- Knowledge of personnel registry.\n- Basic knowledge of PERSAL and Archive Rules pertaining to personnel records is an additional recommendation.\n- Good organisational skills and verbal and written communication skills.\n- Computer and interpersonal-relations skills.\n- Ability to handle confidential matters, work under pressure, and work independently and as part of a team.\n\n## How to apply\n\nSubmit the most recently approved Z83 Application for Employment Form, completed in full with page 2 signed, together with a detailed CV; indicate the post and reference number. Applications may be posted to Private Bag X895, Pretoria, 0001; hand-delivered to the Department of Basic Education, 222 Struben Street, Pretoria; or emailed to Sechele.O@dbe.gov.za, Segowa.M@dbe.gov.za, Kumalo.N@dbe.gov.za, or Skosana.th@dbe.gov.za. The circular says applicants should not submit qualification copies initially; certified copies may be requested from shortlisted candidates.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[PUBLIC SERVICE VACANCY CIRCULAR — PUBLICATION NO 34 OF 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "South African Department of Basic Education",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "South African Department of Basic Education",
+        "provider": "",
+        "location": "Pretoria, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "Senior Certificate or equivalent qualification.\nKnowledge of personnel registry.\nBasic knowledge of PERSAL and Archive Rules pertaining to personnel records is an additional recommendation.\nGood organisational skills and verbal and written communication skills.\nComputer and interpersonal-relations skills.\nAbility to handle confidential matters, work under pressure, and work independently and as part of a team.",
+        "how_to_apply": "Submit the most recently approved Z83 Application for Employment Form, completed in full with page 2 signed, together with a detailed CV; indicate the post and reference number. Applications may be posted to Private Bag X895, Pretoria, 0001; hand-delivered to the Department of Basic Education, 222 Struben Street, Pretoria; or emailed to Sechele.O@dbe.gov.za, Segowa.M@dbe.gov.za, Kumalo.N@dbe.gov.za, or Skosana.th@dbe.gov.za. The circular says applicants should not submit qualification copies initially; certified copies may be requested from shortlisted candidates.",
+        "application_url": ""
+      },
+      "main_image_url": null,
+      "seo_title": "Senior Registry Clerk (DBE/71/2026)",
+      "seo_description": "The Department of Basic Education is recruiting a Senior Registry Clerk (DBE/71/2026) in its Finance and Administration Branch, Chief Directorate: Finance Management Services, Directorate: Financial Services, based in Pretoria. The salary is R237,453 per annum (Level 5). Duties include handling basic PERSAL enquiries, opening and maintaining personnel files, receiving and posting documents, and maintaining registers and files.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "PUBLIC SERVICE VACANCY CIRCULAR — PUBLICATION NO 34 OF 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "Official circular issued 18 September 2026 gives the 5 October 2026 closing date, Pretoria centre, requirements, and application channels. The official DBE vacancies page and its first-party document corroborate the role and closing date: https://www.education.gov.za/LinkClick.aspx?fileticket=CASwVLAfHNc%3D&tabid=241&portalid=0&mid=14680. No standalone application webpage/URL is provided in the source; applications are by post, hand delivery, or email, so application_url is empty. Status is closing_soon as verified on 2026-10-01, before the stated closing date."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-06",
+      "title": "Telecom Operator (DBE/72/2026)",
+      "slug": "telecom-operator-dbe-72-2026",
+      "content_type": "job",
+      "summary": "The South African Department of Basic Education is recruiting a Telecom Operator (DBE/72/2026) in its Finance and Administration branch, Directorate of Supply Chain Management, at Pretoria. The Level 05 post pays R237,453 per annum and involves operating the switchboard, directing calls, providing departmental information, maintaining call records and directories, and delivering telephone services. Applications close 5 October 2026.",
+      "body_markdown": "## Overview\n\nThe South African Department of Basic Education is recruiting a Telecom Operator (DBE/72/2026) in its Finance and Administration branch, Directorate of Supply Chain Management, at Pretoria. The Level 05 post pays R237,453 per annum and involves operating the switchboard, directing calls, providing departmental information, maintaining call records and directories, and delivering telephone services. Applications close 5 October 2026.\n\n## Location\n\nPretoria, South Africa\n\n## Requirements\n\n- Senior Certificate or equivalent\n- Written and verbal communication\n- Computer literacy in MS Office\n- Good interpersonal skills\n- Good public relations skills\n- Ability to work under pressure and solve problems\n- Customer service and document management\n\n## How to apply\n\nSubmit the most recently approved Z83 Application for Employment Form (completed in full, with page 2 signed) and a detailed CV only. Clearly state the post and reference number DBE/72/2026. Apply by post to Private Bag X895, Pretoria, 0001; hand-deliver to the Department of Basic Education, 222 Struben Street, Pretoria; or email to Sechele.O@dbe.gov.za, Segowa.M@dbe.gov.za, Kumalo.N@dbe.gov.za, or Skosana.th@dbe.gov.za.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[PUBLIC SERVICE VACANCY CIRCULAR 34 OF 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "South African Department of Basic Education",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "South African Department of Basic Education",
+        "provider": "",
+        "location": "Pretoria, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "Senior Certificate or equivalent\nWritten and verbal communication\nComputer literacy in MS Office\nGood interpersonal skills\nGood public relations skills\nAbility to work under pressure and solve problems\nCustomer service and document management",
+        "how_to_apply": "Submit the most recently approved Z83 Application for Employment Form (completed in full, with page 2 signed) and a detailed CV only. Clearly state the post and reference number DBE/72/2026. Apply by post to Private Bag X895, Pretoria, 0001; hand-deliver to the Department of Basic Education, 222 Struben Street, Pretoria; or email to Sechele.O@dbe.gov.za, Segowa.M@dbe.gov.za, Kumalo.N@dbe.gov.za, or Skosana.th@dbe.gov.za.",
+        "application_url": ""
+      },
+      "main_image_url": null,
+      "seo_title": "Telecom Operator (DBE/72/2026)",
+      "seo_description": "The South African Department of Basic Education is recruiting a Telecom Operator (DBE/72/2026) in its Finance and Administration branch, Directorate of Supply Chain Management, at Pretoria. The Level 05 post pays R237,453 per annum and involves operating the switchboard, directing calls, providing departmental information, maintaining call records and directories, and delivering telephone services. Applications close 5 October 2026.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "PUBLIC SERVICE VACANCY CIRCULAR 34 OF 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "The official circular provides no dedicated online application URL; applications are by post, hand delivery, or email. The listing is in the Department of Basic Education's Pretoria centre, confirming a South Africa-based opportunity. Certified qualifications and other documents are requested from shortlisted candidates. Closing date is four days after verification, so status is marked closing_soon."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-07",
+      "title": "Security Guards (x8) (DBE/73/2026)",
+      "slug": "security-guards-x8-dbe-73-2026",
+      "content_type": "job",
+      "summary": "The South African Department of Basic Education is recruiting eight Security Guards on a 12-month renewable contract at its Pretoria centre. The salary is R201,093 per annum (Level 04). Duties include guarding people, property and information; conducting patrols; monitoring CCTV and alarms; responding to incidents; and managing departmental security operations.",
+      "body_markdown": "## Overview\n\nThe South African Department of Basic Education is recruiting eight Security Guards on a 12-month renewable contract at its Pretoria centre. The salary is R201,093 per annum (Level 04). Duties include guarding people, property and information; conducting patrols; monitoring CCTV and alarms; responding to incidents; and managing departmental security operations.\n\n## Location\n\nPretoria, South Africa\n\n## Requirements\n\n- Senior Certificate or equivalent qualification\n- Written and verbal communication skills\n- Valid PSIRA registration\n- Accredited security training at Grade A, B, C or D level\n- Clean criminal record\n- Security skills including access and egress control, patrol and surveillance, CCTV and alarm monitoring, incident and emergency response, visitor and vehicle management, and key/access control\n- Professionalism, discipline, reliability, punctuality, alertness, integrity, confidentiality, problem-solving, teamwork and conflict-management skills\n- Fire Fighting and First Aid certificate is an added advantage\n\n## How to apply\n\nSubmit the most recently approved Z83 Application for Employment Form, completed in full and signed on page 2, together with a detailed CV only. Applications may be posted to Private Bag X895, Pretoria, 0001; hand-delivered to the Department of Basic Education, 222 Struben Street, Pretoria; or emailed to Sechele.O@dbe.gov.za, Segowa.M@dbe.gov.za, Kumalo.N@dbe.gov.za or Skosana.th@dbe.gov.za. Indicate the post and reference DBE/73/2026. The advert says to visit www.education.gov.za for the department website; no dedicated online application endpoint is provided.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[PUBLIC SERVICE VACANCY CIRCULAR: PUBLICATION NO 34 OF 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "South African Department of Basic Education",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "South African Department of Basic Education",
+        "provider": "",
+        "location": "Pretoria, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "Senior Certificate or equivalent qualification\nWritten and verbal communication skills\nValid PSIRA registration\nAccredited security training at Grade A, B, C or D level\nClean criminal record\nSecurity skills including access and egress control, patrol and surveillance, CCTV and alarm monitoring, incident and emergency response, visitor and vehicle management, and key/access control\nProfessionalism, discipline, reliability, punctuality, alertness, integrity, confidentiality, problem-solving, teamwork and conflict-management skills\nFire Fighting and First Aid certificate is an added advantage",
+        "how_to_apply": "Submit the most recently approved Z83 Application for Employment Form, completed in full and signed on page 2, together with a detailed CV only. Applications may be posted to Private Bag X895, Pretoria, 0001; hand-delivered to the Department of Basic Education, 222 Struben Street, Pretoria; or emailed to Sechele.O@dbe.gov.za, Segowa.M@dbe.gov.za, Kumalo.N@dbe.gov.za or Skosana.th@dbe.gov.za. Indicate the post and reference DBE/73/2026. The advert says to visit www.education.gov.za for the department website; no dedicated online application endpoint is provided.",
+        "application_url": "https://www.education.gov.za"
+      },
+      "main_image_url": null,
+      "seo_title": "Security Guards (x8) (DBE/73/2026)",
+      "seo_description": "The South African Department of Basic Education is recruiting eight Security Guards on a 12-month renewable contract at its Pretoria centre. The salary is R201,093 per annum (Level 04). Duties include guarding people, property and information; conducting patrols; monitoring CCTV and alarms; responding to incidents; and managing departmental security operations.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "PUBLIC SERVICE VACANCY CIRCULAR: PUBLICATION NO 34 OF 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "Confirmed in the official gov.za Circular 34 of 2026 and cross-checked against the DPSA annexure and the Department of Basic Education first-party notice. The sources state a closing date of 5 October 2026 but do not expose a separate online application URL or a closing time in the extracted advert; applications are postal, hand-delivery or email. Pretoria and the South African national department establish that this is a South Africa opportunity."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-08",
+      "title": "Intern: Internal Audit (0003/2026)",
+      "slug": "intern-internal-audit-0003-2026",
+      "content_type": "job",
+      "summary": "The Centre for Public Service Innovation is recruiting an Internal Audit Intern on a 24-month contract at R98 097 per annum. The intern will support internal-audit planning, audit engagements, reporting, audit committees and follow-up of audit findings, while gaining work experience through the CPSI 2026/27 internship programme.",
+      "body_markdown": "## Overview\n\nThe Centre for Public Service Innovation is recruiting an Internal Audit Intern on a 24-month contract at R98 097 per annum. The intern will support internal-audit planning, audit engagements, reporting, audit committees and follow-up of audit findings, while gaining work experience through the CPSI 2026/27 internship programme.\n\n## Location\n\nPretoria, South Africa\n\n## Requirements\n\n- Senior Certificate/Grade 12 certificate\n- Recognised National Diploma or degree (NQF level 6/7) in Internal Audit\n- Must be unemployed\n- Siyakhula Student Membership Programme or Institute of Internal Auditors South Africa membership is an added advantage\n- Applicants who previously participated in an internship programme in any government department will not be considered\n\n## How to apply\n\nApply through CPSI eRecruitment at https://erecruitment.cpsi.co.za. Emailed, hand-delivered, posted or couriered applications will not be considered; applications must arrive by 23:59 on 2026-10-05.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[Public Service Vacancy Circular, Publication No. 34 of 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "Centre for Public Service Innovation",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "Centre for Public Service Innovation",
+        "provider": "",
+        "location": "Pretoria, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "Senior Certificate/Grade 12 certificate\nRecognised National Diploma or degree (NQF level 6/7) in Internal Audit\nMust be unemployed\nSiyakhula Student Membership Programme or Institute of Internal Auditors South Africa membership is an added advantage\nApplicants who previously participated in an internship programme in any government department will not be considered",
+        "how_to_apply": "Apply through CPSI eRecruitment at https://erecruitment.cpsi.co.za. Emailed, hand-delivered, posted or couriered applications will not be considered; applications must arrive by 23:59 on 2026-10-05.",
+        "application_url": "https://erecruitment.cpsi.co.za"
+      },
+      "main_image_url": null,
+      "seo_title": "Intern: Internal Audit (0003/2026)",
+      "seo_description": "The Centre for Public Service Innovation is recruiting an Internal Audit Intern on a 24-month contract at R98 097 per annum. The intern will support internal-audit planning, audit engagements, reporting, audit committees and follow-up of audit findings, while gaining work experience through the CPSI 2026/27 internship programme.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "Public Service Vacancy Circular, Publication No. 34 of 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "The official circular is issued 2026-09-18 and identifies CPSI as a National Government Component reporting to the Minister for the Public Service and Administration, with the post centred in Pretoria. The circular also references the South African Government, SAQA and IIASA. No separate CPSI first-party vacancy page was found; the DPSA-hosted Annexure B independently reproduces the official details. Status is closing_soon because the 2026-10-05 deadline is within the next week as of 2026-10-01."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-09",
+      "title": "Intern: Legal Services (0004/2026)",
+      "slug": "intern-legal-services-0004-2026",
+      "content_type": "job",
+      "summary": "The Centre for Public Service Innovation is recruiting an unemployed law graduate for a 24-month Legal Services internship in Pretoria. The role offers R98,097 per annum and includes exposure to drafting legal opinions, litigation matters, contracts and service-level agreements, interpreting and advising on public-administration legislation, and supporting legislative-reform work.",
+      "body_markdown": "## Overview\n\nThe Centre for Public Service Innovation is recruiting an unemployed law graduate for a 24-month Legal Services internship in Pretoria. The role offers R98,097 per annum and includes exposure to drafting legal opinions, litigation matters, contracts and service-level agreements, interpreting and advising on public-administration legislation, and supporting legislative-reform work.\n\n## Location\n\nPretoria, South Africa\n\n## Requirements\n\n- Senior Certificate/Grade 12 certificate\n- Recognised NQF level 7 degree in law\n- Applicants must be unemployed\n- Practical legal training is an added advantage\n- Candidates who previously participated in an internship programme in any government department will not be considered\n\n## How to apply\n\nSubmit the application through CPSI eRecruitment at https://erecruitment.cpsi.co.za. This link is for CPSI applications only; emailed, hand-delivered, posted or couriered applications will not be considered. Applications must be received by 23:59 on 2026-10-05.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[PUBLIC SERVICE VACANCY CIRCULAR PUBLICATION NO 34 OF 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "Centre for Public Service Innovation",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "Centre for Public Service Innovation",
+        "provider": "",
+        "location": "Pretoria, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "Senior Certificate/Grade 12 certificate\nRecognised NQF level 7 degree in law\nApplicants must be unemployed\nPractical legal training is an added advantage\nCandidates who previously participated in an internship programme in any government department will not be considered",
+        "how_to_apply": "Submit the application through CPSI eRecruitment at https://erecruitment.cpsi.co.za. This link is for CPSI applications only; emailed, hand-delivered, posted or couriered applications will not be considered. Applications must be received by 23:59 on 2026-10-05.",
+        "application_url": "https://erecruitment.cpsi.co.za"
+      },
+      "main_image_url": null,
+      "seo_title": "Intern: Legal Services (0004/2026)",
+      "seo_description": "The Centre for Public Service Innovation is recruiting an unemployed law graduate for a 24-month Legal Services internship in Pretoria. The role offers R98,097 per annum and includes exposure to drafting legal opinions, litigation matters, contracts and service-level agreements, interpreting and advising on public-administration legislation, and supporting legislative-reform work.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "PUBLIC SERVICE VACANCY CIRCULAR PUBLICATION NO 34 OF 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "Verified in the official Department of Public Service and Administration Public Service Vacancy Circular No. 34 of 2026, issued 2026-09-18, and its CPSI Annexure B. The advert places the internship in Pretoria and identifies CPSI as a South African National Government Component. No separate live CPSI vacancy page was located; the application URL is the exact eRecruitment URL printed in the official advert."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-10",
+      "title": "Director: Technology Innovation and Artificial Intelligence Governance (DTIAIG)",
+      "slug": "director-technology-innovation-and-artificial-intelligence-governance-dtiaig",
+      "content_type": "job",
+      "summary": "The Department of Communications and Digital Technologies is recruiting a permanent Director: Technology Innovation and Artificial Intelligence Governance (ref. DTIAIG) to lead technology innovation, digital transformation, and responsible AI-governance policy and implementation. The post is based in Pretoria, Hatfield and carries a salary of R1,317,384 per year (Level 13).",
+      "body_markdown": "## Overview\n\nThe Department of Communications and Digital Technologies is recruiting a permanent Director: Technology Innovation and Artificial Intelligence Governance (ref. DTIAIG) to lead technology innovation, digital transformation, and responsible AI-governance policy and implementation. The post is based in Pretoria, Hatfield and carries a salary of R1,317,384 per year (Level 13).\n\n## Location\n\nPretoria, Hatfield, South Africa\n\n## Requirements\n\n- Appropriate NQF Level 7 qualification or degree in ICT, Computer Science, Information Systems, Digital Transformation, Engineering/Innovation Management, or a relevant equivalent qualification.\n- At least five years' experience at middle or senior management level leading digital transformation, technology adoption, or innovation ecosystem development.\n- Postgraduate qualification (NQF Level 8 or above) in Digital Economy Studies, Technology Management, or Public Sector Innovation is an added advantage.\n- Knowledge and skills including strategic and people leadership, programme/project and financial management, change management, emerging technology integration, digital transformation, AI governance and responsible AI, technology policy/regulatory analysis, innovation ecosystem development, technology commercialisation, partnerships, and public-private partnerships.\n\n## How to apply\n\nSubmit an application through the linked Google Form, quoting reference DTIAIG. The circular's directions require a Google account and two attachments: a completed, initialed and signed Z83 form (2021 version) and a recently updated comprehensive CV. Applications received after the closing date will not be considered.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[PUBLIC SERVICE VACANCY CIRCULAR — PUBLICATION NO 34 OF 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "Department of Communications and Digital Technologies",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "Department of Communications and Digital Technologies",
+        "provider": "",
+        "location": "Pretoria, Hatfield, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "Appropriate NQF Level 7 qualification or degree in ICT, Computer Science, Information Systems, Digital Transformation, Engineering/Innovation Management, or a relevant equivalent qualification.\nAt least five years' experience at middle or senior management level leading digital transformation, technology adoption, or innovation ecosystem development.\nPostgraduate qualification (NQF Level 8 or above) in Digital Economy Studies, Technology Management, or Public Sector Innovation is an added advantage.\nKnowledge and skills including strategic and people leadership, programme/project and financial management, change management, emerging technology integration, digital transformation, AI governance and responsible AI, technology policy/regulatory analysis, innovation ecosystem development, technology commercialisation, partnerships, and public-private partnerships.",
+        "how_to_apply": "Submit an application through the linked Google Form, quoting reference DTIAIG. The circular's directions require a Google account and two attachments: a completed, initialed and signed Z83 form (2021 version) and a recently updated comprehensive CV. Applications received after the closing date will not be considered.",
+        "application_url": "https://forms.gle/LH9eHTArC1nNUomT9"
+      },
+      "main_image_url": null,
+      "seo_title": "Director: Technology Innovation and Artificial Intelligence Governance (DTIAIG)",
+      "seo_description": "The Department of Communications and Digital Technologies is recruiting a permanent Director: Technology Innovation and Artificial Intelligence Governance (ref. DTIAIG) to lead technology innovation, digital transformation, and responsible AI-governance policy and implementation. The post is based in Pretoria, Hatfield and carries a salary of R1,317,384 per year (Level 13).",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "PUBLIC SERVICE VACANCY CIRCULAR — PUBLICATION NO 34 OF 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "Permanent appointment at salary level 13 (R1,317,384 per annum). The official DCDT-specific advert confirms the Pretoria, Hatfield centre and embeds the application URL. The advert does not state a separate citizenship restriction for this post; South Africa-only inclusion is supported by the South African national department and Pretoria location. The Google Form URL is reachable but prompts for Google sign-in."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-11",
+      "title": "Director: Parliamentary, Cabinet and Cluster Support (DPCCS)",
+      "slug": "director-parliamentary-cabinet-and-cluster-support-dpccs",
+      "content_type": "job",
+      "summary": "Permanent national-government Director post managing and driving Parliamentary, Cabinet and Cluster support services for the Department of Communications and Digital Technologies. The role is based in Pretoria, Hatfield, pays R1,317,384 per year (Level 13), and covers parliamentary processes, Cabinet memoranda and submissions, committee and Cabinet coordination, governance, stakeholder liaison and related departmental support.",
+      "body_markdown": "## Overview\n\nPermanent national-government Director post managing and driving Parliamentary, Cabinet and Cluster support services for the Department of Communications and Digital Technologies. The role is based in Pretoria, Hatfield, pays R1,317,384 per year (Level 13), and covers parliamentary processes, Cabinet memoranda and submissions, committee and Cabinet coordination, governance, stakeholder liaison and related departmental support.\n\n## Location\n\nPretoria, Hatfield, South Africa\n\n## Requirements\n\n- An appropriate NQF Level 7 qualification or degree in Public Administration, Political Science, Law or Management, or a relevant equivalent qualification recognized by the South African Qualifications Authority.\n- At least five years' experience at Middle or Senior Management level in a Parliamentary and Cabinet environment.\n- Skills and knowledge including strategic capability and leadership; people management and empowerment; programme and project management; financial management; change management; problem solving and analysis; client orientation; customer-focused communication; E-Cabinet; government administrative processes; continuous learning; agility and adaptability; the Public Service Regulations Act; the Public Financial Management Act; the RSA Constitution; and labour legislation.\n\n## How to apply\n\nSubmit an application through the linked Google Form, quoting reference DPCCS. The circular's general directions require the new Z83 form with full particulars of training, qualifications, competencies, knowledge and experience (on a separate sheet if necessary or a CV), and applications must reach the relevant department by the closing date.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[PUBLIC SERVICE VACANCY CIRCULAR 34 OF 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "Department of Communications and Digital Technologies",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "Department of Communications and Digital Technologies",
+        "provider": "",
+        "location": "Pretoria, Hatfield, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "An appropriate NQF Level 7 qualification or degree in Public Administration, Political Science, Law or Management, or a relevant equivalent qualification recognized by the South African Qualifications Authority.\nAt least five years' experience at Middle or Senior Management level in a Parliamentary and Cabinet environment.\nSkills and knowledge including strategic capability and leadership; people management and empowerment; programme and project management; financial management; change management; problem solving and analysis; client orientation; customer-focused communication; E-Cabinet; government administrative processes; continuous learning; agility and adaptability; the Public Service Regulations Act; the Public Financial Management Act; the RSA Constitution; and labour legislation.",
+        "how_to_apply": "Submit an application through the linked Google Form, quoting reference DPCCS. The circular's general directions require the new Z83 form with full particulars of training, qualifications, competencies, knowledge and experience (on a separate sheet if necessary or a CV), and applications must reach the relevant department by the closing date.",
+        "application_url": "https://forms.gle/kuhVbtw1mRtNKuCc9"
+      },
+      "main_image_url": null,
+      "seo_title": "Director: Parliamentary, Cabinet and Cluster Support (DPCCS)",
+      "seo_description": "Permanent national-government Director post managing and driving Parliamentary, Cabinet and Cluster support services for the Department of Communications and Digital Technologies. The role is based in Pretoria, Hatfield, pays R1,317,384 per year (Level 13), and covers parliamentary processes, Cabinet memoranda and submissions, committee and Cabinet coordination, governance, stakeholder liaison and related departmental support.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "PUBLIC SERVICE VACANCY CIRCULAR 34 OF 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "The official circular states this is a permanent appointment in the Department of Communications and Digital Technologies. The source places the post in Pretoria, South Africa and requires qualifications recognized by the South African Qualifications Authority. The linked application form was reachable but its contents required Google sign-in. No separate first-party departmental page was needed to verify the listing; the official gov.za circular is authoritative."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-12",
+      "title": "Deputy Director: Employee Relations (DDER)",
+      "slug": "deputy-director-employee-relations-dder",
+      "content_type": "job",
+      "summary": "Permanent Deputy Director: Employee Relations post at the Department of Communications and Digital Technologies in Pretoria, Hatfield. The advertised salary is R932,292 per year (Level 11; all-inclusive package). The role manages employee-relations policies and processes, labour-law advice, disputes, investigations, discipline, collective bargaining, appeals, grievances and ER reporting.",
+      "body_markdown": "## Overview\n\nPermanent Deputy Director: Employee Relations post at the Department of Communications and Digital Technologies in Pretoria, Hatfield. The advertised salary is R932,292 per year (Level 11; all-inclusive package). The role manages employee-relations policies and processes, labour-law advice, disputes, investigations, discipline, collective bargaining, appeals, grievances and ER reporting.\n\n## Location\n\nPretoria, Hatfield, South Africa\n\n## Requirements\n\n- An appropriate NQF level 7 qualification or degree in Labour Relations, Labour Law, Human Resources Management, or a relevant equivalent field recognised by SAQA.\n- At least three years' experience at Assistant Director or middle-management level delivering labour-relations services.\n- PERSAL proficiency.\n- Knowledge and skills including labour-law and ER processes, negotiation, discipline management, collective bargaining, conflict and dispute resolution, investigation, report writing, data analysis, facilitation, HCM systems, and HCM policies and procedures.\n\n## How to apply\n\nApply via the Google Form link and quote reference DDER. A Google account is required. Submit the 2021-version Z83 form and a recently updated comprehensive CV as the two required attachments; applications received after 5 October 2026 will not be considered.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[PUBLIC SERVICE VACANCY CIRCULAR 34 OF 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": null,
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "Department of Communications and Digital Technologies",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "Department of Communications and Digital Technologies",
+        "provider": "",
+        "location": "Pretoria, Hatfield, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "An appropriate NQF level 7 qualification or degree in Labour Relations, Labour Law, Human Resources Management, or a relevant equivalent field recognised by SAQA.\nAt least three years' experience at Assistant Director or middle-management level delivering labour-relations services.\nPERSAL proficiency.\nKnowledge and skills including labour-law and ER processes, negotiation, discipline management, collective bargaining, conflict and dispute resolution, investigation, report writing, data analysis, facilitation, HCM systems, and HCM policies and procedures.",
+        "how_to_apply": "Apply via the Google Form link and quote reference DDER. A Google account is required. Submit the 2021-version Z83 form and a recently updated comprehensive CV as the two required attachments; applications received after 5 October 2026 will not be considered.",
+        "application_url": "https://forms.gle/imQKb5serpxB1LPw8"
+      },
+      "main_image_url": null,
+      "seo_title": "Deputy Director: Employee Relations (DDER)",
+      "seo_description": "Permanent Deputy Director: Employee Relations post at the Department of Communications and Digital Technologies in Pretoria, Hatfield. The advertised salary is R932,292 per year (Level 11; all-inclusive package). The role manages employee-relations policies and processes, labour-law advice, disputes, investigations, discipline, collective bargaining, appeals, grievances and ER reporting.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "PUBLIC SERVICE VACANCY CIRCULAR 34 OF 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "Verified against the official Gov.za circular and the official DPSA Annexure C PDF. The post is located in Pretoria, South Africa. The vacancy text does not state a posted/publication date, so posted_date is empty. The exact embedded application URL for POST 34/12 is preserved separately from the circular source URL."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-13",
+      "title": "Deputy Director: Performance Improvement, Business Processes and Governance Compliance (DDPBG)",
+      "slug": "deputy-director-performance-improvement-business-processes-and-governance-compliance-ddpbg",
+      "content_type": "job",
+      "summary": "Permanent Deputy Director post responsible for coordinating, facilitating and monitoring governance frameworks, compliance, business-process improvement and related performance initiatives for the Department of Communications and Digital Technologies in Pretoria.",
+      "body_markdown": "## Overview\n\nPermanent Deputy Director post responsible for coordinating, facilitating and monitoring governance frameworks, compliance, business-process improvement and related performance initiatives for the Department of Communications and Digital Technologies in Pretoria.\n\n## Location\n\nPretoria, Hatfield, South Africa\n\n## Requirements\n\n- Appropriate NQF level 7 degree/qualification in Risk Management, Governance and Compliance, Operational Management, Quality Management, or a relevant equivalent recognised by SAQA.\n- At least three years' experience at Assistant Director/Middle Management level in a governance and compliance environment.\n- Training certificate in Business Process Management or related training.\n- Knowledge and skills in governance and compliance, policy coordination, business-process analysis and mapping, quality management/assurance, stakeholder engagement, benchmarking and research.\n\n## How to apply\n\nApply through the official Google Forms link: https://forms.gle/imQKb5serpxB1LPw8. Submit the completed Z83 (2021 version) and a recently updated comprehensive CV as the two required attachments; the circular says the link requires a Google account and applications must quote reference DDPBG.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[PUBLIC SERVICE VACANCY CIRCULAR 34 OF 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "Department of Communications and Digital Technologies",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "Department of Communications and Digital Technologies",
+        "provider": "",
+        "location": "Pretoria, Hatfield, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "Appropriate NQF level 7 degree/qualification in Risk Management, Governance and Compliance, Operational Management, Quality Management, or a relevant equivalent recognised by SAQA.\nAt least three years' experience at Assistant Director/Middle Management level in a governance and compliance environment.\nTraining certificate in Business Process Management or related training.\nKnowledge and skills in governance and compliance, policy coordination, business-process analysis and mapping, quality management/assurance, stakeholder engagement, benchmarking and research.",
+        "how_to_apply": "Apply through the official Google Forms link: https://forms.gle/imQKb5serpxB1LPw8. Submit the completed Z83 (2021 version) and a recently updated comprehensive CV as the two required attachments; the circular says the link requires a Google account and applications must quote reference DDPBG.",
+        "application_url": "https://forms.gle/imQKb5serpxB1LPw8"
+      },
+      "main_image_url": null,
+      "seo_title": "Deputy Director: Performance Improvement, Business Processes and Governance Compliance (DDPBG)",
+      "seo_description": "Permanent Deputy Director post responsible for coordinating, facilitating and monitoring governance frameworks, compliance, business-process improvement and related performance initiatives for the Department of Communications and Digital Technologies in Pretoria.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "PUBLIC SERVICE VACANCY CIRCULAR 34 OF 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "The official circular identifies this as a permanent appointment at salary level 11 (R932,292 per annum). The DCDT section states a 5 October 2026 closing date. The nearby wording specifying 16:00 walk-in and 23:59 online is under the following Department of Employment and Labour section, not this DCDT post, so those times are not attributed here. Only shortlisted candidates submit certified documents; foreign qualifications require SAQA evaluation. Verified against the official Government of South Africa PDF, which is dated 18 September 2026."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-14",
+      "title": "Deputy Director: Research and Policy Development (HR4/4/3/2DDRPD/UIF)",
+      "slug": "deputy-director-research-and-policy-development-hr4-4-3-2ddrpd-uif",
+      "content_type": "job",
+      "summary": "The Unemployment Insurance Fund is recruiting a Deputy Director: Research and Policy Development in Pretoria. The role leads UIF policy development and review, manages research studies, and manages the sub-directorate’s human, financial and asset resources. Salary: R932,292 per year (all-inclusive package).",
+      "body_markdown": "## Overview\n\nThe Unemployment Insurance Fund is recruiting a Deputy Director: Research and Policy Development in Pretoria. The role leads UIF policy development and review, manages research studies, and manages the sub-directorate’s human, financial and asset resources. Salary: R932,292 per year (all-inclusive package).\n\n## Location\n\nUnemployment Insurance Fund, Pretoria, South Africa\n\n## Requirements\n\n- Undergraduate qualification at NQF Level 6, recognised by SAQA, in Social Sciences, Public Administration or Management, Development Studies, Public Policy, or Social Security Administration.\n- Five years’ experience, including two years’ functional experience in research and policy development and three years at Assistant Director level.\n- Knowledge of policy analysis, development and management; research, quality and project management; BCEA and LRA.\n- Skills in report writing, project management, diversity management, policy analysis/development/management, Microsoft Office and statistical software such as SPSS, communication, research methodology, conflict management, presentation, and planning/organising.\n\n## How to apply\n\nEmail an updated comprehensive CV and a completed, initialled and signed new Z83 application form as one attachment to Jobs-UIF20@labour.gov.za. Include the exact job title and reference number HR4/4/3/2DDRPD/UIF in the email; applications close 2026-10-05 at 23:59 online (16:00 for walk-in applications).\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[Public Service Vacancy Circular Publication No 34 of 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "Department of Employment and Labour — Unemployment Insurance Fund",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "Department of Employment and Labour — Unemployment Insurance Fund",
+        "provider": "",
+        "location": "Unemployment Insurance Fund, Pretoria, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "Undergraduate qualification at NQF Level 6, recognised by SAQA, in Social Sciences, Public Administration or Management, Development Studies, Public Policy, or Social Security Administration.\nFive years’ experience, including two years’ functional experience in research and policy development and three years at Assistant Director level.\nKnowledge of policy analysis, development and management; research, quality and project management; BCEA and LRA.\nSkills in report writing, project management, diversity management, policy analysis/development/management, Microsoft Office and statistical software such as SPSS, communication, research methodology, conflict management, presentation, and planning/organising.",
+        "how_to_apply": "Email an updated comprehensive CV and a completed, initialled and signed new Z83 application form as one attachment to Jobs-UIF20@labour.gov.za. Include the exact job title and reference number HR4/4/3/2DDRPD/UIF in the email; applications close 2026-10-05 at 23:59 online (16:00 for walk-in applications).",
+        "application_url": "mailto:mailto:Jobs-UIF20@labour.gov.za"
+      },
+      "main_image_url": null,
+      "seo_title": "Deputy Director: Research and Policy Development (HR4/4/3/2DDRPD/UIF)",
+      "seo_description": "The Unemployment Insurance Fund is recruiting a Deputy Director: Research and Policy Development in Pretoria. The role leads UIF policy development and review, manages research studies, and manages the sub-directorate’s human, financial and asset resources. Salary: R932,292 per year (all-inclusive package).",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "Public Service Vacancy Circular Publication No 34 of 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "Verified against the official Department of Employment and Labour vacancy page and the official DPSA circular. The advert is located in Pretoria, South Africa. No separate web application URL is stated; the official application route is the email address preserved as a mailto URL. Status is closing_soon because verification occurred on 2026-10-01, before the 2026-10-05 deadline. The circular gives walk-in and online cut-offs; the online deadline is used for closing_date."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-15",
+      "title": "Counsellor Grade 1–3 (HR4/4/8/2)",
+      "slug": "counsellor-grade-1-3-hr4-4-8-2",
+      "content_type": "job",
+      "summary": "The Department of Employment and Labour is recruiting a Counsellor Grade 1–3 (Ref No: HR4/4/8/2) at its Ulundi centre. The role supports labour centres with employment counselling, work-seeker referrals, career-information dissemination, psychometric-assessment administration and supervision of administrative personnel. Applications close 5 October 2026 at 16:00 for walk-ins and 23:59 online.",
+      "body_markdown": "## Overview\n\nThe Department of Employment and Labour is recruiting a Counsellor Grade 1–3 (Ref No: HR4/4/8/2) at its Ulundi centre. The role supports labour centres with employment counselling, work-seeker referrals, career-information dissemination, psychometric-assessment administration and supervision of administrative personnel. Applications close 5 October 2026 at 16:00 for walk-ins and 23:59 online.\n\n## Location\n\nUlundi, KwaZulu-Natal, South Africa\n\n## Requirements\n\n- A four-year B-Psych degree, or an Honours degree in Psychology, or an Honours degree in Industrial Psychology.\n- Experience: Grade 1—0 years; Grade 2—8 years; Grade 3—16 years.\n- Registration with the Health Professions Council of South Africa (HPCSA) as a Psychometrist or Registered Counsellor (Independent Practice).\n- Valid driver’s licence.\n\n## How to apply\n\nSubmit an application on the new Z83 form and an updated comprehensive CV as one attachment, quoting the correct job title and reference number. Apply to Deputy Director: Labour Centre Operations, Private Bag X56, Ulundi, 3838; or hand-deliver to Unit A Wombe Street, Ulundi. Online applications: email Jobs-KZN3@labour.gov.za. Late or incomplete applications will not be considered.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[Public Service Vacancy Circular No. 34 of 18 September 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "Department of Employment and Labour",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "Department of Employment and Labour",
+        "provider": "",
+        "location": "Ulundi, KwaZulu-Natal, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "A four-year B-Psych degree, or an Honours degree in Psychology, or an Honours degree in Industrial Psychology.\nExperience: Grade 1—0 years; Grade 2—8 years; Grade 3—16 years.\nRegistration with the Health Professions Council of South Africa (HPCSA) as a Psychometrist or Registered Counsellor (Independent Practice).\nValid driver’s licence.",
+        "how_to_apply": "Submit an application on the new Z83 form and an updated comprehensive CV as one attachment, quoting the correct job title and reference number. Apply to Deputy Director: Labour Centre Operations, Private Bag X56, Ulundi, 3838; or hand-deliver to Unit A Wombe Street, Ulundi. Online applications: email Jobs-KZN3@labour.gov.za. Late or incomplete applications will not be considered.",
+        "application_url": "mailto:Jobs-KZN3@labour.gov.za"
+      },
+      "main_image_url": null,
+      "seo_title": "Counsellor Grade 1–3 (HR4/4/8/2)",
+      "seo_description": "The Department of Employment and Labour is recruiting a Counsellor Grade 1–3 (Ref No: HR4/4/8/2) at its Ulundi centre. The role supports labour centres with employment counselling, work-seeker referrals, career-information dissemination, psychometric-assessment administration and supervision of administrative personnel. Applications close 5 October 2026 at 16:00 for walk-ins and 23:59 online.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "Public Service Vacancy Circular No. 34 of 18 September 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "Verified in the official government PDF, Annexure D, Post 34/15; the DPSA first-party circular page also lists Circular 34 of 2026 with posting date 18 September 2026 and links the Employment and Labour section. The source provides an email application address, not a web application URL; application_url preserves that address. South Africa relevance is confirmed by the Ulundi, KwaZulu-Natal centre and South African government department. Closing date includes separate walk-in and online cut-off times."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-16",
+      "title": "Assistant Director: Board Services and Case Management (x2) (HR4/4/3/2ASDBSCM/UIF)",
+      "slug": "assistant-director-board-services-and-case-management-x2-hr4-4-3-2asdbscm-uif",
+      "content_type": "job",
+      "summary": "The Unemployment Insurance Fund is recruiting two Assistant Directors: Board Services and Case Management on a three-year contract at R487,197 per annum plus 37% in lieu of benefits. The role covers investigations of national appeal cases, technical support on enquiries referred to the Fund, Board administrative support, and management of sub-directorate resources.",
+      "body_markdown": "## Overview\n\nThe Unemployment Insurance Fund is recruiting two Assistant Directors: Board Services and Case Management on a three-year contract at R487,197 per annum plus 37% in lieu of benefits. The role covers investigations of national appeal cases, technical support on enquiries referred to the Fund, Board administrative support, and management of sub-directorate resources.\n\n## Location\n\nUnemployment Insurance Fund, Pretoria, South Africa\n\n## Requirements\n\n- Three-year tertiary qualification (NQF Level 6) in Public Administration and Business Administration.\n- Four years’ experience, including two years’ functional experience in a Board Services and secretariat environment and two years at supervisory level.\n- Knowledge of the Public Finance Management Act, Promotion of Access to Information Act, Protected Disclosure Act, Unemployment Insurance Act, Unemployment Insurance Contributions Act, Labour Relations Act, Public Service Act, Public Service Regulations, appeal processes and procedures, and the Board Services Charter.\n- Skills in financial management, communication, analysis, problem solving, presentation, planning and organising, and computer literacy.\n\n## How to apply\n\nSubmit an application by email to Jobs-UIF21@labour.gov.za, addressed to the Sub-directorate: Human Resources Practices. Use the new Z83 form and an updated comprehensive CV as one attachment; include the correct job title and reference number HR4/4/3/2ASDBSCM/UIF in the email. Applications close online at 23:59 on 2026-10-05; walk-in applications close at 16:00.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[PUBLIC SERVICE VACANCY CIRCULAR 34 OF 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "Department of Employment and Labour — Unemployment Insurance Fund",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "Department of Employment and Labour — Unemployment Insurance Fund",
+        "provider": "",
+        "location": "Unemployment Insurance Fund, Pretoria, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "open",
+        "requirements": "Three-year tertiary qualification (NQF Level 6) in Public Administration and Business Administration.\nFour years’ experience, including two years’ functional experience in a Board Services and secretariat environment and two years at supervisory level.\nKnowledge of the Public Finance Management Act, Promotion of Access to Information Act, Protected Disclosure Act, Unemployment Insurance Act, Unemployment Insurance Contributions Act, Labour Relations Act, Public Service Act, Public Service Regulations, appeal processes and procedures, and the Board Services Charter.\nSkills in financial management, communication, analysis, problem solving, presentation, planning and organising, and computer literacy.",
+        "how_to_apply": "Submit an application by email to Jobs-UIF21@labour.gov.za, addressed to the Sub-directorate: Human Resources Practices. Use the new Z83 form and an updated comprehensive CV as one attachment; include the correct job title and reference number HR4/4/3/2ASDBSCM/UIF in the email. Applications close online at 23:59 on 2026-10-05; walk-in applications close at 16:00.",
+        "application_url": "mailto:Jobs-UIF21@labour.gov.za"
+      },
+      "main_image_url": null,
+      "seo_title": "Assistant Director: Board Services and Case Management (x2) (HR4/4/3/2ASDBSCM/UIF)",
+      "seo_description": "The Unemployment Insurance Fund is recruiting two Assistant Directors: Board Services and Case Management on a three-year contract at R487,197 per annum plus 37% in lieu of benefits. The role covers investigations of national appeal cases, technical support on enquiries referred to the Fund, Board administrative support, and management of sub-directorate resources.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "PUBLIC SERVICE VACANCY CIRCULAR 34 OF 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "The official circular states the issue date as 2026-09-18 and identifies the centre as Pretoria. The Department of Employment and Labour’s vacancies listing independently lists this reference as Open with a 10/5/2026 closing date. The Department’s direct detail-page URL returned File Not Found when checked, so the circular is the primary source; the DPSA annexure mirror corroborates the post details. The advert notes that non-RSA citizens/permanent-resident permit holders with foreign qualifications need SAQA evaluation when shortlisted."
+      },
+      "research_status": "open",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-17",
+      "title": "Assistant Director: Corporate Governance (HR4/4/3/2ASDCG/UIF)",
+      "slug": "assistant-director-corporate-governance-hr4-4-3-2asdcg-uif",
+      "content_type": "job",
+      "summary": "The Department of Employment and Labour’s Unemployment Insurance Fund is recruiting an Assistant Director: Corporate Governance (ref. HR4/4/3/2ASDCG/UIF) on a three-year contract based in Pretoria. The role covers governance research and practices, committee charters and terms of reference, board and committee validation reviews and evaluations, and management of sub-directorate resources.",
+      "body_markdown": "## Overview\n\nThe Department of Employment and Labour’s Unemployment Insurance Fund is recruiting an Assistant Director: Corporate Governance (ref. HR4/4/3/2ASDCG/UIF) on a three-year contract based in Pretoria. The role covers governance research and practices, committee charters and terms of reference, board and committee validation reviews and evaluations, and management of sub-directorate resources.\n\n## Location\n\nUnemployment Insurance Fund, Pretoria, South Africa\n\n## Requirements\n\n- Three-year tertiary qualification at NQF Level 6 in Public Management, Administration, Auditing, Law, B Com Law or B Com Auditing.\n- Four years’ experience, including two years’ functional experience in a Board and Committees environment and two years at supervisory level.\n- Knowledge of PFMA, Protocol on Corporate Governance in the Public Sector, Handbook on Appointment of persons in Boards of State and State Owned Entities, Companies Act, UIA, UICA, LRA, PSA and PSR; skills in financial management, communication, analysis, problem solving, presentation, planning and organising, computer literacy and report writing.\n\n## How to apply\n\nEmail the completed, initialled and signed new Z83 application form and an updated comprehensive CV as one attachment to Jobs-UIF22@labour.gov.za. Include the exact job title and reference number HR4/4/3/2ASDCG/UIF in the email. Online applications close at 23:59 on 2026-10-05; walk-in applications close at 16:00.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[PUBLIC SERVICE VACANCY CIRCULAR — PUBLICATION NO 34 OF 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "Department of Employment and Labour — Unemployment Insurance Fund",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "Department of Employment and Labour — Unemployment Insurance Fund",
+        "provider": "",
+        "location": "Unemployment Insurance Fund, Pretoria, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "Three-year tertiary qualification at NQF Level 6 in Public Management, Administration, Auditing, Law, B Com Law or B Com Auditing.\nFour years’ experience, including two years’ functional experience in a Board and Committees environment and two years at supervisory level.\nKnowledge of PFMA, Protocol on Corporate Governance in the Public Sector, Handbook on Appointment of persons in Boards of State and State Owned Entities, Companies Act, UIA, UICA, LRA, PSA and PSR; skills in financial management, communication, analysis, problem solving, presentation, planning and organising, computer literacy and report writing.",
+        "how_to_apply": "Email the completed, initialled and signed new Z83 application form and an updated comprehensive CV as one attachment to Jobs-UIF22@labour.gov.za. Include the exact job title and reference number HR4/4/3/2ASDCG/UIF in the email. Online applications close at 23:59 on 2026-10-05; walk-in applications close at 16:00.",
+        "application_url": "mailto:mailto:Jobs-UIF22@labour.gov.za"
+      },
+      "main_image_url": null,
+      "seo_title": "Assistant Director: Corporate Governance (HR4/4/3/2ASDCG/UIF)",
+      "seo_description": "The Department of Employment and Labour’s Unemployment Insurance Fund is recruiting an Assistant Director: Corporate Governance (ref. HR4/4/3/2ASDCG/UIF) on a three-year contract based in Pretoria. The role covers governance research and practices, committee charters and terms of reference, board and committee validation reviews and evaluations, and management of sub-directorate resources.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "PUBLIC SERVICE VACANCY CIRCULAR — PUBLICATION NO 34 OF 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "Three-year contract; salary R487,197 per annum plus 37% in lieu of benefits. The official vacancy page and circular specify that only shortlisted candidates submit certified qualifications and related documents; late or non-compliant applications are not considered. The source circular was issued 2026-09-18. Application URL is represented as a mailto link because the first-party page provides an email application address rather than a web form."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-18",
+      "title": "Assistant Director: Trade Creditors (x2) (HR4/4/3/2ASDTC/UIF)",
+      "slug": "assistant-director-trade-creditors-x2-hr4-4-3-2asdtc-uif",
+      "content_type": "job",
+      "summary": "Two Assistant Director: Trade Creditors posts at the Unemployment Insurance Fund in Pretoria on three-year contracts. Salary is R487,197 per annum plus 37% in lieu of benefits. Applications close on 5 October 2026 at 16:00 for walk-ins and 23:59 online.",
+      "body_markdown": "## Overview\n\nTwo Assistant Director: Trade Creditors posts at the Unemployment Insurance Fund in Pretoria on three-year contracts. Salary is R487,197 per annum plus 37% in lieu of benefits. Applications close on 5 October 2026 at 16:00 for walk-ins and 23:59 online.\n\n## Location\n\nUnemployment Insurance Fund, Pretoria, South Africa\n\n## Requirements\n\n- An undergraduate qualification in Accounting, Auditing, Business Information Systems or Economics at NQF Level 6 recognized by SAQA.\n- Four years of experience, including two years’ functional experience in a finance environment and two years at supervisory level.\n- Knowledge of the Unemployment Insurance Act, Unemployment Insurance Contributions Act, PFMA, Treasury Regulations, Public Service Act, BCEA, LRA, GRAP, GAAP, relevant financial systems such as AX-One and BAS, and PERSAL; financial-management, accounting, communication, computer-literacy, reporting, planning, analytical and related skills.\n\n## How to apply\n\nEmail the application to Jobs-UIF23@labour.gov.za, quoting the correct job title and reference number HR4/4/3/2ASDTC/UIF. Submit a completed, initialled and signed 2021 Z83 form and an updated comprehensive CV as one attachment; each post requires its own application. The circular says late or incomplete applications will not be considered.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[Circular 34 of 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "Department of Employment and Labour — Unemployment Insurance Fund",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "Department of Employment and Labour — Unemployment Insurance Fund",
+        "provider": "",
+        "location": "Unemployment Insurance Fund, Pretoria, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "An undergraduate qualification in Accounting, Auditing, Business Information Systems or Economics at NQF Level 6 recognized by SAQA.\nFour years of experience, including two years’ functional experience in a finance environment and two years at supervisory level.\nKnowledge of the Unemployment Insurance Act, Unemployment Insurance Contributions Act, PFMA, Treasury Regulations, Public Service Act, BCEA, LRA, GRAP, GAAP, relevant financial systems such as AX-One and BAS, and PERSAL; financial-management, accounting, communication, computer-literacy, reporting, planning, analytical and related skills.",
+        "how_to_apply": "Email the application to Jobs-UIF23@labour.gov.za, quoting the correct job title and reference number HR4/4/3/2ASDTC/UIF. Submit a completed, initialled and signed 2021 Z83 form and an updated comprehensive CV as one attachment; each post requires its own application. The circular says late or incomplete applications will not be considered.",
+        "application_url": "mailto:mailto:Jobs-UIF23@labour.gov.za"
+      },
+      "main_image_url": null,
+      "seo_title": "Assistant Director: Trade Creditors (x2) (HR4/4/3/2ASDTC/UIF)",
+      "seo_description": "Two Assistant Director: Trade Creditors posts at the Unemployment Insurance Fund in Pretoria on three-year contracts. Salary is R487,197 per annum plus 37% in lieu of benefits. Applications close on 5 October 2026 at 16:00 for walk-ins and 23:59 online.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "Circular 34 of 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "The official gov.za circular identifies the centre as Unemployment Insurance Fund, Pretoria and includes South Africa-specific SAQA/Z83 requirements. The first-party DPSA Circular 34 of 2026 page corroborates the 18 September 2026 posting date and links the Employment and Labour section. The source provides an email application address rather than a web application URL; application_url is therefore represented as a mailto URI. Status is closing_soon because verification was on 2026-10-01 and the stated closing date is 2026-10-05."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-19",
+      "title": "Assistant Director: Human Resources Management & Employee Relations (HR4/4/3/2ASDHRM&ER/WC)",
+      "slug": "assistant-director-human-resources-management-employee-relations-hr4-4-3-2asdhrm-er-wc",
+      "content_type": "job",
+      "summary": "Three-year contract at the Department of Employment and Labour’s Provincial Office in the Western Cape. The post pays R487,197 per annum plus 37% in lieu of benefits and coordinates provincial human-resources-management, employment-relations and employment-equity implementation, service-benefit administration, and related resources.",
+      "body_markdown": "## Overview\n\nThree-year contract at the Department of Employment and Labour’s Provincial Office in the Western Cape. The post pays R487,197 per annum plus 37% in lieu of benefits and coordinates provincial human-resources-management, employment-relations and employment-equity implementation, service-benefit administration, and related resources.\n\n## Location\n\nProvincial Office: Western Cape, South Africa\n\n## Requirements\n\n- Undergraduate qualification in Human Resource Management, Public Management or Employee Relations at NQF Level 6, recognized by SAQA.\n- Four years’ experience, including two years’ functional experience in a Human Resource Management and Employee Relations environment and two years at Senior Practitioner level.\n- Knowledge of public-service transformation and management issues, the White Paper on Transformation of the Public Service, human-resources systems and procedures, the Public Service Act and resolutions, recruitment and selection, departmental policies and procedures, Batho Pele principles, Minimum Information Security Standards, PERSAL and other HR information-management systems.\n- Skills in verbal and written communication, computer literacy (including Excel, Word, PowerPoint and PERSAL), innovation/creativity, presentation, responsiveness, report writing, time management, organizing and planning, financial management, policy analysis, problem solving and decision-making.\n- A driver’s licence is an added advantage.\n\n## How to apply\n\nEmail the application to Jobs-WC1@labour.gov.za, for attention of the Sub-directorate: Human Resources Management, Western Cape. Submit the new Z83 application form and an updated comprehensive CV as one attachment; include the correct job title and reference number HR4/4/3/2ASDHRM&ER/WC. The circular states that applications close on 2026-10-05 at 16:00 for walk-in applications and 23:59 for online applications.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[Public Service Vacancy Circular 34 of 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "Department of Employment and Labour",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "Department of Employment and Labour",
+        "provider": "",
+        "location": "Provincial Office: Western Cape, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "Undergraduate qualification in Human Resource Management, Public Management or Employee Relations at NQF Level 6, recognized by SAQA.\nFour years’ experience, including two years’ functional experience in a Human Resource Management and Employee Relations environment and two years at Senior Practitioner level.\nKnowledge of public-service transformation and management issues, the White Paper on Transformation of the Public Service, human-resources systems and procedures, the Public Service Act and resolutions, recruitment and selection, departmental policies and procedures, Batho Pele principles, Minimum Information Security Standards, PERSAL and other HR information-management systems.\nSkills in verbal and written communication, computer literacy (including Excel, Word, PowerPoint and PERSAL), innovation/creativity, presentation, responsiveness, report writing, time management, organizing and planning, financial management, policy analysis, problem solving and decision-making.\nA driver’s licence is an added advantage.",
+        "how_to_apply": "Email the application to Jobs-WC1@labour.gov.za, for attention of the Sub-directorate: Human Resources Management, Western Cape. Submit the new Z83 application form and an updated comprehensive CV as one attachment; include the correct job title and reference number HR4/4/3/2ASDHRM&ER/WC. The circular states that applications close on 2026-10-05 at 16:00 for walk-in applications and 23:59 for online applications.",
+        "application_url": "mailto:Jobs-WC1@labour.gov.za"
+      },
+      "main_image_url": null,
+      "seo_title": "Assistant Director: Human Resources Management & Employee Relations (HR4/4/3/2ASDHRM&ER/WC)",
+      "seo_description": "Three-year contract at the Department of Employment and Labour’s Provincial Office in the Western Cape. The post pays R487,197 per annum plus 37% in lieu of benefits and coordinates provincial human-resources-management, employment-relations and employment-equity implementation, service-benefit administration, and related resources.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "Public Service Vacancy Circular 34 of 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "Verified against the official gov.za circular and the Department of Public Service and Administration’s Circular 34 of 2026 page. The DPSA page gives a posting date of 2026-09-18; the circular identifies Publication No. 34 of 2026 and the same Department of Employment and Labour vacancy. The advert provides an email application address rather than a web application URL. The opportunity is located at the Provincial Office: Western Cape, South Africa. The advert does not state a separate nationality restriction; South Africa-only classification is based on the South African government department and location."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "job-20",
+      "title": "Chief Personnel Officer: HR Operations (HR4/26/10/01HO)",
+      "slug": "chief-personnel-officer-hr-operations-hr4-26-10-01ho",
+      "content_type": "job",
+      "summary": "The Department of Employment and Labour is recruiting a Chief Personnel Officer: HR Operations at its Head Office in Pretoria. The role covers recruitment practices, service-benefit processing and approval, and Permanent Incapacity Leave and Ill-Health Retirement (PILIR) administration and oversight. Salary: R413,001 per annum.",
+      "body_markdown": "## Overview\n\nThe Department of Employment and Labour is recruiting a Chief Personnel Officer: HR Operations at its Head Office in Pretoria. The role covers recruitment practices, service-benefit processing and approval, and Permanent Incapacity Leave and Ill-Health Retirement (PILIR) administration and oversight. Salary: R413,001 per annum.\n\n## Location\n\nHead Office, Pretoria, South Africa\n\n## Requirements\n\n- NQF level 6 qualification recognised by SAQA in Human Resources Management.\n- PERSAL Certificate in Personnel Administration.\n- Two years’ functional experience in Service Benefits and Recruitment and Selection.\n- Two years’ supervisory experience in HR Operations.\n- Knowledge of the National Skills Development Strategy, Public Service human-resource development, management principles and practices, Public Service rules and regulations, Batho Pele principles, PFMA, DEL policies and procedures, and management information systems.\n- Skills in time and stress management, team building, managerial planning/organisation/coordination/control, communication and presentation, report writing and interviewing, training/mentoring/coaching, project and quality management, interpersonal skills, and MS Office/MS Project computer usage.\n\n## How to apply\n\nSubmit the new Z83 application form and an updated comprehensive CV as one attachment, stating the job title and reference number. Apply by email to Jobs-HQ10@labour.gov.za, or post to The Chief Director: Human Resources Management, Private Bag X117, Pretoria, 0001, or hand-deliver to 215 Francis Baard Street. Walk-in applications close at 16:00 and online/email applications at 23:59 on 2026-10-05. Late or incomplete applications will not be considered.\n\n## Closing date\n\n2026-10-05\n\n## Official source\n\n[Public Service Vacancy Circular 34 of 2026](https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": "2026-09-18",
+      "category": "Jobs",
+      "categories": [
+        "South Africa"
+      ],
+      "tags": [
+        "South Africa",
+        "Jobs",
+        "Department of Employment and Labour",
+        "2026",
+        "Applications Open"
+      ],
+      "topics": [],
+      "related_links": [],
+      "related_ids": [],
+      "recommendation_ids": [],
+      "documents": [],
+      "navigation_links": [],
+      "type_data": {
+        "company": "Department of Employment and Labour",
+        "provider": "",
+        "location": "Head Office, Pretoria, South Africa",
+        "closing_date": "2026-10-05",
+        "status_override": "closing_soon",
+        "requirements": "NQF level 6 qualification recognised by SAQA in Human Resources Management.\nPERSAL Certificate in Personnel Administration.\nTwo years’ functional experience in Service Benefits and Recruitment and Selection.\nTwo years’ supervisory experience in HR Operations.\nKnowledge of the National Skills Development Strategy, Public Service human-resource development, management principles and practices, Public Service rules and regulations, Batho Pele principles, PFMA, DEL policies and procedures, and management information systems.\nSkills in time and stress management, team building, managerial planning/organisation/coordination/control, communication and presentation, report writing and interviewing, training/mentoring/coaching, project and quality management, interpersonal skills, and MS Office/MS Project computer usage.",
+        "how_to_apply": "Submit the new Z83 application form and an updated comprehensive CV as one attachment, stating the job title and reference number. Apply by email to Jobs-HQ10@labour.gov.za, or post to The Chief Director: Human Resources Management, Private Bag X117, Pretoria, 0001, or hand-deliver to 215 Francis Baard Street. Walk-in applications close at 16:00 and online/email applications at 23:59 on 2026-10-05. Late or incomplete applications will not be considered.",
+        "application_url": "https://www.labour.gov.za/chief-personnel-officer-hr-operations"
+      },
+      "main_image_url": null,
+      "seo_title": "Chief Personnel Officer: HR Operations (HR4/26/10/01HO)",
+      "seo_description": "The Department of Employment and Labour is recruiting a Chief Personnel Officer: HR Operations at its Head Office in Pretoria. The role covers recruitment practices, service-benefit processing and approval, and Permanent Incapacity Leave and Ill-Health Retirement (PILIR) administration and oversight. Salary: R413,001 per annum.",
+      "source": {
+        "source_url": "https://www.gov.za/sites/default/files/PUBLIC%20SERVICE%20VACANCY%20CIRCULAR%2034%20OF%202026.pdf",
+        "source_title": "Public Service Vacancy Circular 34 of 2026",
+        "verified_as_of": "2026-10-01",
+        "confidence": "high",
+        "notes": "Verified against the official circular and the Department of Employment and Labour’s first-party vacancy page. The official page lists the vacancy as Open; as verified on 2026-10-01, its 2026-10-05 deadline is closing soon. The advert is located in Pretoria, South Africa; it does not separately state a citizenship restriction. No dedicated application hyperlink is provided for this post; the official application channels are email, post, and hand delivery."
+      },
+      "research_status": "closing_soon",
+      "status": "draft",
+      "is_trending": false
+    },
+    {
+      "id": "bursary-01",
+      "title": "Funza Lushaka Bursary — 2027 new applications",
+      "slug": "funza-lushaka-bursary-2027-new-applications",
+      "content_type": "bursary",
+      "summary": "The Funza Lushaka Bursary Programme funds selected students pursuing teaching qualifications in identified priority subject areas. The programme covers tuition, accommodation or transport, meals, learning materials, a personal care allowance and teaching-practice support. Recipients must teach at a public school for the same number of years they received the bursary.",
+      "body_markdown": "## Overview\n\nThe Funza Lushaka Bursary Programme funds selected students pursuing teaching qualifications in identified priority subject areas. The programme covers tuition, accommodation or transport, meals, learning materials, a personal care allowance and teaching-practice support. Recipients must teach at a public school for the same number of years they received the bursary.\n\n## Location\n\nSouth Africa\n\n## Requirements\n\n- First-time applicants must be 30 years or younger.\n- Applicants must be South African citizens with a valid South African ID number.\n- Applicants must first be accepted into a Bachelor of Education (BEd) or Senior Phase and Further Education and Training (FET) Postgraduate Certificate in Education (PGCE) at an accredited public university.\n- Applicants must meet the national selection criteria and include two priority-area subjects as specialisations in the teaching qualification.\n- Applicants should demonstrate good academic ability and commitment to a teaching career.\n\n## How to apply\n\nApply online through the e-Gov portal: register with personal information, log in, select Funza Lushaka Bursary Scheme, enter the OTP, accept the terms and conditions, select the 2027 application button, complete the required fields, and accept the declaration.\n\n## Closing date\n\n2027-01-31\n\n## Official source\n\n[The Funza Lushaka Bursary](https://www.funzalushaka.doe.gov.za/)\n\n> Verified on 2026-10-01. Always confirm the closing date and application instructions on the official source before publishing or applying.\n",
+      "posted_date": null,
+      "category": "Bursaries",
+      "categories": [
+        "South Africa"
