@@ -5,8 +5,15 @@ import { publicPost } from '../lib/serializers.mjs';
 import { paginate } from '../lib/utils.mjs';
 import { GLOBAL_FILTERS, normalizeCountryCode, queryFilters } from '../lib/global-content.mjs';
 import { loadPostArtifact } from '../lib/publication-service.mjs';
+import { deriveVisitorSignals, rankSearch } from '../lib/ranking.mjs';
 
 export const publicRouter=Router();
+
+const requestLocation=req=>({
+  country_code:normalizeCountryCode(req.get('cf-ipcountry')||req.get('x-vercel-ip-country')||req.get('x-country-code')||''),
+  region_name:req.get('cf-region')||req.get('x-vercel-ip-country-region')||req.get('x-region-name')||null,
+  city:req.get('cf-ipcity')||req.get('x-vercel-ip-city')||req.get('x-city')||null
+});
 
 const collectionTypes={
   news:['news','announcement'],announcements:['announcement'],stories:['story'],articles:['news','announcement'],
@@ -51,7 +58,19 @@ publicRouter.get('/pages',async(req,res)=>sendList(req,res));
 for(const [name,types] of Object.entries(collectionTypes)){
   publicRouter.get(`/${name}`,async(req,res)=>sendList(req,res,{types}));
 }
-publicRouter.get('/trending',async(req,res)=>sendList(req,res,{trending:true}));
+async function sendTrending(req,res,extra={}){
+  const filters={...queryFilters(req.query),...extra};
+  if(req.query.type)filters.type=String(req.query.type);
+  let rows=await store.trendingPosts(filters);
+  if(filters.type)rows=rows.filter(p=>p.content_type===filters.type);
+  const items=rows.map(p=>({...publicPost(p,{compact:true}),trending_score:Number(p.trending_score||0)}));
+  const payload=paginate(items,req.query.page,req.query.limit);
+  payload.meta={...(payload.meta||{}),filters,published_only:true,ranking:'engagement_14d'};
+  res.json(payload);
+}
+publicRouter.get('/trending',sendTrending);
+publicRouter.get('/trending/:countryCode',async(req,res)=>sendTrending(req,res,{country:normalizeCountryCode(req.params.countryCode)}));
+publicRouter.get('/trending/:countryCode/:region',async(req,res)=>sendTrending(req,res,{country:normalizeCountryCode(req.params.countryCode),region:req.params.region}));
 publicRouter.get('/dailyupdate/jobs',async(req,res)=>sendList(req,res,{types:['job']}));
 
 async function detailPayload(row){
@@ -79,8 +98,35 @@ publicRouter.get('/search',async(req,res)=>{
   const q=String(req.query.q||'').trim();
   const filters=queryFilters(req.query);
   if(!q&&!Object.values(filters).some(Boolean))return res.json({data:[],meta:{query:q,total:0,filters,published_only:true}});
-  const rows=(await store.listPosts({status:'published',...filters})).map(p=>publicPost(p,{compact:true}));
-  res.json({data:rows.slice(0,250),meta:{query:q,total:rows.length,filters,published_only:true}});
+  const raw=await store.listPosts({status:'published',...filters});
+  const ranked=rankSearch(raw,q);
+  const rows=ranked.slice(0,250).map(p=>({...publicPost(p,{compact:true}),search_score:Number(p.search_score||0)}));
+  if(req.query.visitor_id){
+    const location=requestLocation(req);
+    store.recordEvent({visitor_id:String(req.query.visitor_id).slice(0,120),event_type:'search',meta:{query:q,...location,filters}}).catch(()=>{});
+  }
+  res.json({data:rows,meta:{query:q,total:ranked.length,filters,published_only:true,ranking:'structured_relevance'}});
+});
+
+publicRouter.get('/personalized',async(req,res)=>{
+  const visitorId=String(req.query.visitor_id||'').trim();
+  if(!visitorId)return res.status(400).json({error:'visitor_id is required'});
+  const events=await store.visitorEvents(visitorId,200);
+  const signals=deriveVisitorSignals(events);
+  const explicit=queryFilters(req.query);
+  const location=requestLocation(req);
+  const filters={
+    country:explicit.country||signals.country||location.country_code||undefined,
+    region:explicit.region||signals.region||undefined,
+    q:explicit.q||signals.query||undefined
+  };
+  if(signals.content_type)filters.type=signals.content_type;
+  let rows=await store.trendingPosts(filters);
+  if(filters.type)rows=rows.filter(x=>x.content_type===filters.type);
+  if(rows.length<12&&filters.region){delete filters.region;rows=await store.trendingPosts(filters)}
+  if(rows.length<12&&filters.type){delete filters.type;rows=await store.trendingPosts(filters)}
+  const data=rows.slice(0,50).map(p=>({...publicPost(p,{compact:true}),trending_score:Number(p.trending_score||0)}));
+  res.json({data,meta:{published_only:true,personalized:true,signals,filters}});
 });
 
 publicRouter.get('/countries',async(req,res)=>{
@@ -116,7 +162,20 @@ publicRouter.post('/analytics/events',async(req,res)=>{
     meta:z.record(z.string(),z.any()).optional()
   });
   const p=schema.safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid analytics event'});
-  await store.recordEvent(p.data);res.status(202).json({data:{accepted:true}});
+  const location=requestLocation(req);const meta={...(p.data.meta||{})};
+  if(!meta.country_code&&location.country_code)meta.country_code=location.country_code;
+  if(!meta.region_name&&location.region_name)meta.region_name=location.region_name;
+  if(!meta.city&&location.city)meta.city=location.city;
+  if(p.data.post_id){
+    const post=await store.getPost(p.data.post_id).catch(()=>null);
+    if(post){
+      meta.content_type=meta.content_type||post.content_type;
+      meta.country_code=meta.country_code||post.geo?.country_code||null;
+      meta.region_name=meta.region_name||post.geo?.region_name||null;
+      meta.city=meta.city||post.geo?.city||null;
+    }
+  }
+  await store.recordEvent({...p.data,meta});res.status(202).json({data:{accepted:true}});
 });
 publicRouter.get('/crawl/status',(req,res)=>res.json({data:{state:'managed',publicCountsHidden:true,message:'Raw crawler/index statistics are private to TodayInfo administrators.'}}));
 publicRouter.get('/redirect/:slug',async(req,res)=>{
