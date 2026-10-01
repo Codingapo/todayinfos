@@ -5,7 +5,7 @@ export const IMPORT_LEARNING_SCHEMA='todayinfo.import-learning.v1';
 
 const emptyProfile=()=>({
   schema:IMPORT_LEARNING_SCHEMA,updated_at:null,records_seen:0,
-  sources:{},types:{},countries:{}
+  sources:{},types:{},countries:{},seen:{}
 });
 
 const hostname=value=>{
@@ -25,8 +25,11 @@ export async function loadImportLearning(){
 
 export function learnIntoProfile(profile,rows=[]){
   const p={...emptyProfile(),...(profile||{})};
-  p.sources={...(p.sources||{})};p.types={...(p.types||{})};p.countries={...(p.countries||{})};
+  p.sources={...(p.sources||{})};p.types={...(p.types||{})};p.countries={...(p.countries||{})};p.seen={...(p.seen||{})};
   for(const row of rows){
+    const seenKey=`${row.source_key||row.id||''}:${row.source_hash||''}`;
+    if(seenKey!==':'&&p.seen[seenKey])continue;
+    if(seenKey!==':')p.seen[seenKey]=new Date().toISOString();
     const draft=row.prepared_draft||row;
     const type=row.detected_type||draft.content_type||'other';
     const domain=hostname(row.source_url||draft.source?.source_url||draft.source_url);
@@ -55,6 +58,8 @@ export function learnIntoProfile(profile,rows=[]){
     t.average_quality=t.count?Math.round((t.score_total/t.count)*100)/100:0;
     t.auto_publish_rate=t.count?Math.round((t.score_80_plus/t.count)*1000)/1000:0;
   }
+  const seenEntries=Object.entries(p.seen).sort((a,b)=>String(b[1]).localeCompare(String(a[1]))).slice(0,10000);
+  p.seen=Object.fromEntries(seenEntries);
   p.updated_at=new Date().toISOString();
   return p;
 }
