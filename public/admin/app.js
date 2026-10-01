@@ -53,7 +53,7 @@ async function loadContentTypes(){
   ]);
   state.contentTypes=types;state.constraints=constraints;
 }
-const VIEW_META={overview:['COMMAND CENTER','Overview'],imports:['CONTENT PIPELINE','Import Inbox'],demand:['AUDIENCE DEMAND','Demand Queue'],posts:['CONTENT','Content Library'],media:['FILES','Media & Documents'],analytics:['INSIGHTS','Analytics'],team:['ACCESS','Team & Roles'],settings:['SYSTEM','Settings'],audit:['SECURITY','Audit Log']};
+const VIEW_META={overview:['COMMAND CENTER','Overview'],sources:['SOURCE INTELLIGENCE','Source Hub'],imports:['CONTENT PIPELINE','Import Inbox'],demand:['AUDIENCE DEMAND','Demand Queue'],posts:['CONTENT','Content Library'],media:['FILES','Media & Documents'],analytics:['INSIGHTS','Analytics'],team:['ACCESS','Team & Roles'],settings:['SYSTEM','Settings'],audit:['SECURITY','Audit Log']};
 async function navigate(view){state.view=view;$('#sidebar').classList.remove('open');$$('#nav button[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===view));const [eye,title]=VIEW_META[view]||['TODAYINFO',view];$('#viewEyebrow').textContent=eye;$('#viewTitle').textContent=title;$('#content').innerHTML='<div class="empty">Loading…</div>';try{await renderers[view]()}catch(err){$('#content').innerHTML=`<div class="error-box">${esc(err.message)}</div>`}}
 
 function metric(label,value,note=''){return`<div class="metric"><small>${esc(label)}</small><strong>${Number(value||0).toLocaleString()}</strong>${note?`<em>${esc(note)}</em>`:''}</div>`}
@@ -142,6 +142,62 @@ const renderers={
     <div class="cards">${metric('Published pages',d.cards.published_posts,'live API content')}${metric('Open bursaries',d.cards.open_bursaries,'date-driven')}${metric('Visitors today',d.cards.visitors_today)}${metric('Searches today',d.cards.searches_today)}${metric('Application clicks',d.cards.application_clicks_today)}${metric('Related clicks',d.cards.related_clicks_today)}${metric('Waiting imports',d.cards.raw_imports_waiting,'private')}${metric('Highest priority',d.cards.highest_priority,'visitor-requested')}</div>
     <div class="grid2"><section class="panel chart-panel"><div class="panel-head"><div><p class="eyebrow">OPPORTUNITIES</p><h3>Bursary status</h3></div><span class="chart-kicker">${totalB} total</span></div><div class="donut-wrap"><div class="donut" style="--pct:${pct}%"><strong>${pct}%</strong></div><div class="donut-legend"><div class="legend-row"><span class="dot"></span><span>Open</span><b>${d.cards.open_bursaries||0}</b></div><div class="legend-row"><span class="dot dim"></span><span>Closed</span><b>${d.cards.closed_bursaries||0}</b></div></div></div></section><section class="panel chart-panel"><div class="panel-head"><div><p class="eyebrow">PUBLISHING</p><h3>Content mix</h3></div><span class="chart-kicker">${d.cards.published_posts||0} live</span></div>${bars(d.content_mix)}</section></div>
     <div class="grid2" style="margin-top:16px"><section class="panel"><div class="panel-head"><div><p class="eyebrow">USER DEMAND</p><h3>What should we fetch next?</h3></div><button class="ghost" id="overviewDemand2">View all</button></div>${priority.length?`<div class="priority-list">${priority.slice(0,6).map(x=>`<div class="priority-row ${x.priority}"><div><span class="priority-flag">${esc(x.priority)}</span><strong>${esc(x.prepared_draft?.title||x.source_payload?.title||x.source_slug||'Discovered content')}</strong><small>${Number(x.demand_clicks||0)} user click(s) · ${esc(x.source_name||'source')}</small></div><b>${Number(x.priority_score||0).toLocaleString()}</b></div>`).join('')}</div>`:'<div class="empty">No missing-content demand yet.</div>'}</section><section class="panel"><div class="panel-head"><div><p class="eyebrow">PERFORMANCE</p><h3>Top content</h3></div></div>${d.top_posts?.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Title</th><th>Type</th><th>Views</th><th>Reads</th></tr></thead><tbody>${d.top_posts.map(p=>`<tr><td><strong>${esc(p.title)}</strong></td><td>${badge(p.content_type,p.content_type)}</td><td>${p.views}</td><td>${p.reads}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No published analytics yet.</div>'}</section></div>`;$('#overviewDemand').onclick=$('#overviewDemand2').onclick=()=>navigate('demand')},
+
+  async sources(){
+    const hub=await api('/sources/hub');
+    $('#content').innerHTML=`
+      <div class="source-hub-hero">
+        <div><p class="eyebrow">SOURCE INTELLIGENCE</p><h1>Fetch deeply, keep the useful pages.</h1><p>TodayInfo understands source families instead of treating every page the same. Regional sources can follow useful related pages; global feeds are normalized, deduplicated and checked before publishing.</p></div>
+        <div class="seed-stat"><small>Permanent verified seed</small><strong>${hub.permanent_seeds?.expected_records||80}</strong><span>records restored on startup</span></div>
+      </div>
+      <section class="panel source-hub-panel">
+        <div class="panel-head"><div><p class="eyebrow">REGIONAL SOURCES</p><h3>Deep source fetch</h3><p class="panel-sub">These buttons fetch the main source plus useful linked opportunity pages.</p></div></div>
+        <div class="source-hub-grid">
+          ${(hub.regional||[]).map(x=>`<article class="source-hub-card" data-source="${esc(x.id)}"><div class="source-logo">${x.id==='dailyupdate'?'DU':x.id==='zabursaries'?'ZA':'#'}</div><div class="grow"><span class="source-state">Structured source</span><h3>${esc(x.label)}</h3><p>${esc(x.description)}</p><div class="source-capabilities"><span>Deduplicate</span><span>Follow related</span><span>80% gate</span></div></div><button class="primary run-source" data-id="${esc(x.id)}">Fetch pages</button></article>`).join('')}
+        </div>
+      </section>
+      <section class="panel global-harvest-panel">
+        <div class="panel-head"><div><p class="eyebrow">GLOBAL HARVEST</p><h3>Build the worldwide opportunity index</h3><p class="panel-sub">Only recent public listings are accepted. Every provider remains attributed and each normalized record goes through TodayInfo cleaning before publication.</p></div></div>
+        <form id="harvestForm" class="harvest-form">
+          <div class="harvest-target"><label class="field">Target records<input name="target" type="number" min="1" max="5000" value="1000"></label><label class="field">Recent within<input name="maxAgeDays" type="number" min="1" max="120" value="60"><small>days</small></label></div>
+          <div class="provider-grid">
+            ${(hub.global||[]).map(x=>`<label class="provider-option"><input type="checkbox" name="provider" value="${esc(x.id)}" ${['arbeitnow','jobicy'].includes(x.id)?'checked':''}><span><strong>${esc(x.label)}</strong><small>${esc(x.kind.replaceAll('_',' '))}${x.attribution?' · source attribution kept':''}</small></span></label>`).join('')}
+          </div>
+          <div class="form-grid optional-boards"><label class="field wide">Lever board names (optional)<input name="leverSites" placeholder="company-one, company-two"><small>Only use public Lever board site names you want TodayInfo to follow.</small></label><label class="field wide">Ashby board names (optional)<input name="ashbyBoards" placeholder="CompanyOne, CompanyTwo"><small>Only listed public Ashby postings are harvested.</small></label></div>
+          <label class="preview-check"><input name="autoPublish" type="checkbox" checked><span>Auto-publish records that pass the 80%+ cleanliness and hard publishing checks<small>Everything else remains private in Import Inbox.</small></span></label>
+          <div class="harvest-actions"><button type="submit" class="primary" id="harvestRun">Start global harvest</button><button type="button" class="ghost" id="openImportsFromSources">Open Import Inbox</button></div>
+          <div id="harvestResult" class="harvest-result hidden"></div>
+        </form>
+      </section>`;
+
+    $('#openImportsFromSources').onclick=()=>navigate('imports');
+    $('.run-source').forEach(btn=>btn.onclick=async()=>{
+      const source=(hub.regional||[]).find(x=>x.id===btn.dataset.id);if(!source)return;
+      const old=btn.textContent;btn.disabled=true;btn.textContent='Fetching…';
+      try{
+        const r=await api('/imports/fetch',{method:'POST',body:source.fetch});
+        const published=r.auto_publish?.published?.length||0;
+        toast(`${source.label}: ${r.inserted||0} new · ${r.relatedPagesFetched||0} related pages · ${published} published`);
+        await navigate('imports');
+      }catch(err){toast(err.message,true);btn.disabled=false;btn.textContent=old}
+    });
+    $('#harvestForm').onsubmit=async e=>{
+      e.preventDefault();const form=e.currentTarget,fd=new FormData(form);
+      const providers=fd.getAll('provider');if(!providers.length)return toast('Choose at least one global source',true);
+      const body={
+        target:Number(fd.get('target')||1000),maxAgeDays:Number(fd.get('maxAgeDays')||60),providers,
+        leverSites:splitList(fd.get('leverSites')),ashbyBoards:splitList(fd.get('ashbyBoards')),
+        autoPublish:fd.get('autoPublish')==='on'
+      };
+      const button=$('#harvestRun'),box=$('#harvestResult');button.disabled=true;button.textContent='Harvesting…';box.classList.remove('hidden');box.innerHTML='<span class="sync-spinner"></span><div><strong>Global harvest running</strong><small>Fetching public feeds, normalizing and deduplicating records.</small></div>';
+      try{
+        const r=await api('/harvest/global',{method:'POST',body});
+        box.innerHTML=`<div><strong>${Number(r.accepted||0).toLocaleString()} accepted</strong><small>${Number(r.published?.length||0).toLocaleString()} published now · ${Number(r.review?.length||0).toLocaleString()} shown for review · snapshots retained</small></div>`;
+        toast(`Global harvest complete: ${r.accepted||0} accepted · ${r.published?.length||0} published`);
+      }catch(err){box.innerHTML=`<div><strong>Harvest stopped</strong><small>${esc(err.message)}</small></div>`;toast(err.message,true)}
+      finally{button.disabled=false;button.textContent='Start global harvest'}
+    };
+  },
 
   async demand(){const rows=await api('/imports/priority?limit=200');const highest=rows.filter(x=>x.priority==='highest').length;$('#navDemandCount').textContent=highest;$('#content').innerHTML=`
     <div class="import-hero demand-hero"><div><p class="eyebrow">AUDIENCE DEMAND</p><h2>Missing content users actually want</h2><p>TodayInfo remembers opportunity links found in DailyUpdate, ZA Bursaries and related content. If a visitor clicks a missing link, it becomes HIGHEST PRIORITY here.</p></div><button class="primary" id="demandSync">↻ Deep sync sources</button></div>
