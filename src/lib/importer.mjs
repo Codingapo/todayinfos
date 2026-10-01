@@ -160,23 +160,57 @@ export async function fetchImports(options={}) {
   const maxPages = Math.min(MAX_SOURCE_PAGES, Math.max(1, Number(options.maxPages || MAX_SOURCE_PAGES)));
   let records = [];
   let pagesFetched = 1;
+  let endpointUsed=endpoint;
+  const endpointAttempts=[];
 
   if (isCollection) {
     const candidates=sourceEndpointCandidates(options.kind);
-    let lastError=null,result=null,usedEndpoint=endpoint;
+    const requireRecords=['bursaries','dailyupdate','dailyupdate/jobs'].includes(options.kind);
+    let lastError=null;
     for(const candidate of candidates){
       try{
         const current=await fetchCollection(candidate,maxPages);
-        if(current.records.length||candidate===candidates.at(-1)){result=current;usedEndpoint=candidate;break}
-      }catch(error){lastError=error}
+        if(requireRecords&&!current.records.length){
+          endpointAttempts.push({endpoint:candidate,ok:false,records:0,error:'No records returned'});
+          continue;
+        }
+        records=current.records;pagesFetched=current.pagesFetched;endpointUsed=candidate;
+        endpointAttempts.push({endpoint:candidate,ok:true,records:records.length});
+        lastError=null;break;
+      }catch(error){
+        lastError=error;endpointAttempts.push({endpoint:candidate,ok:false,error:error.message});
+      }
     }
-    if(!result)throw lastError||new Error('Source collection could not be fetched');
-    records=result.records;
-    pagesFetched=result.pagesFetched;
-    options._usedEndpoint=usedEndpoint;
+    if(!records.length&&requireRecords){
+      try{
+        const direct=await fetchDirectSourceFallback(options.kind,{maxPages,year:options.year});
+        if(direct?.records?.length){
+          records=direct.records;pagesFetched=direct.stats?.listingPages||1;endpointUsed=`direct:${options.kind}`;
+          endpointAttempts.push({endpoint:endpointUsed,ok:true,records:records.length,...direct.stats});
+          lastError=null;
+        }else endpointAttempts.push({endpoint:`direct:${options.kind}`,ok:false,records:0,error:'No direct-source records found'});
+      }catch(error){
+        lastError=error;endpointAttempts.push({endpoint:`direct:${options.kind}`,ok:false,error:error.message});
+      }
+    }
+    if(!records.length&&lastError)throw new Error(`Unable to fetch ${options.kind||'source'} data after API and direct website attempts. ${lastError.message}`);
   } else {
-    const payload = await fetchJson(`${config.sourceApiBase}${endpoint}`);
-    records = extractRecords(payload);
+    try{
+      const payload = await fetchJson(`${config.sourceApiBase}${endpoint}`);
+      records = extractRecords(payload);
+      endpointAttempts.push({endpoint,ok:true,records:records.length});
+    }catch(error){
+      if(options.kind!=='url'||!options.url)throw error;
+      const direct=await fetchDirectUrlFallback(options.url);
+      if(!direct?.record)throw error;
+      records=[direct.record];endpointUsed='direct:url';
+      endpointAttempts.push({endpoint,ok:false,error:error.message});
+      endpointAttempts.push({endpoint:endpointUsed,ok:true,records:1,...direct.stats});
+    }
+    if(options.kind==='url'&&!records.length&&options.url){
+      const direct=await fetchDirectUrlFallback(options.url).catch(()=>null);
+      if(direct?.record){records=[direct.record];endpointUsed='direct:url';endpointAttempts.push({endpoint:endpointUsed,ok:true,records:1,...direct.stats})}
+    }
   }
 
   if (options.kind === 'tag' && options.expand !== false) {
