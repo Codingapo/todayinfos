@@ -49,3 +49,5 @@ Tests protect:
 - real bursary endpoint fallback behavior;
 - source editorial policies;
 - Source Hub diagnostics.
+
+CI note: the selector-regression assertion was corrected to distinguish the multi-selector helper (`$$`) from the single-selector helper (`$`).
