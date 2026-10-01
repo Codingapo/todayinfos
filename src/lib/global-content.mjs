@@ -4,11 +4,17 @@ const COUNTRY_ALIASES = new Map([
   ['south africa','ZA'],['za','ZA'],['zaf','ZA'],
   ['united kingdom','GB'],['uk','GB'],['gb','GB'],['gbr','GB'],
   ['united states','US'],['united states of america','US'],['usa','US'],['us','US'],
-  ['nigeria','NG'],['ng','NG'],['canada','CA'],['ca','CA'],['australia','AU'],['au','AU']
+  ['nigeria','NG'],['ng','NG'],['kenya','KE'],['ke','KE'],['ghana','GH'],['gh','GH'],['uganda','UG'],['ug','UG'],
+  ['tanzania','TZ'],['tz','TZ'],['zambia','ZM'],['zm','ZM'],['zimbabwe','ZW'],['zw','ZW'],['botswana','BW'],['bw','BW'],
+  ['canada','CA'],['ca','CA'],['australia','AU'],['au','AU'],['germany','DE'],['de','DE'],['france','FR'],['fr','FR'],
+  ['netherlands','NL'],['nl','NL'],['ireland','IE'],['ie','IE'],['india','IN'],['in','IN'],['singapore','SG'],['sg','SG'],
+  ['new zealand','NZ'],['nz','NZ'],['united arab emirates','AE'],['uae','AE'],['ae','AE'],['brazil','BR'],['br','BR'],
+  ['mexico','MX'],['mx','MX'],['spain','ES'],['es','ES'],['italy','IT'],['it','IT'],['poland','PL'],['pl','PL'],
+  ['sweden','SE'],['se','SE'],['norway','NO'],['no','NO'],['denmark','DK'],['dk','DK'],['switzerland','CH'],['ch','CH']
 ]);
 
 const COUNTRY_NAMES = {
-  ZA:'South Africa',GB:'United Kingdom',US:'United States',NG:'Nigeria',CA:'Canada',AU:'Australia'
+  ZA:'South Africa',GB:'United Kingdom',US:'United States',NG:'Nigeria',KE:'Kenya',GH:'Ghana',UG:'Uganda',TZ:'Tanzania',ZM:'Zambia',ZW:'Zimbabwe',BW:'Botswana',CA:'Canada',AU:'Australia',DE:'Germany',FR:'France',NL:'Netherlands',IE:'Ireland',IN:'India',SG:'Singapore',NZ:'New Zealand',AE:'United Arab Emirates',BR:'Brazil',MX:'Mexico',ES:'Spain',IT:'Italy',PL:'Poland',SE:'Sweden',NO:'Norway',DK:'Denmark',CH:'Switzerland'
 };
 
 export function normalizeCountryCode(value='') {
