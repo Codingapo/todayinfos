@@ -9,6 +9,8 @@ import { ROLE_PERMISSIONS, hasPermission } from '../src/lib/rbac.mjs';
 import { resolvedDefinition } from '../src/lib/content-types.mjs';
 import { inspectDatabaseUrl, resolveStoreMode } from '../src/lib/database-config.mjs';
 import { normalizeGeo, normalizeClassification, seoPath, filterPost } from '../src/lib/global-content.mjs';
+import { publicationKey, PUBLICATION_SCHEMA } from '../src/lib/publication-service.mjs';
+import { publishedObjectKey } from '../src/lib/r2.mjs';
 
 test('SEO slugs stay extension-free and readable',()=>{
   assert.equal(slugify('University of Limpopo — Applications 2027!'),'university-of-limpopo-applications-2027');
@@ -183,4 +185,17 @@ test('public serializer exposes explicit global location classification and lega
   assert.equal(p.location.country.code,'GB');
   assert.equal(p.classification.job_type,'full-time');
   assert.equal(p.organisation,'Example');
+});
+
+
+test('published JSON artifact keys are global and country aware',()=>{
+  assert.equal(
+    publishedObjectKey({countryCode:'ZA',collection:'bursaries',slug:'example-bursary'}),
+    'published/za/bursaries/example-bursary.json'
+  );
+  assert.equal(
+    publicationKey({content_type:'job',slug:'remote-role',geo:{country_code:'GB'}}),
+    'published/gb/jobs/remote-role.json'
+  );
+  assert.equal(PUBLICATION_SCHEMA,'todayinfo.content.v1');
 });
