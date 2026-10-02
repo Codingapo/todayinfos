@@ -53,8 +53,8 @@ if [[ -f "$APP_DIR/.env" ]]; then
   sudo chmod 640 "$APP_DIR/.env"
 fi
 
-# Nginx serves the public frontend directly. Give it read/traverse access only
-# to the public frontend path, not to private .env secrets.
+# Both Node processes need project access. Nginx only reverse-proxies to
+# localhost and never needs access to the private .env file.
 sudo chmod o+x /opt /opt/filebrowser "$APP_DIR" 2>/dev/null || true
 find "$APP_DIR/frontend" -type d -exec chmod 755 {} \;
 find "$APP_DIR/frontend" -type f -exec chmod 644 {} \;
