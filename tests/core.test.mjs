@@ -1289,3 +1289,45 @@ test('v0.9.3: VPS examples use port 3009 and document the Supabase Session poole
   assert.match(guide,/DATABASE_URL_IPV4/);
   assert.match(guide,/PORT=3009/);
 });
+
+
+test('VPS reverse proxy keeps frontend and API on separate ports',()=>{
+  const nginx=fs.readFileSync(new URL('../deploy/nginx/todayinfo.conf',import.meta.url),'utf8');
+  assert.match(nginx,/server_name todayinfo\.co\.za www\.todayinfo\.co\.za[\s\S]*proxy_pass http:\/\/127\.0\.0\.1:3011/);
+  assert.match(nginx,/server_name api\.todayinfo\.co\.za[\s\S]*location \^~ \/admin\/api\/[\s\S]*proxy_pass http:\/\/127\.0\.0\.1:3009/);
+  assert.match(nginx,/location \^~ \/api\/v1\/[\s\S]*proxy_pass http:\/\/127\.0\.0\.1:3009/);
+  const adminApiPos=nginx.indexOf('location ^~ /admin/api/');
+  const adminUiRedirectPos=nginx.indexOf('location ^~ /admin/',adminApiPos+1);
+  assert.ok(adminApiPos>=0&&adminUiRedirectPos>adminApiPos);
+});
+
+test('frontend CSP allows the API subdomain without allowing Cloudflare Insights scripts',()=>{
+  const src=fs.readFileSync(new URL('../src/frontend-server.mjs',import.meta.url),'utf8');
+  assert.match(src,/connectSrc:\["'self'",apiOrigin\]/);
+  assert.doesNotMatch(src,/static\.cloudflareinsights\.com/);
+  assert.doesNotMatch(src,/cloudflareinsights\.com/);
+});
+
+test('VPS installer preserves separate API and frontend ports and installs both services',()=>{
+  const install=fs.readFileSync(new URL('../deploy/install-vps.sh',import.meta.url),'utf8');
+  assert.match(install,/FRONTEND_PORT="\$\{FRONTEND_PORT:-3011\}"/);
+  assert.match(install,/todayinfo-api\.service/);
+  assert.match(install,/todayinfo-frontend\.service/);
+  assert.match(install,/127\.0\.0\.1:3009#127\.0\.0\.1:\$APP_PORT/);
+  assert.match(install,/127\.0\.0\.1:3011#127\.0\.0\.1:\$FRONTEND_PORT/);
+  assert.doesNotMatch(install,/127\\\.0\\\.0\\\.1:\[0-9\]\+#127\.0\.0\.1:\$APP_PORT/);
+});
+
+test('VPS updater restarts and health-checks both Node processes',()=>{
+  const update=fs.readFileSync(new URL('../deploy/update-vps.sh',import.meta.url),'utf8');
+  assert.match(update,/systemctl restart todayinfo-api/);
+  assert.match(update,/systemctl restart todayinfo-frontend/);
+  assert.match(update,/\$FRONTEND_PORT\/__frontend_health/);
+  assert.match(update,/\$APP_PORT\/health/);
+});
+
+test('admin client uses the API subdomain in production and credentialed requests',()=>{
+  const admin=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(admin,/https:\/\/api\.todayinfo\.co\.za\/admin\/api/);
+  assert.match(admin,/credentials:'include'/);
+});
