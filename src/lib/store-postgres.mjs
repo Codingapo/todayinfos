@@ -10,7 +10,7 @@ const json=v=>v==null?null:JSON.stringify(v);
 const JSON_FIELDS=new Set(['source_payload','prepared_draft','topics','related_links','recommendation_links','documents','navigation_links','type_data','geo','classification','publication','source']);
 
 export class PostgresStore{
-  constructor({connectionString,ssl=true}){this.pool=new Pool({connectionString,ssl:ssl?{rejectUnauthorized:false}:false,max:10,idleTimeoutMillis:30000});this.columnCache=new Map()}
+  constructor({connectionString,ssl=true,connectionTimeoutMillis=8000}){this.pool=new Pool({connectionString,ssl:ssl?{rejectUnauthorized:false}:false,max:10,idleTimeoutMillis:30000,connectionTimeoutMillis,keepAlive:true});this.columnCache=new Map()}
   q(t,p=[]){return this.pool.query(t,p)}
   async tableColumns(table){
     if(this.columnCache.has(table))return this.columnCache.get(table);

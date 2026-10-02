@@ -4,9 +4,9 @@ import { rankTrending } from './ranking.mjs';
 
 function availabilityError(error){
   const code=String(error?.code||'').toUpperCase();
-  if(['ENOTFOUND','ECONNREFUSED','ECONNRESET','ETIMEDOUT','EHOSTUNREACH','EAI_AGAIN','57P01','57P02','57P03','08000','08001','08003','08004','08006','08007','08P01'].includes(code))return true;
+  if(['ENOTFOUND','ECONNREFUSED','ECONNRESET','ETIMEDOUT','EHOSTUNREACH','ENETUNREACH','EAI_AGAIN','57P01','57P02','57P03','08000','08001','08003','08004','08006','08007','08P01'].includes(code))return true;
   const msg=String(error?.message||'').toLowerCase();
-  return /getaddrinfo|connection refused|connection terminated|timeout|network|socket|could not connect|server closed the connection/.test(msg);
+  return /getaddrinfo|connection refused|connection terminated|timeout|network|enetunreach|socket|could not connect|server closed the connection/.test(msg);
 }
 
 const dedupeKey=row=>row?.id||`${row?.geo?.country_code||''}|${row?.slug||''}`;

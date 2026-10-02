@@ -59,9 +59,15 @@ export function resolveStoreMode({ requestedMode = 'auto', databaseUrl = '' } = 
 
 export function collectDatabaseUrls(env=process.env,{max=20}={}) {
   const candidates=[
+    env.DATABASE_URL_IPV4,
     env.DATABASE_URL,
     ...String(env.DATABASE_URLS||'').split(/[\n,;]+/),
     ...Array.from({length:max},(_,i)=>env[`DATABASE_URL_${i+1}`])
   ].map(x=>String(x||'').trim()).filter(Boolean);
   return [...new Set(candidates.filter(x=>inspectDatabaseUrl(x).valid))];
+}
+
+
+export function isLikelySupabaseDirectHost(host='') {
+  return /^db\.[a-z0-9-]+\.supabase\.co$/i.test(String(host||'').trim());
 }
