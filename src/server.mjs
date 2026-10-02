@@ -5,6 +5,7 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import cors from 'cors';
+import compression from 'compression';
 import { config } from './config.mjs';
 import { authRouter } from './routes/auth.mjs';
 import { adminRouter } from './routes/admin.mjs';
@@ -29,15 +30,36 @@ async function ensureReferenceSeed(){
 }
 
 const app=express();
+const frontendRoot=path.resolve(__dirname,'..',config.frontendDir);
+const publicCache=(req,res,next)=>{
+  if(req.method!=='GET')return next();
+  const sensitive=/^\/(?:personalized|search)(?:\/|$)/.test(req.path);
+  if(sensitive){
+    res.setHeader('Cache-Control','private, no-cache, max-age=0, must-revalidate');
+  }else{
+    res.setHeader('Cache-Control',`public, max-age=${config.publicCacheSeconds}, s-maxage=${config.publicEdgeCacheSeconds}, stale-while-revalidate=600`);
+  }
+  next();
+};
+const frontendHeaders=(res,filePath)=>{
+  const rel=path.relative(frontendRoot,filePath).replaceAll('\\','/');
+  if(rel==='index.html'||rel==='data/api-config.js'){
+    res.setHeader('Cache-Control','public, max-age=0, must-revalidate');
+  }else{
+    res.setHeader('Cache-Control','public, max-age=3600, stale-while-revalidate=86400');
+  }
+};
+
 app.disable('x-powered-by');
 app.set('trust proxy',1);
+app.use(compression({threshold:1024}));
 app.use(helmet({contentSecurityPolicy:{directives:{defaultSrc:["'self'"],scriptSrc:["'self'"],styleSrc:["'self'","'unsafe-inline'"],imgSrc:["'self'","data:","https:"],connectSrc:["'self'"],fontSrc:["'self'","data:"],objectSrc:["'none'"],baseUri:["'self'"],frameAncestors:["'none'"]}}}));
 app.use(express.json({limit:'2mb'}));
 app.use(express.urlencoded({extended:false,limit:'2mb'}));
 app.use(cookieParser());
 
 app.get('/health',(req,res)=>res.json({status:'ok',service:'todayinfo-control-center',mode:config.dataStore,database_fallback:config.dataStoreFallback,store:store.health?.()||{mode:config.dataStore},reference_seed:referenceSeedStatus,time:new Date().toISOString()}));
-app.use('/api/v1',cors({origin:'*',methods:['GET','POST','OPTIONS']}),publicRouter);
+app.use('/api/v1',cors({origin:'*',methods:['GET','POST','OPTIONS']}),publicCache,publicRouter);
 app.use('/internal/ingest/v1',internalRouter);
 app.use('/admin/api/auth',authRouter);
 app.use('/admin/api',adminRouter);
@@ -45,7 +67,26 @@ app.use('/uploads',express.static(path.resolve(__dirname,'../uploads'),{fallthro
 app.use('/admin',express.static(path.resolve(__dirname,'../public/admin'),{index:false,maxAge:0,setHeaders(res){res.setHeader('Cache-Control','no-store, no-cache, must-revalidate')}}));
 app.get(/^\/admin(?:\/.*)?$/,(req,res)=>res.sendFile(path.resolve(__dirname,'../public/admin/index.html')));
 app.get('/openapi.yaml',(req,res)=>res.sendFile(path.resolve(__dirname,'../public/openapi.yaml')));
-app.get('/',(req,res)=>res.json({name:'TodayInfo Managed API',version:'v1',admin:'/admin/',publicApi:'/api/v1',health:'/health',openapi:'/openapi.yaml'}));
+app.get('/api-info',(req,res)=>res.json({name:'TodayInfo Managed API',version:'v1',admin:'/admin/',publicApi:'/api/v1',health:'/health',openapi:'/openapi.yaml',frontend:config.serveFrontend?'same-origin':'external'}));
+
+if(config.serveFrontend){
+  app.use(express.static(frontendRoot,{index:false,etag:true,fallthrough:true,setHeaders:frontendHeaders}));
+}else{
+  app.get('/',(req,res)=>res.json({name:'TodayInfo Managed API',version:'v1',admin:'/admin/',publicApi:'/api/v1',health:'/health',openapi:'/openapi.yaml'}));
+}
+
+app.use('/api/v1',(req,res)=>res.status(404).json({error:'API route not found',path:req.originalUrl}));
+
+if(config.serveFrontend){
+  app.use((req,res,next)=>{
+    if(req.method!=='GET'||!req.accepts('html'))return next();
+    if(/^\/(?:api|admin|internal|uploads|openapi\.yaml|health|api-info)(?:\/|$)/.test(req.path))return next();
+    res.setHeader('Cache-Control','public, max-age=0, must-revalidate');
+    return res.sendFile(path.join(frontendRoot,'index.html'));
+  });
+}
+
+app.use((req,res)=>res.status(404).json({error:'Route not found',path:req.originalUrl}));
 app.use((err,req,res,next)=>{console.error(err);if(res.headersSent)return next(err);res.status(err.status||500).json({error:config.nodeEnv==='production'?'Unexpected server error':err.message});});
 
 app.listen(config.port,()=>{
