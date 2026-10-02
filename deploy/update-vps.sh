@@ -63,14 +63,19 @@ if [[ -f .env ]]; then
   fi
 fi
 
-npm ci --omit=dev
+if [[ -f package-lock.json || -f npm-shrinkwrap.json ]]; then
+  npm ci --omit=dev
+else
+  echo "No package-lock.json found; using npm install --omit=dev."
+  npm install --omit=dev
+fi
 
 printf '\nRunning TodayInfo release gate...\n'
 npm run doctor
 npm run check
 npm test
 
-if ! systemctl list-unit-files todayinfo-api.service >/dev/null 2>&1; then
+if ! systemctl list-unit-files --type=service 2>/dev/null | grep -q '^todayinfo-api\.service'; then
   echo
   echo "todayinfo-api systemd service is not installed yet."
   echo "Run:"
