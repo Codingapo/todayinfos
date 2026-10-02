@@ -3,8 +3,9 @@ set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/filebrowser/today}"
 APP_PORT="${APP_PORT:-3009}"
-SERVICE_USER="${SERVICE_USER:-www-data}"
-SERVICE_GROUP="${SERVICE_GROUP:-www-data}"
+SERVICE_USER="${SERVICE_USER:-$(id -un)}"
+SERVICE_GROUP="${SERVICE_GROUP:-$(id -gn)}"
+NODE_BIN="${NODE_BIN:-$(command -v node || true)}"
 
 if [[ ! -d "$APP_DIR" ]]; then
   echo "TodayInfo folder not found: $APP_DIR" >&2
@@ -19,6 +20,10 @@ for cmd in node npm nginx curl; do
     exit 1
   fi
 done
+if [[ -z "$NODE_BIN" ]]; then
+  echo "Could not determine the Node.js binary path." >&2
+  exit 1
+fi
 
 if [[ ! -f .env ]]; then
   cp .env.production.example .env
@@ -54,14 +59,17 @@ tmp_nginx="$(mktemp)"
 trap 'rm -f "$tmp_service" "$tmp_nginx"' EXIT
 
 sed \
-  -e "s#/opt/filebrowser/today#$APP_DIR#g" \
+  -e "s#^WorkingDirectory=.*#WorkingDirectory=$APP_DIR#" \
+  -e "s#^EnvironmentFile=.*#EnvironmentFile=$APP_DIR/.env#" \
+  -e "s#^ExecStart=.*#ExecStart=$NODE_BIN $APP_DIR/src/server.mjs#" \
   -e "s/^User=.*/User=$SERVICE_USER/" \
   -e "s/^Group=.*/Group=$SERVICE_GROUP/" \
   "$APP_DIR/deploy/systemd/todayinfo-api.service" > "$tmp_service"
 
 sed \
+  -e "s#/var/www/today#$APP_DIR#g" \
   -e "s#/opt/filebrowser/today#$APP_DIR#g" \
-  -e "s#127.0.0.1:3009#127.0.0.1:$APP_PORT#g" \
+  -E -e "s#127\.0\.0\.1:[0-9]+#127.0.0.1:$APP_PORT#g" \
   "$APP_DIR/deploy/nginx/todayinfo.conf" > "$tmp_nginx"
 
 sudo cp "$tmp_service" /etc/systemd/system/todayinfo-api.service
@@ -69,7 +77,12 @@ sudo cp "$tmp_nginx" /etc/nginx/sites-available/todayinfo
 sudo ln -sf /etc/nginx/sites-available/todayinfo /etc/nginx/sites-enabled/todayinfo
 sudo rm -f /etc/nginx/sites-enabled/default
 
-npm ci --omit=dev
+if [[ -f package-lock.json || -f npm-shrinkwrap.json ]]; then
+  npm ci --omit=dev
+else
+  echo "No package-lock.json found; using npm install --omit=dev."
+  npm install --omit=dev
+fi
 npm run doctor
 npm run check
 npm test
