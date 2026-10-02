@@ -1,12 +1,14 @@
 // TodayInfo public frontend runtime configuration.
-// Change the order here when moving providers; the application can fail over without a rebuild.
+// Production uses the VPS API only. Local development talks directly to port 3011.
 (() => {
-  const local = ['localhost','127.0.0.1'].includes(location.hostname) ? `${location.origin}/api/v1` : null;
+  const local = ['localhost','127.0.0.1'].includes(location.hostname)
+    ? 'http://localhost:3011/api/v1'
+    : null;
   const apiBases = [
     local,
-    'https://api.todayinfo.co.za/api/v1',
-    'https://todayinfos.onrender.com/api/v1'
+    'https://api.todayinfo.co.za/api/v1'
   ].filter(Boolean);
+
   window.TODAYINFO_CONFIG = {
     siteOrigin: 'https://todayinfo.co.za',
     apiBases,
