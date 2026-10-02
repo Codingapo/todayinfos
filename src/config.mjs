@@ -19,13 +19,20 @@ const databaseUrl=databaseUrls[0]||process.env.DATABASE_URL||'';
 const storeResolution = resolveStoreMode({ requestedMode: requestedDataStore, databaseUrl });
 const jwtSecret = process.env.JWT_SECRET || 'todayinfo-dev-only-change-me';
 const nodeEnv = process.env.NODE_ENV || 'development';
+const publicSiteOrigin=(process.env.PUBLIC_SITE_ORIGIN || 'https://todayinfo.co.za').replace(/\/$/, '');
+const publicApiOrigin=(process.env.PUBLIC_API_ORIGIN || 'https://api.todayinfo.co.za').replace(/\/$/, '');
+const adminAllowedOrigins=[...new Set(
+  String(process.env.ADMIN_ALLOWED_ORIGINS||`${publicSiteOrigin},${process.env.APP_ORIGIN||''}`)
+    .split(',').map(x=>x.trim().replace(/\/$/,'')).filter(Boolean)
+)];
 
 export const config = {
   nodeEnv,
   port: Number(process.env.PORT || 3009),
   appOrigin: process.env.APP_ORIGIN || `http://localhost:${process.env.PORT || 3009}`,
-  publicSiteOrigin: (process.env.PUBLIC_SITE_ORIGIN || 'https://todayinfo.co.za').replace(/\/$/, ''),
-  publicApiOrigin: (process.env.PUBLIC_API_ORIGIN || 'https://api.todayinfo.co.za').replace(/\/$/, ''),
+  publicSiteOrigin,
+  publicApiOrigin,
+  adminAllowedOrigins,
   serveFrontend: String(process.env.SERVE_FRONTEND ?? 'false').toLowerCase()==='true',
   frontendDir: process.env.FRONTEND_DIR || 'frontend',
   jwtSecret,
