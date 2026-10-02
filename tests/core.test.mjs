@@ -1189,32 +1189,50 @@ test('production deployment defaults to port 3009 and keeps the R2 bucket name',
   assert.match(env,/SEED_ADMIN_USERNAME=apo/);
 });
 
-test('public API caching uses Nginx cache hints while admin auth and writes stay no-store',()=>{
+test('public API caching stays enabled while credentialed admin traffic is no-store',()=>{
   const server=fs.readFileSync(new URL('../src/server.mjs',import.meta.url),'utf8');
   assert.match(server,/function publicApiCache/);
   assert.match(server,/X-Accel-Expires/);
   assert.doesNotMatch(server,/Cloudflare-CDN-Cache-Control/);
   assert.match(server,/stale-while-revalidate=300/);
   assert.match(server,/stale-if-error=86400/);
-  assert.match(server,/app\.use\('\/admin\/api\/auth',noStore,authRouter\)/);
-  assert.match(server,/app\.use\('\/admin\/api',noStore,adminRouter\)/);
+  assert.match(server,/const adminCors=cors/);
+  assert.match(server,/credentials:true/);
+  assert.match(server,/config\.adminAllowedOrigins/);
+  assert.match(server,/app\.use\('\/admin\/api\/auth',adminCors,noStore,authRouter\)/);
+  assert.match(server,/app\.use\('\/admin\/api',adminCors,noStore,adminRouter\)/);
   assert.match(server,/app\.use\('\/internal\/ingest\/v1',noStore,internalRouter\)/);
 });
 
-test('single VPS deployment serves frontend admin and API from /opt/filebrowser/today',()=>{
-  const nginx=fs.readFileSync(new URL('../deploy/nginx/todayinfo.conf',import.meta.url),'utf8');
-  const service=fs.readFileSync(new URL('../deploy/systemd/todayinfo-api.service',import.meta.url),'utf8');
+test('dual-port VPS serves public frontend and admin on 3011 while API stays on 3009',()=>{
+  const frontend=fs.readFileSync(new URL('../src/frontend-server.mjs',import.meta.url),'utf8');
+  const apiService=fs.readFileSync(new URL('../deploy/systemd/todayinfo-api.service',import.meta.url),'utf8');
+  const frontendService=fs.readFileSync(new URL('../deploy/systemd/todayinfo-frontend.service',import.meta.url),'utf8');
+  const env=fs.readFileSync(new URL('../.env.production.example',import.meta.url),'utf8');
   const guide=fs.readFileSync(new URL('../deploy/VPS_DEPLOY.md',import.meta.url),'utf8');
-  assert.match(nginx,/server_name todayinfo\.co\.za www\.todayinfo\.co\.za/);
-  assert.match(nginx,/server_name api\.todayinfo\.co\.za/);
-  assert.match(nginx,/root \/opt\/filebrowser\/today\/frontend/);
-  assert.match(nginx,/try_files \$uri \$uri\/ \/index\.html/);
-  assert.match(nginx,/proxy_pass http:\/\/127\.0\.0\.1:3009/);
-  assert.match(nginx,/proxy_cache todayinfo_api_cache/);
-  assert.match(service,/EnvironmentFile=\/opt\/filebrowser\/today\/\.env/);
-  assert.match(service,/WorkingDirectory=\/opt\/filebrowser\/today/);
-  assert.match(guide,/certbot --nginx/);
-  assert.match(guide,/-d api\.todayinfo\.co\.za/);
+  assert.match(frontend,/FRONTEND_PORT\|\|3011/);
+  assert.match(frontend,/app\.use\('\/admin',express\.static/);
+  assert.match(frontend,/SPA fallback/);
+  assert.match(frontend,/sendFile\(path\.join\(frontendRoot,'index\.html'\)\)/);
+  assert.match(frontend,/Cache-Control','public, max-age=86400, stale-while-revalidate=604800/);
+  assert.match(apiService,/EnvironmentFile=\/opt\/filebrowser\/today\/\.env/);
+  assert.match(frontendService,/src\/frontend-server\.mjs/);
+  assert.match(env,/PORT=3009/);
+  assert.match(env,/FRONTEND_PORT=3011/);
+  assert.match(env,/ADMIN_ALLOWED_ORIGINS=https:\/\/todayinfo\.co\.za,https:\/\/www\.todayinfo\.co\.za/);
+  assert.match(guide,/127\.0\.0\.1:3011/);
+  assert.match(guide,/127\.0\.0\.1:3009/);
+  assert.doesNotMatch(guide,/certbot --nginx/);
+});
+
+test('admin dashboard uses api.todayinfo.co.za when served from todayinfo.co.za',()=>{
+  const admin=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
+  assert.match(admin,/https:\/\/api\.todayinfo\.co\.za\/admin\/api/);
+  assert.match(admin,/credentials:'include'/);
+  assert.match(admin,/adminEndpoint\('\/auth\/me'\)/);
+  assert.match(admin,/adminEndpoint\('\/auth\/login'\)/);
+  assert.match(admin,/adminEndpoint\('\/auth\/logout'\)/);
+  assert.match(admin,/const api=\(path,opts\)=>request\(adminEndpoint\(path\),opts\)/);
 });
 
 test('frontend production API config is VPS-only with no Render fallback',()=>{
@@ -1228,9 +1246,9 @@ test('frontend production API config is VPS-only with no Render fallback',()=>{
   }
   assert.match(config,/https:\/\/api\.todayinfo\.co\.za\/api\/v1/);
   assert.match(runtime,/http:\/\/localhost:3009\/api\/v1/);
-  assert.match(readme,/\/opt\/filebrowser\/today/);
+  assert.match(readme,/127\.0\.0\.1:3011/);
+  assert.match(readme,/127\.0\.0\.1:3009/);
 });
-
 
 test('v0.9.3: IPv4 database URL is preferred over direct IPv6-oriented URL',()=>{
   const urls=collectDatabaseUrls({
