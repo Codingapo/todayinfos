@@ -1,6 +1,6 @@
 {
   "name": "todayinfo-control-center",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "private": true,
   "type": "module",
   "engines": {
@@ -10,7 +10,7 @@
     "dev": "node --watch src/server.mjs",
     "start": "node src/server.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "find src scripts tests -name '*.mjs' -print0 | xargs -0 -n1 node --check && node --check public/admin/app.js",
+    "check": "find src scripts tests -name '*.mjs' -print0 | xargs -0 -n1 node --check && node --check public/admin/app.js && node --check frontend/assets/app-v6.js",
     "seed:admin": "node scripts/seed-admin.mjs",
     "doctor": "node scripts/config-doctor.mjs"
   },
@@ -22,10 +22,11 @@
     "express": "^5.1.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^2.0.2",
+    "multer": "^2.4.0",
     "pg": "^8.16.3",
     "zod": "^4.1.11",
     "dotenv": "^17.2.3",
-    "fast-xml-parser": "^5.2.5"
+    "fast-xml-parser": "^5.2.5",
+    "compression": "^1.8.1"
   }
 }

@@ -26,6 +26,8 @@ export const config = {
   appOrigin: process.env.APP_ORIGIN || `http://localhost:${process.env.PORT || 3009}`,
   publicSiteOrigin: (process.env.PUBLIC_SITE_ORIGIN || 'https://todayinfo.co.za').replace(/\/$/, ''),
   publicApiOrigin: (process.env.PUBLIC_API_ORIGIN || 'https://api.todayinfo.co.za').replace(/\/$/, ''),
+  serveFrontend: String(process.env.SERVE_FRONTEND ?? 'false').toLowerCase()==='true',
+  frontendDir: process.env.FRONTEND_DIR || 'frontend',
   jwtSecret,
   internalIngestKey: process.env.TODAYINFO_INGEST_KEY || '',
 
