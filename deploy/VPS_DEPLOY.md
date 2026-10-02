@@ -40,6 +40,23 @@ R2_BUCKET=todayinfo
 
 Keep the real secrets only in `/opt/filebrowser/today/.env`.
 
+## Database connectivity check
+
+Before starting production, run:
+
+```bash
+npm run doctor
+```
+
+If an IPv4-only VPS reports `ENETUNREACH` when connecting to a Supabase direct database host, use the Supabase **Session pooler** connection string:
+
+```env
+DATABASE_URL_IPV4=postgresql://...
+PORT=3009
+```
+
+TodayInfo prefers `DATABASE_URL_IPV4` when it is configured.
+
 ## Start
 
 From the project folder:
