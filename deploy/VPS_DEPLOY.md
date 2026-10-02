@@ -55,7 +55,7 @@ R2_BUCKET=todayinfo
 
 Fill in your real JWT, database, R2 and ingestion credentials. Never commit the real .env.
 
-If the VPS is IPv4-only and Supabase direct PostgreSQL is unreachable, use the Session Pooler connection string in `DATABASE_URL_IPV4`.
+If the VPS is IPv4-only and Supabase direct PostgreSQL is unreachable (for example an `ENETUNREACH` error to an IPv6 database address), use the Session Pooler connection string in `DATABASE_URL_IPV4`.
 
 ## 2. Install dependencies
 
