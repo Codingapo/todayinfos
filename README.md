@@ -1,4 +1,4 @@
-# TodayInfo Control Center v0.9.5
+# TodayInfo Control Center v0.9.6
 
 A Node.js admin dashboard and structured publishing API for TodayInfo.
 
@@ -783,3 +783,44 @@ APP_DIR=/opt/filebrowser/today APP_PORT=3009 bash deploy/update-vps.sh
 The updater supports servers without Git by downloading the GitHub `main` archive and preserving the private `.env`, local data, uploads and runtime queues.
 
 R2 publishing/storage is unchanged.
+
+
+## v0.9.6 — Dual-port VPS frontend and API
+
+The whole project still lives in one folder, but production now supports two independent Node processes:
+
+```text
+todayinfo.co.za + /admin  -> 127.0.0.1:3011
+api.todayinfo.co.za       -> 127.0.0.1:3009
+```
+
+Start them with:
+
+```bash
+npm run start:api
+npm run start:frontend
+```
+
+The frontend process serves the public SPA and the existing admin dashboard. It includes SPA fallback so extension-free public routes do not return `Cannot GET`.
+
+The admin dashboard uses `https://api.todayinfo.co.za/admin/api` when it is served from `todayinfo.co.za`. Credentialed CORS and CSRF remain enforced by the API.
+
+Production environment additions:
+
+```env
+PORT=3009
+FRONTEND_PORT=3011
+FRONTEND_HOST=127.0.0.1
+PUBLIC_SITE_ORIGIN=https://todayinfo.co.za
+PUBLIC_API_ORIGIN=https://api.todayinfo.co.za
+ADMIN_ALLOWED_ORIGINS=https://todayinfo.co.za,https://www.todayinfo.co.za
+```
+
+Caching:
+- frontend assets: one-day browser cache + stale-while-revalidate;
+- SPA HTML: revalidated;
+- admin UI: no-store;
+- public API: existing cache headers remain;
+- published JSON: existing R2/local fallback remains unchanged.
+
+Your Nginx/Certbot configuration is intentionally left to you.
