@@ -114,3 +114,13 @@ test('Nginx and systemd use the single /var/www/today VPS layout',()=>{
   assert.match(service,/EnvironmentFile=\/var\/www\/today\/\.env/);
   assert.match(service,/src\/server\.mjs/);
 });
+
+
+test('VPS updater removes stale Cloudflare artifacts before release',()=>{
+  const updater=read('deploy/update-vps.sh');
+  assert.match(updater,/rm -f frontend\/_redirects frontend\/_headers/);
+  assert.match(updater,/npm run doctor/);
+  assert.match(updater,/npm run check/);
+  assert.match(updater,/npm test/);
+  assert.ok(updater.indexOf('npm test')<updater.indexOf('systemctl restart todayinfo-api'));
+});
