@@ -1,48 +1,30 @@
-# Build Status — v0.9.2 Single VPS Consolidation
+# Build Status — v0.9.5 VPS 3009 Alignment
 
-This release consolidates the existing TodayInfo frontend, admin and API onto one VPS without changing the existing R2 bucket or database architecture.
+This release fixes the VPS deployment configuration without changing TodayInfo content, R2, database, Import Inbox, Source Hub or publishing behavior.
 
-## Production layout
+## Canonical VPS layout
 
-- Project folder: `/var/www/today`
+- Project folder: `/opt/filebrowser/today`
+- Node listener: `127.0.0.1:3009`
 - Frontend: `https://todayinfo.co.za`
 - Admin: `https://todayinfo.co.za/admin/`
 - API: `https://api.todayinfo.co.za/api/v1`
-- Node listener: `127.0.0.1:3011`
-- Nginx serves the static frontend directly.
-- Nginx proxies admin and API traffic to Node.
-- Certbot manages HTTPS for the site and API hostnames.
 
-## Removed hosting dependencies
+## Fixes
 
-- Cloudflare Pages is not required.
-- Render is not a frontend/API fallback.
-- Frontend runtime config uses the VPS API only.
-- Cloudflare-specific CDN cache response headers were removed.
+- Nginx upstream changed from port 3011 to 3009.
+- Nginx frontend root changed from `/var/www/today/frontend` to `/opt/filebrowser/today/frontend`.
+- systemd WorkingDirectory, EnvironmentFile and ExecStart now use `/opt/filebrowser/today`.
+- Node default port changed to 3009.
+- production environment examples use port 3009 and the actual VPS directory.
+- `deploy/install-vps.sh` installs/generates systemd + Nginx from `APP_DIR` and `APP_PORT`.
+- `deploy/update-vps.sh` no longer requires Git: when Git is unavailable it downloads the GitHub `main` archive while preserving `.env`, local data, uploads and runtime state.
+- Update/install health checks use the configured port instead of a hard-coded 3011.
 
-Cloudflare **R2 remains in use** as the existing published JSON/file storage layer.
+## Existing storage
 
-## Routing
+Cloudflare R2 remains unchanged and continues to hold published JSON/files. This release only fixes the VPS serving/deployment layer.
 
-Nginx SPA fallback serves `frontend/index.html` for extension-free public routes, including jobs, bursaries, country routes, detail pages and guides. This prevents public `Cannot GET` errors.
+## Why the previous public URL returned 502
 
-Admin remains a Node application and is proxied at `/admin/`.
-
-## Caching
-
-- Frontend browser/localStorage cache remains.
-- Nginx caches frontend assets.
-- Nginx proxy-caches cacheable public API GET/HEAD responses.
-- Node sends standard `Cache-Control` and Nginx `X-Accel-Expires` hints.
-- Nginx may serve stale public cache during temporary backend errors.
-- Personalized, admin, auth, internal-ingest and write traffic remain uncached.
-
-## Environment
-
-Both `.env.example` and `.env.production.example` now describe the same VPS production shape and use port 3011.
-
-Real secrets remain private in `/var/www/today/.env`.
-
-## Existing application behavior
-
-The content/import/source/R2/database/admin/employee logic is retained. This release is a deployment consolidation, not a rebuild.
+A Node process had been started manually on port 3009, while the checked-in Nginx deployment still proxied to port 3011. Stopping the manual process with Ctrl+C also left no backend listening. The production service now uses systemd so it stays running and restarts automatically.
