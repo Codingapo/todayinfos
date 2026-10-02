@@ -66,10 +66,11 @@ function publicApiCache(req,res,next){
   const slowChanging=['/site','/meta','/sources','/countries','/locations','/categories','/tags'];
   const slow=slowChanging.some(prefix=>req.path===prefix||req.path.startsWith(prefix+'/'));
   const browserTtl=slow?120:30;
-  const edgeTtl=slow?600:120;
+  const nginxTtl=slow?600:120;
 
+  // Browser cache + shared Nginx cache hint. No Cloudflare CDN dependency is required.
   res.setHeader('Cache-Control',`public, max-age=${browserTtl}, stale-while-revalidate=300, stale-if-error=86400`);
-  res.setHeader('Cloudflare-CDN-Cache-Control',`public, max-age=${edgeTtl}, stale-while-revalidate=600, stale-if-error=86400`);
+  res.setHeader('X-Accel-Expires',String(nginxTtl));
   next();
 }
 

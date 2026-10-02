@@ -1,144 +1,288 @@
-# TodayInfo production deployment
+# TodayInfo — single VPS production deployment
 
-This deployment keeps the existing Cloudflare R2 bucket and database architecture unchanged.
+This is the production layout for **todayinfo.co.za** and **api.todayinfo.co.za**.
 
-## Target layout
+Cloudflare Pages and the Render fallback are not required. The existing **R2 bucket remains unchanged** and is still used by the backend for published JSON/files.
 
-- Public frontend: `https://todayinfo.co.za` on Cloudflare Pages.
-- API/admin: `https://api.todayinfo.co.za` on the VPS.
-- Node binds to port `3009`.
-- Nginx is the public reverse proxy.
-- Certbot manages the TLS certificate for the API hostname.
-- Cloudflare Pages manages TLS for the public frontend.
+## Final folder layout
 
-## 1. Prepare the VPS
+Put the whole Git repository in one folder:
 
-Install Node.js 20+, Nginx, Git and Certbot using the packages appropriate for your Linux distribution.
+```text
+/var/www/today/
+  frontend/         # public website served directly by Nginx
+  public/admin/     # admin app served by Node through /admin/
+  src/              # TodayInfo API/backend
+  data/             # local published/fallback/queue files
+  uploads/          # local upload fallback
+  deploy/           # Nginx + systemd files
+  migrations/
+  .env              # private production secrets
+  package.json
+```
 
-Clone/update the repository into:
+Production URLs:
+
+```text
+https://todayinfo.co.za              public frontend
+https://todayinfo.co.za/admin/       CEO/employee dashboard
+https://api.todayinfo.co.za/api/v1   public API
+http://127.0.0.1:3011                private Node listener
+```
+
+## 1. DNS
+
+Point these DNS records to the VPS public IP:
+
+```text
+A  todayinfo.co.za      YOUR_VPS_IP
+A  www.todayinfo.co.za  YOUR_VPS_IP
+A  api.todayinfo.co.za  YOUR_VPS_IP
+```
+
+Wait until all three names resolve to the VPS.
+
+## 2. Install VPS packages
+
+Use Ubuntu/Debian packages for Nginx, Git and curl. Install Node.js 20 or newer.
+
+Example:
 
 ```bash
-sudo mkdir -p /var/www/todayinfos
-sudo chown -R "$USER":"$USER" /var/www/todayinfos
-git clone https://github.com/Codingapo/todayinfos.git /var/www/todayinfos
-cd /var/www/todayinfos
+sudo apt update
+sudo apt install -y nginx git curl
+node -v
+npm -v
+```
+
+For Certbot, use the installation method recommended for your OS by certbot.eff.org. The official Nginx plugin can install the certificate and edit Nginx automatically.
+
+## 3. Clone everything into one folder
+
+```bash
+sudo mkdir -p /var/www/today
+sudo chown -R "$USER":"$USER" /var/www/today
+
+git clone https://github.com/Codingapo/todayinfos.git /var/www/today
+cd /var/www/today
+
 npm ci --omit=dev
 ```
 
-## 2. Create the real .env
+If the repository is already there:
 
 ```bash
-cd /var/www/todayinfos
+cd /var/www/today
+git pull --ff-only
+npm ci --omit=dev
+```
+
+## 4. Create the private .env
+
+```bash
+cd /var/www/today
 cp .env.production.example .env
 nano .env
 ```
 
-Fill in the real values. Keep:
+Keep these production values:
 
 ```env
 NODE_ENV=production
-PORT=3009
-APP_ORIGIN=https://api.todayinfo.co.za
+PORT=3011
+APP_ORIGIN=https://todayinfo.co.za
 PUBLIC_SITE_ORIGIN=https://todayinfo.co.za
 PUBLIC_API_ORIGIN=https://api.todayinfo.co.za
+SERVE_FRONTEND=false
+FRONTEND_DIR=frontend
+DATA_STORE=postgres
 R2_BUCKET=todayinfo
 ```
 
-Do not commit `.env`.
+Then fill in:
 
-## 3. Seed or rotate Apo's owner password
+- `JWT_SECRET`
+- `DATABASE_URL`
+- your existing R2 credentials
+- `TODAYINFO_INGEST_KEY`
+- optional Resend credentials
+- Apo/CEO seed email + password when rotating the login
 
-Set `SEED_ADMIN_PASSWORD` in the private VPS `.env`, then run:
+Never commit the real `.env`.
+
+## 5. Change/seed Apo's password
+
+Set a private value in:
+
+```env
+SEED_ADMIN_USERNAME=apo
+SEED_ADMIN_PASSWORD=YOUR_NEW_PASSWORD
+SEED_ADMIN_EMAIL=YOUR_EMAIL
+```
+
+Then run:
 
 ```bash
-cd /var/www/todayinfos
+cd /var/www/today
 npm run seed:admin
 ```
 
 The production seed script refuses the password `admin`.
 
-After the password is seeded, you may remove `SEED_ADMIN_PASSWORD` from the environment file if you prefer.
+After seeding, you may remove `SEED_ADMIN_PASSWORD` from the real `.env`.
 
-## 4. Install the systemd unit
+## 6. Prepare writable folders
+
+Node only needs write access to local fallback/queue/upload folders.
 
 ```bash
-sudo cp /var/www/todayinfos/deploy/systemd/todayinfo-api.service /etc/systemd/system/todayinfo-api.service
-sudo chown -R www-data:www-data /var/www/todayinfos
+cd /var/www/today
+sudo mkdir -p data uploads /var/cache/nginx/todayinfo
+sudo chown -R www-data:www-data data uploads
+sudo chown -R www-data:www-data /var/cache/nginx/todayinfo
+sudo chmod -R u+rwX,g+rwX data uploads
+```
+
+The frontend and source code can remain read-only to the Node service.
+
+## 7. Install the systemd service
+
+```bash
+sudo cp /var/www/today/deploy/systemd/todayinfo-api.service /etc/systemd/system/todayinfo-api.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now todayinfo-api
 sudo systemctl status todayinfo-api
 ```
 
-Local health check:
+Local checks:
 
 ```bash
-curl http://127.0.0.1:3009/health
+curl http://127.0.0.1:3011/health
+curl http://127.0.0.1:3011/api/v1/meta
 ```
 
-## 5. Configure Nginx
+If this fails, inspect logs:
 
 ```bash
-sudo cp /var/www/todayinfos/deploy/nginx/todayinfo-api.conf /etc/nginx/sites-available/todayinfo-api
-sudo ln -s /etc/nginx/sites-available/todayinfo-api /etc/nginx/sites-enabled/todayinfo-api
+sudo journalctl -u todayinfo-api -n 100 --no-pager
+sudo journalctl -u todayinfo-api -f
+```
+
+## 8. Install the combined Nginx config
+
+```bash
+sudo cp /var/www/today/deploy/nginx/todayinfo.conf /etc/nginx/sites-available/todayinfo
+sudo ln -sf /etc/nginx/sites-available/todayinfo /etc/nginx/sites-enabled/todayinfo
+
+# Optional: remove the default welcome site.
+sudo rm -f /etc/nginx/sites-enabled/default
+
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-Point the DNS record for `api.todayinfo.co.za` to the VPS IP before requesting the certificate.
-
-## 6. Get HTTPS with Certbot
-
-Once the DNS record resolves to the VPS:
+Before HTTPS, test:
 
 ```bash
-sudo certbot --nginx -d api.todayinfo.co.za
+curl -I http://todayinfo.co.za/
+curl -I http://todayinfo.co.za/jobs
+curl -I http://todayinfo.co.za/admin/
+curl http://api.todayinfo.co.za/health
 ```
 
-Verify:
+The public Nginx site uses SPA fallback:
+
+```nginx
+try_files $uri $uri/ /index.html;
+```
+
+so routes such as `/jobs`, `/bursaries`, `/za/jobs/example-job`, and `/guides/example-how-to-apply` do not produce `Cannot GET`.
+
+## 9. HTTPS with Certbot
+
+Once DNS resolves correctly, use the Certbot Nginx plugin.
+
+Typical command:
 
 ```bash
+sudo certbot --nginx \
+  -d todayinfo.co.za \
+  -d www.todayinfo.co.za \
+  -d api.todayinfo.co.za
+```
+
+Choose the HTTPS redirect option when prompted.
+
+Then verify automatic renewal:
+
+```bash
+sudo certbot renew --dry-run
+```
+
+Final checks:
+
+```bash
+curl -I https://todayinfo.co.za/
+curl -I https://todayinfo.co.za/jobs
+curl -I https://todayinfo.co.za/admin/
 curl https://api.todayinfo.co.za/health
 curl https://api.todayinfo.co.za/api/v1/meta
 ```
 
-## 7. Deploy the frontend to Cloudflare Pages
+## 10. Caching / speed
 
-Use the TodayInfo Cloudflare Pages ZIP supplied with this release.
+The VPS has several cache layers:
 
-In Cloudflare:
+1. **Nginx static cache headers** for frontend assets.
+2. **Nginx proxy cache** for public API GET/HEAD responses.
+3. **Node Cache-Control + X-Accel-Expires** cache hints.
+4. **Frontend memory/localStorage stale cache**.
+5. **R2/local published JSON fallback** in the existing backend.
 
-1. Workers & Pages → create/select the Pages project.
-2. Upload the static frontend or connect a frontend repository.
-3. Add the custom domain `todayinfo.co.za` from Pages → Custom domains.
-4. If desired, add `www.todayinfo.co.za` and redirect it to the apex.
-5. Keep `data/api-config.js` pointing to:
-   - primary: `https://api.todayinfo.co.za/api/v1`
-   - fallback during migration: `https://todayinfos.onrender.com/api/v1`
+Nginx does not force-cache admin/auth/write requests. The backend sends `no-store` for personalized/admin/write paths, and Nginx respects those headers.
 
-The frontend contains `_redirects`, so routes such as `/jobs`, `/bursaries` and article pages resolve to the SPA instead of returning "Cannot GET".
-
-## 8. Caching
-
-The Node API sends cache headers only for public GET requests.
-
-- public lists/details: short browser cache + Cloudflare edge cache;
-- site/meta/source taxonomy: longer edge cache;
-- stale public data may be served briefly during an upstream error;
-- personalized requests are private/no-store;
-- admin, auth, ingestion, health and all writes are no-store;
-- frontend versioned assets are cached for one year by Cloudflare Pages;
-- frontend HTML and API config always revalidate.
-
-This means edits become visible quickly while repeat traffic is much faster.
-
-## 9. Updating later
+To inspect API cache behavior:
 
 ```bash
-cd /var/www/todayinfos
-sudo -u www-data git pull --ff-only
-sudo -u www-data npm ci --omit=dev
-sudo systemctl restart todayinfo-api
-sudo systemctl status todayinfo-api
+curl -I "https://api.todayinfo.co.za/api/v1/posts?limit=5"
 ```
 
-If a migration is part of a future release, review it before applying it to your production databases.
+Look for:
+
+```text
+X-TodayInfo-Cache: MISS
+X-TodayInfo-Cache: HIT
+```
+
+on repeated requests.
+
+## 11. R2 is not removed
+
+Only the website hosting moved to the VPS.
+
+These remain unchanged:
+
+- R2 bucket name and credentials
+- published JSON object structure
+- publication retry queue
+- Supabase/PostgreSQL tracking
+- multiple-database support
+- existing TodayInfo content/import logic
+
+## 12. Updating the live VPS later
+
+```bash
+cd /var/www/today
+
+sudo systemctl stop todayinfo-api
+sudo -u "$USER" git pull --ff-only
+sudo -u "$USER" npm ci --omit=dev
+sudo systemctl start todayinfo-api
+
+sudo nginx -t
+sudo systemctl reload nginx
+
+curl https://api.todayinfo.co.za/health
+```
+
+If a future release includes a database migration, review the migration before running it against production.
