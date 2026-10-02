@@ -8,7 +8,7 @@ import { publicPost } from '../src/lib/serializers.mjs';
 import { ROLE_PERMISSIONS, ROLE_LABELS, hasPermission } from '../src/lib/rbac.mjs';
 import { resolvedDefinition } from '../src/lib/content-types.mjs';
 import { inspectDatabaseUrl, resolveStoreMode, collectDatabaseUrls } from '../src/lib/database-config.mjs';
-import { normalizeGeo, normalizeClassification, normalizeCountryCode, seoPath, filterPost } from '../src/lib/global-content.mjs';
+import { normalizeGeo, normalizeClassification, normalizeCountryCode, seoPath, filterPost, queryFilters, matchesSearch } from '../src/lib/global-content.mjs';
 import { publicationKey, PUBLICATION_SCHEMA } from '../src/lib/publication-service.mjs';
 import { publishedObjectKey } from '../src/lib/r2.mjs';
 import { PUBLISHED_INDEX_KEY, PUBLISHED_INDEX_SCHEMA } from '../src/lib/published-index.mjs';
@@ -27,7 +27,6 @@ import { plainEnglishNewsDraft } from '../src/lib/plain-content.mjs';
 import { NEWS_FEEDS } from '../src/lib/news-harvest.mjs';
 import { buildTrafficAtlas, continentForCode } from '../src/lib/geo-analytics.mjs';
 import { preparePrivateIngestItem, descriptiveOpportunitySlug } from '../src/lib/private-ingest.mjs';
-import { filterPost, queryFilters, matchesSearch } from '../src/lib/global-content.mjs';
 import { SOURCE_CATALOG, SOURCE_CATEGORIES, sourceHubPayload, editorialPolicyFor } from '../src/lib/source-catalog.mjs';
 import { fetchImports } from '../src/lib/importer.mjs';
 
