@@ -1,49 +1,48 @@
-# Build Status — v0.9.0 Production Online
+# Build Status — v0.9.2 Single VPS Consolidation
 
-TodayInfo v0.9 prepares the existing application for a split production deployment without changing the R2 bucket or content architecture.
+This release consolidates the existing TodayInfo frontend, admin and API onto one VPS without changing the existing R2 bucket or database architecture.
 
-## Production topology
-- Public site: https://todayinfo.co.za on Cloudflare Pages.
-- API/admin: https://api.todayinfo.co.za behind Nginx.
-- Node API binds to port 3009.
-- VPS process is managed by systemd.
-- API TLS can be issued with Certbot/Nginx.
-- Cloudflare Pages manages frontend TLS.
+## Production layout
 
-## Frontend
-- Static SPA package keeps the existing TodayInfo visual design.
-- Production API: https://api.todayinfo.co.za/api/v1.
-- Temporary failover API: https://todayinfos.onrender.com/api/v1.
-- SPA _redirects prevents direct routes such as /jobs and /bursaries from returning "Cannot GET".
-- Versioned frontend assets use long immutable cache headers.
-- HTML and API config always revalidate.
-- Browser API cache persists successful GET responses and can serve stale data temporarily if both API origins are unavailable.
+- Project folder: `/var/www/today`
+- Frontend: `https://todayinfo.co.za`
+- Admin: `https://todayinfo.co.za/admin/`
+- API: `https://api.todayinfo.co.za/api/v1`
+- Node listener: `127.0.0.1:3011`
+- Nginx serves the static frontend directly.
+- Nginx proxies admin and API traffic to Node.
+- Certbot manages HTTPS for the site and API hostnames.
 
-## API caching
-- Public GETs: short browser cache with stale-while-revalidate.
-- Cloudflare edge receives separate Cloudflare-CDN-Cache-Control TTLs.
-- Site/meta/source taxonomy uses a longer edge TTL.
-- Personalized public requests are no-store.
-- Admin API, auth, internal ingestion, health and writes are no-store.
-- Express strong ETags remain enabled for revalidation.
+## Removed hosting dependencies
+
+- Cloudflare Pages is not required.
+- Render is not a frontend/API fallback.
+- Frontend runtime config uses the VPS API only.
+- Cloudflare-specific CDN cache response headers were removed.
+
+Cloudflare **R2 remains in use** as the existing published JSON/file storage layer.
+
+## Routing
+
+Nginx SPA fallback serves `frontend/index.html` for extension-free public routes, including jobs, bursaries, country routes, detail pages and guides. This prevents public `Cannot GET` errors.
+
+Admin remains a Node application and is proxied at `/admin/`.
+
+## Caching
+
+- Frontend browser/localStorage cache remains.
+- Nginx caches frontend assets.
+- Nginx proxy-caches cacheable public API GET/HEAD responses.
+- Node sends standard `Cache-Control` and Nginx `X-Accel-Expires` hints.
+- Nginx may serve stale public cache during temporary backend errors.
+- Personalized, admin, auth, internal-ingest and write traffic remain uncached.
 
 ## Environment
-- Default local/VPS port is 3009.
-- .env.production.example contains placeholders only.
-- Real .env stays ignored by Git.
-- Apo owner password is set/rotated using npm run seed:admin and SEED_ADMIN_PASSWORD.
-- Production seeding refuses password "admin".
 
-## Storage
-- R2 bucket remains: todayinfo.
-- Existing R2 JSON page publishing, application guides, retry queues and local fallback remain unchanged.
-- Existing Supabase/PostgreSQL federation remains unchanged.
+Both `.env.example` and `.env.production.example` now describe the same VPS production shape and use port 3011.
 
-## Deployment files
-- deploy/nginx/todayinfo-api.conf
-- deploy/systemd/todayinfo-api.service
-- deploy/VPS_DEPLOY.md
-- frontend/api-config.production.js
-- frontend/README.md
+Real secrets remain private in `/var/www/today/.env`.
 
-The release must pass source syntax checks and the complete regression test suite before merge.
+## Existing application behavior
+
+The content/import/source/R2/database/admin/employee logic is retained. This release is a deployment consolidation, not a rebuild.
