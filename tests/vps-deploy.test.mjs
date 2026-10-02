@@ -32,8 +32,8 @@ test('VPS updater can work without git and preserves production state',()=>{
   assert.match(update,/Git is not available here; using the GitHub main-branch archive instead/);
   assert.match(update,/Codingapo\/todayinfos\/archive\/refs\/heads\/main\.tar\.gz/);
   assert.match(update,/APP_DIR="\$\{APP_DIR:-\/opt\/filebrowser\/today\}"/);
-  assert.match(update,/APP_PORT="\\$\\{APP_PORT:-\\$\\(read_env_value PORT\\)\\}"/);
-  assert.match(update,/FRONTEND_PORT="\\$\\{FRONTEND_PORT:-\\$\\(read_env_value FRONTEND_PORT\\)\\}"/);
+  assert.match(update,/APP_PORT="\$\{APP_PORT:-\$\(read_env_value PORT\)\}"/);
+  assert.match(update,/FRONTEND_PORT="\$\{FRONTEND_PORT:-\$\(read_env_value FRONTEND_PORT\)\}"/);
   assert.match(update,/data\/seeds/);
   assert.match(update,/No package-lock\.json found; using npm install --omit=dev/);
   assert.doesNotMatch(update,/rm -rf "\$APP_DIR\/data"/);
