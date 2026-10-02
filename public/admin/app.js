@@ -10,7 +10,7 @@ const can=permission=>(state.permissions||[]).some(p=>p==='*'||p===permission||(
 const VIEW_PERMISSION={overview:'dashboard.view',sources:'imports.fetch',imports:'imports.view',demand:'imports.fetch',posts:'posts.view',media:'media.view',analytics:'analytics.view',team:'team.view',settings:'settings.view',audit:'audit.view'};
 const firstAllowedView=()=>['overview','imports','posts','media','sources','analytics','team','settings','audit'].find(v=>can(VIEW_PERMISSION[v]))||'posts';
 const applyAccess=()=>{
-  $$$('#nav button[data-view]').forEach(btn=>{const permission=VIEW_PERMISSION[btn.dataset.view];btn.hidden=Boolean(permission&&!can(permission))});
+  $$('#nav button[data-view]').forEach(btn=>{const permission=VIEW_PERMISSION[btn.dataset.view];btn.hidden=Boolean(permission&&!can(permission))});
   $$('#nav p').forEach(label=>{let next=label.nextElementSibling,visible=false;while(next&&next.tagName!=='P'){if(next.matches?.('button[data-view]')&&!next.hidden)visible=true;next=next.nextElementSibling}label.hidden=!visible});
   if($('#quickFetch'))$('#quickFetch').hidden=!can('imports.fetch');
   if($('#quickCreate'))$('#quickCreate').hidden=!can('posts.create');
