@@ -5,6 +5,7 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import cors from 'cors';
+import compression from 'compression';
 import { config } from './config.mjs';
 import { authRouter } from './routes/auth.mjs';
 import { adminRouter } from './routes/admin.mjs';
@@ -15,6 +16,7 @@ import { store } from './lib/store.mjs';
 import { bootstrapReferenceSeeds } from './lib/reference-seed.mjs';
 
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
+const frontendRoot=path.resolve(__dirname,'..',config.frontendDir);
 let referenceSeedStatus={state:'pending',records:null,last_attempt_at:null,error:null};
 async function ensureReferenceSeed(){
   referenceSeedStatus={...referenceSeedStatus,state:'loading',last_attempt_at:new Date().toISOString(),error:null};
@@ -32,6 +34,7 @@ const app=express();
 app.disable('x-powered-by');
 app.set('trust proxy',1);
 app.set('etag','strong');
+app.use(compression({threshold:1024}));
 app.use(helmet({contentSecurityPolicy:{directives:{defaultSrc:["'self'"],scriptSrc:["'self'"],styleSrc:["'self'","'unsafe-inline'"],imgSrc:["'self'","data:","https:"],connectSrc:["'self'"],fontSrc:["'self'","data:"],objectSrc:["'none'"],baseUri:["'self'"],frameAncestors:["'none'"]}}}));
 app.use(express.json({limit:'2mb'}));
 app.use(express.urlencoded({extended:false,limit:'2mb'}));
@@ -79,7 +82,27 @@ app.use('/uploads',express.static(path.resolve(__dirname,'../uploads'),{fallthro
 app.use('/admin',express.static(path.resolve(__dirname,'../public/admin'),{index:false,maxAge:0,setHeaders(res){res.setHeader('Cache-Control','no-store, no-cache, must-revalidate')}}));
 app.get(/^\/admin(?:\/.*)?$/,(req,res)=>res.sendFile(path.resolve(__dirname,'../public/admin/index.html')));
 app.get('/openapi.yaml',(req,res)=>{res.setHeader('Cache-Control','public, max-age=300, stale-while-revalidate=86400');return res.sendFile(path.resolve(__dirname,'../public/openapi.yaml'))});
-app.get('/',(req,res)=>{res.setHeader('Cache-Control','public, max-age=60, stale-while-revalidate=300');res.json({name:'TodayInfo Managed API',version:'v1',site:config.publicSiteOrigin,api:config.publicApiOrigin,admin:'/admin/',publicApi:'/api/v1',health:'/health',openapi:'/openapi.yaml'})});
+app.get('/api-info',(req,res)=>{res.setHeader('Cache-Control','public, max-age=60');res.json({name:'TodayInfo Managed API',version:'v1',site:config.publicSiteOrigin,api:config.publicApiOrigin,admin:'/admin/',publicApi:'/api/v1',health:'/health',openapi:'/openapi.yaml',frontend:config.serveFrontend?'same-vps':'external'})});
+
+app.use('/api/v1',(req,res)=>res.status(404).json({error:'API route not found',path:req.originalUrl}));
+
+if(config.serveFrontend){
+  app.use(express.static(frontendRoot,{index:false,etag:true,fallthrough:true,setHeaders(res,filePath){
+    const rel=path.relative(frontendRoot,filePath).replaceAll('\\\\','/');
+    if(rel==='index.html'||rel==='data/api-config.js')res.setHeader('Cache-Control','public, max-age=0, must-revalidate');
+    else res.setHeader('Cache-Control','public, max-age=3600, stale-while-revalidate=86400');
+  }}));
+  app.use((req,res,next)=>{
+    if(req.method!=='GET'||!req.accepts('html'))return next();
+    if(/^\/(?:api|admin|internal|uploads|health|openapi\.yaml|api-info)(?:\/|$)/.test(req.path))return next();
+    res.setHeader('Cache-Control','public, max-age=0, must-revalidate');
+    return res.sendFile(path.join(frontendRoot,'index.html'));
+  });
+}else{
+  app.get('/',(req,res)=>{res.setHeader('Cache-Control','public, max-age=60, stale-while-revalidate=300');res.json({name:'TodayInfo Managed API',version:'v1',site:config.publicSiteOrigin,api:config.publicApiOrigin,admin:'/admin/',publicApi:'/api/v1',health:'/health',openapi:'/openapi.yaml'})});
+}
+
+app.use((req,res)=>res.status(404).json({error:'Route not found',path:req.originalUrl}));
 app.use((err,req,res,next)=>{console.error(err);if(res.headersSent)return next(err);res.status(err.status||500).json({error:config.nodeEnv==='production'?'Unexpected server error':err.message});});
 
 app.listen(config.port,()=>{
