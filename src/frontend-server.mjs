@@ -23,10 +23,10 @@ app.use(helmet({
   contentSecurityPolicy:{
     directives:{
       defaultSrc:["'self'"],
-      scriptSrc:["'self'","'unsafe-inline'","https://static.cloudflareinsights.com"],
+      scriptSrc:["'self'","'unsafe-inline'"],
       styleSrc:["'self'","'unsafe-inline'"],
       imgSrc:["'self'","data:","https:"],
-      connectSrc:["'self'",apiOrigin,"https://cloudflareinsights.com"],
+      connectSrc:["'self'",apiOrigin],
       fontSrc:["'self'","data:"],
       objectSrc:["'none'"],
       baseUri:["'self'"],
