@@ -26,7 +26,7 @@ test('frontend uses todayinfo.co.za and can fail over from VPS API to Render',()
 test('frontend runtime uses cache fallback and never consumes private crawler endpoints',()=>{
   const app=read('frontend/assets/app-v6.js');
   assert.match(app,/localStorage\.getItem\(CACHE_PREFIX/);
-  assert.match(app,/state\.apiMode='fallback'/);
+  assert.match(app,/state\.apiMode=i===0\?'primary':'fallback'/);
   assert.match(app,/state\.apiMode='stale'/);
   assert.doesNotMatch(app,/crawl\/status|recordsIndexed|\/extract\?|\/internal\/ingest/);
 });
@@ -35,7 +35,7 @@ test('frontend consumes current published API features',()=>{
   const app=read('frontend/assets/app-v6.js');
   for(const term of [
     "safeGet('site'","safeGet('meta'","safeGet('facets'","safeGet('countries'","safeGet('guides'",
-    "get('search'","get('sources'","get('guides/'","taxonomy('categories","taxonomy('tags'"
+    "get('search'","get('sources'","get('guides/'","async function taxonomy(kind)","path==='/categories'||path==='/tags'"
   ]) assert.ok(app.includes(term),term);
   for(const route of ['/bursaries','/scholarships','/jobs','/internships','/learnerships','/opportunities','/news']){
     assert.ok(app.includes(route),route);
