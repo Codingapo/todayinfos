@@ -11,16 +11,19 @@ fi
 
 cd "$APP_DIR"
 
-read_env_port(){
+read_env_value(){
+  local key="$1"
   if [[ -f .env ]]; then
-    awk -F= '/^PORT=/{gsub(/[[:space:]\r]/,"",$2); print $2}' .env | tail -n1
+    awk -F= -v key="$key" '$1==key{gsub(/[[:space:]\r]/,"",$2); print $2}' .env | tail -n1
   fi
 }
 
-APP_PORT="${APP_PORT:-$(read_env_port)}"
+APP_PORT="${APP_PORT:-$(read_env_value PORT)}"
 APP_PORT="${APP_PORT:-3009}"
+FRONTEND_PORT="${FRONTEND_PORT:-$(read_env_value FRONTEND_PORT)}"
+FRONTEND_PORT="${FRONTEND_PORT:-3011}"
 
-printf 'Updating TodayInfo in %s (port %s)\n' "$APP_DIR" "$APP_PORT"
+printf 'Updating TodayInfo in %s (API %s, frontend %s)\n' "$APP_DIR" "$APP_PORT" "$FRONTEND_PORT"
 
 if command -v git >/dev/null 2>&1 && [[ -d .git ]]; then
   git pull --ff-only
@@ -61,6 +64,11 @@ if [[ -f .env ]]; then
   else
     printf '\nPORT=%s\n' "$APP_PORT" >> .env
   fi
+  if grep -q '^FRONTEND_PORT=' .env; then
+    sed -i "s/^FRONTEND_PORT=.*/FRONTEND_PORT=$FRONTEND_PORT/" .env
+  else
+    printf 'FRONTEND_PORT=%s\n' "$FRONTEND_PORT" >> .env
+  fi
 fi
 
 if [[ -f package-lock.json || -f npm-shrinkwrap.json ]]; then
@@ -75,19 +83,24 @@ npm run doctor
 npm run check
 npm test
 
-if ! systemctl list-unit-files --type=service 2>/dev/null | grep -q '^todayinfo-api\.service'; then
-  echo
-  echo "todayinfo-api systemd service is not installed yet."
-  echo "Run:"
-  echo "  APP_DIR=$APP_DIR APP_PORT=$APP_PORT bash deploy/install-vps.sh"
-  exit 2
-fi
+for service in todayinfo-api todayinfo-frontend; do
+  if ! systemctl list-unit-files --type=service 2>/dev/null | grep -q "^$service\\.service"; then
+    echo
+    echo "$service systemd service is not installed yet."
+    echo "Run:"
+    echo "  APP_DIR=$APP_DIR APP_PORT=$APP_PORT FRONTEND_PORT=$FRONTEND_PORT bash deploy/install-vps.sh"
+    exit 2
+  fi
+done
 
-printf '\nRestarting API and Nginx...\n'
+printf '\nRestarting API, frontend and Nginx...\n'
 sudo systemctl restart todayinfo-api
+sudo systemctl restart todayinfo-frontend
 sudo nginx -t
 sudo systemctl reload nginx
 
 sleep 2
 curl --fail --silent --show-error "http://127.0.0.1:$APP_PORT/health"
+printf '\n'
+curl --fail --silent --show-error "http://127.0.0.1:$FRONTEND_PORT/__frontend_health"
 printf '\n\nTodayInfo update complete.\n'
