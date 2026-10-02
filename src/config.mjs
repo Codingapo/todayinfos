@@ -47,6 +47,7 @@ export const config = {
   databaseUrl,
   databaseUrls,
   databaseSsl: String(process.env.DATABASE_SSL ?? 'true').toLowerCase() !== 'false',
+  databaseConnectTimeoutMs: Math.max(1000, Math.min(30000, Number(process.env.DATABASE_CONNECT_TIMEOUT_MS || 8000))),
   supabase: {
     url: (process.env.SUPABASE_URL1 || '').replace(/\/$/, ''),
     key: process.env.SUPABASE_KEY || '',
