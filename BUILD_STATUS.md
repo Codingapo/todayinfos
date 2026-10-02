@@ -1,31 +1,49 @@
-# Build Status — v0.8.6 Search, CEO Controls & Private Ingestion
+# Build Status — v0.9.0 Production Online
 
-This is a stability update on top of v0.8.5. Existing source-policy rules, no-AI narrative policy, Import Inbox, Demand Queue, direct DailyUpdate/ZA Bursaries fallbacks, R2 publishing, employee RBAC and analytics remain intact.
+TodayInfo v0.9 prepares the existing application for a split production deployment without changing the R2 bucket or content architecture.
 
-## Repairs
-- Fixed the remaining CEO navigation selector crash.
-- Import Inbox edit / Save cleanup / Promote / Publish controls remain wired.
-- Demand Queue Fetch & process / Review controls remain wired.
-- Search is token-based across title, summary, body, tags, organisation, location and structured fields.
-- Country + content type + search filters now use the same shared rules in PostgreSQL, demo and local fallback modes.
-- Public search supports q/query/keywords and pagination.
+## Production topology
+- Public site: https://todayinfo.co.za on Cloudflare Pages.
+- API/admin: https://api.todayinfo.co.za behind Nginx.
+- Node API binds to port 3009.
+- VPS process is managed by systemd.
+- API TLS can be issued with Certbot/Nginx.
+- Cloudflare Pages manages frontend TLS.
 
-## Private ingestion
-- POST /internal/ingest/v1/batch
-- Protected by TODAYINFO_INGEST_KEY. Disabled when no key is configured.
-- Maximum 50 jobs per batch.
-- Maximum 100 bursaries per batch.
-- Requires source_url and application_url.
-- Direct application destination is verified before automatic publication.
-- Normal 80%+ publish quality gate still applies.
-- Weak/unverified new records remain draft.
-- Weak updates never downgrade an existing published page.
-- Descriptive SEO slugs include organisation/provider, title, location/country and year when available.
-- Content is rebuilt into TodayInfo's structured deterministic format; this does not add AI rewriting.
+## Frontend
+- Static SPA package keeps the existing TodayInfo visual design.
+- Production API: https://api.todayinfo.co.za/api/v1.
+- Temporary failover API: https://todayinfos.onrender.com/api/v1.
+- SPA _redirects prevents direct routes such as /jobs and /bursaries from returning "Cannot GET".
+- Versioned frontend assets use long immutable cache headers.
+- HTML and API config always revalidate.
+- Browser API cache persists successful GET responses and can serve stale data temporarily if both API origins are unavailable.
 
-## Public API
-- Opportunity responses now expose a top-level application object with URL, verification state and guide reference.
-- Dynamic content is not capped at the reference-seed count. Ingestion/import/harvest can continue growing the catalog.
+## API caching
+- Public GETs: short browser cache with stale-while-revalidate.
+- Cloudflare edge receives separate Cloudflare-CDN-Cache-Control TTLs.
+- Site/meta/source taxonomy uses a longer edge TTL.
+- Personalized public requests are no-store.
+- Admin API, auth, internal ingestion, health and writes are no-store.
+- Express strong ETags remain enabled for revalidation.
 
-## Release gate
-The exact branch must pass install, syntax checks and all tests before merge.
+## Environment
+- Default local/VPS port is 3009.
+- .env.production.example contains placeholders only.
+- Real .env stays ignored by Git.
+- Apo owner password is set/rotated using npm run seed:admin and SEED_ADMIN_PASSWORD.
+- Production seeding refuses password "admin".
+
+## Storage
+- R2 bucket remains: todayinfo.
+- Existing R2 JSON page publishing, application guides, retry queues and local fallback remain unchanged.
+- Existing Supabase/PostgreSQL federation remains unchanged.
+
+## Deployment files
+- deploy/nginx/todayinfo-api.conf
+- deploy/systemd/todayinfo-api.service
+- deploy/VPS_DEPLOY.md
+- frontend/api-config.production.js
+- frontend/README.md
+
+The release must pass source syntax checks and the complete regression test suite before merge.
