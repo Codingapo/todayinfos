@@ -7,7 +7,7 @@ This directory is the static frontend for **https://todayinfo.co.za**.
 Everything lives inside one VPS project folder:
 
 ```text
-/var/www/today/
+/opt/filebrowser/today/
   frontend/       <- Nginx serves this directly
   public/admin/   <- Node serves this through /admin/
   src/            <- API/backend
@@ -22,7 +22,7 @@ Production URLs:
 - Frontend: `https://todayinfo.co.za`
 - Admin: `https://todayinfo.co.za/admin/`
 - API: `https://api.todayinfo.co.za/api/v1`
-- Node listener: `127.0.0.1:3011`
+- Node listener: `127.0.0.1:3009`
 
 The frontend has no external hosting/API fallback. Runtime API configuration is in `data/api-config.js`.
 
