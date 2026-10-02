@@ -37,6 +37,10 @@ fi
 sudo mkdir -p "$APP_DIR/data" "$APP_DIR/uploads" /var/cache/nginx/todayinfo
 sudo chown -R "$SERVICE_USER:$SERVICE_GROUP" "$APP_DIR/data" "$APP_DIR/uploads" /var/cache/nginx/todayinfo
 sudo chmod -R u+rwX,g+rwX "$APP_DIR/data" "$APP_DIR/uploads"
+if [[ -f "$APP_DIR/.env" ]]; then
+  sudo chgrp "$SERVICE_GROUP" "$APP_DIR/.env"
+  sudo chmod 640 "$APP_DIR/.env"
+fi
 
 # Nginx serves the public frontend directly. Give it read/traverse access only
 # to the public frontend path, not to private .env secrets.
@@ -51,6 +55,8 @@ trap 'rm -f "$tmp_service" "$tmp_nginx"' EXIT
 
 sed \
   -e "s#/opt/filebrowser/today#$APP_DIR#g" \
+  -e "s/^User=.*/User=$SERVICE_USER/" \
+  -e "s/^Group=.*/Group=$SERVICE_GROUP/" \
   "$APP_DIR/deploy/systemd/todayinfo-api.service" > "$tmp_service"
 
 sed \
