@@ -15,7 +15,13 @@ https://todayinfo.co.za/admin/
 https://api.todayinfo.co.za
 ```
 
-You said you will maintain your own Nginx/Certbot configuration, so the repository does not require Nginx to serve static frontend files. Your reverse proxy only needs to send the public domain to 3011 and the API domain to 3009.
+Nginx must keep the two processes separate:
+
+- `todayinfo.co.za/*` (including `/admin/`) → frontend service on **3011**
+- `api.todayinfo.co.za/api/v1/*` → API service on **3009**
+- `api.todayinfo.co.za/admin/api/*` → API service on **3009** with no shared cache
+
+Do **not** redirect `api.todayinfo.co.za/admin/api/*` to the main domain. The browser dashboard deliberately calls the credentialed API subdomain.
 
 Cloudflare R2 remains the published JSON/file storage layer.
 
@@ -135,3 +141,48 @@ sudo systemctl restart todayinfo-frontend
 ```
 
 Your own Nginx and Certbot configuration can remain outside the repository.
+
+
+## CSP / browser console
+
+The frontend process sends a Content Security Policy that permits:
+
+```text
+connect-src 'self' https://api.todayinfo.co.za
+```
+
+That is required because the admin UI is loaded from `todayinfo.co.za` while authenticated admin API calls go to `api.todayinfo.co.za`.
+
+If the browser reports:
+
+```text
+Connecting to https://api.todayinfo.co.za ... violates connect-src 'self'
+```
+
+then `/admin/` is being served by the API process (3009) instead of the frontend process (3011). Check the active Nginx file.
+
+The repository does not load `static.cloudflareinsights.com`. If Cloudflare injects a Browser Insights/Web Analytics beacon while the domain is proxied through Cloudflare, the strict TodayInfo CSP may block it. Keep it blocked or disable Browser Insights/Web Analytics in Cloudflare. Do not weaken `script-src` just to allow an analytics beacon.
+
+## Verify the active reverse proxy
+
+After copying/updating Nginx configuration:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+
+curl -I http://127.0.0.1:3011/admin/
+curl http://127.0.0.1:3011/__frontend_health
+curl http://127.0.0.1:3009/health
+
+curl -I https://todayinfo.co.za/admin/
+curl -I https://api.todayinfo.co.za/health
+```
+
+Inspect the frontend CSP:
+
+```bash
+curl -sI https://todayinfo.co.za/admin/ | grep -i content-security-policy
+```
+
+It must include `https://api.todayinfo.co.za` in `connect-src`.
