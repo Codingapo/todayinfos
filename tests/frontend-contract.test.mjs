@@ -19,7 +19,7 @@ test('frontend uses todayinfo.co.za and the VPS API only',()=>{
   const config=read('frontend/data/api-config.js');
   const html=read('frontend/index.html');
   assert.match(config,/https:\/\/api\.todayinfo\.co\.za\/api\/v1/);
-  assert.match(config,/http:\/\/localhost:3011\/api\/v1/);
+  assert.match(config,/http:\/\/localhost:3009\/api\/v1/);
   assert.match(config,/TODAYINFO_API_BASES/);
   assert.doesNotMatch(config,/todayinfos\.onrender\.com/);
   assert.match(html,/https:\/\/todayinfo\.co\.za\//);
@@ -66,7 +66,7 @@ test('frontend displays application verification and application guides',()=>{
 
 test('Nginx owns SPA fallback and frontend cache policy',()=>{
   const nginx=read('deploy/nginx/todayinfo.conf');
-  assert.match(nginx,/root \/var\/www\/today\/frontend/);
+  assert.match(nginx,/root \/opt\/filebrowser\/today\/frontend/);
   assert.match(nginx,/try_files \$uri \$uri\/ \/index\.html/);
   assert.match(nginx,/location = \/data\/api-config\.js/);
   assert.match(nginx,/no-cache, no-store, must-revalidate/);
@@ -74,9 +74,9 @@ test('Nginx owns SPA fallback and frontend cache policy',()=>{
   assert.match(nginx,/max-age=3600/);
 });
 
-test('production examples preserve R2 bucket and API port 3011',()=>{
+test('production examples preserve R2 bucket and API port 3009',()=>{
   const env=read('.env.production.example');
-  assert.match(env,/PORT=3011/);
+  assert.match(env,/PORT=3009/);
   assert.match(env,/R2_BUCKET=todayinfo/);
   assert.match(env,/PUBLIC_API_ORIGIN=https:\/\/api\.todayinfo\.co\.za/);
   assert.match(env,/APP_ORIGIN=https:\/\/todayinfo\.co\.za/);
@@ -93,7 +93,7 @@ test('server supports compressed public API and optional local SPA fallback with
   assert.match(server,/sendFile\(path\.join\(frontendRoot,'index\.html'\)\)/);
   assert.match(server,/X-Accel-Expires/);
   assert.doesNotMatch(server,/Cloudflare-CDN-Cache-Control/);
-  assert.match(config,/port: Number\(process\.env\.PORT \|\| 3011\)/);
+  assert.match(config,/port: Number\(process\.env\.PORT \|\| 3009\)/);
 });
 
 test('production dependencies keep frontend and server checks enabled',()=>{
@@ -103,15 +103,15 @@ test('production dependencies keep frontend and server checks enabled',()=>{
   assert.match(pkg.scripts.check,/frontend\/assets\/app-v6\.js/);
 });
 
-test('Nginx and systemd use the single /var/www/today VPS layout',()=>{
+test('Nginx and systemd use the single /opt/filebrowser/today VPS layout',()=>{
   const nginx=read('deploy/nginx/todayinfo.conf');
   const service=read('deploy/systemd/todayinfo-api.service');
   assert.match(nginx,/server_name todayinfo\.co\.za www\.todayinfo\.co\.za/);
   assert.match(nginx,/server_name api\.todayinfo\.co\.za/);
-  assert.match(nginx,/127\.0\.0\.1:3011/);
+  assert.match(nginx,/127\.0\.0\.1:3009/);
   assert.match(nginx,/proxy_cache todayinfo_api_cache/);
-  assert.match(service,/WorkingDirectory=\/var\/www\/today/);
-  assert.match(service,/EnvironmentFile=\/var\/www\/today\/\.env/);
+  assert.match(service,/WorkingDirectory=\/opt\/filebrowser\/today/);
+  assert.match(service,/EnvironmentFile=\/opt\/filebrowser\/today\/\.env/);
   assert.match(service,/src\/server\.mjs/);
 });
 

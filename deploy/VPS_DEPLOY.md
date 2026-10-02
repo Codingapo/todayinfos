@@ -1,95 +1,49 @@
-# TodayInfo — single VPS production deployment
+# TodayInfo — VPS deployment on port 3009
 
-This is the production layout for **todayinfo.co.za** and **api.todayinfo.co.za**.
-
-Cloudflare Pages and the Render fallback are not required. The existing **R2 bucket remains unchanged** and is still used by the backend for published JSON/files.
-
-## Final folder layout
-
-Put the whole Git repository in one folder:
+Canonical production layout:
 
 ```text
-/var/www/today/
-  frontend/         # public website served directly by Nginx
-  public/admin/     # admin app served by Node through /admin/
-  src/              # TodayInfo API/backend
-  data/             # local published/fallback/queue files
-  uploads/          # local upload fallback
-  deploy/           # Nginx + systemd files
+/opt/filebrowser/today/
+  frontend/
+  public/admin/
+  src/
+  data/
+  uploads/
+  deploy/
   migrations/
-  .env              # private production secrets
+  .env
   package.json
 ```
 
-Production URLs:
+Public URLs:
 
 ```text
-https://todayinfo.co.za              public frontend
-https://todayinfo.co.za/admin/       CEO/employee dashboard
-https://api.todayinfo.co.za/api/v1   public API
-http://127.0.0.1:3011                private Node listener
+https://todayinfo.co.za
+https://todayinfo.co.za/admin/
+https://api.todayinfo.co.za/api/v1
 ```
 
-## 1. DNS
-
-Point these DNS records to the VPS public IP:
+Private Node listener:
 
 ```text
-A  todayinfo.co.za      YOUR_VPS_IP
-A  www.todayinfo.co.za  YOUR_VPS_IP
-A  api.todayinfo.co.za  YOUR_VPS_IP
+http://127.0.0.1:3009
 ```
 
-Wait until all three names resolve to the VPS.
+Cloudflare R2 remains the published JSON/file storage layer. This VPS setup changes hosting only.
 
-## 2. Install VPS packages
+## 1. Production .env
 
-Use Ubuntu/Debian packages for Nginx, Git and curl. Install Node.js 20 or newer.
+Inside:
 
-Example:
-
-```bash
-sudo apt update
-sudo apt install -y nginx git curl
-node -v
-npm -v
+```text
+/opt/filebrowser/today/.env
 ```
 
-For Certbot, use the installation method recommended for your OS by certbot.eff.org. The official Nginx plugin can install the certificate and edit Nginx automatically.
-
-## 3. Clone everything into one folder
-
-```bash
-sudo mkdir -p /var/www/today
-sudo chown -R "$USER":"$USER" /var/www/today
-
-git clone https://github.com/Codingapo/todayinfos.git /var/www/today
-cd /var/www/today
-
-npm ci --omit=dev
-```
-
-If the repository is already there:
-
-```bash
-cd /var/www/today
-git pull --ff-only
-npm ci --omit=dev
-```
-
-## 4. Create the private .env
-
-```bash
-cd /var/www/today
-cp .env.production.example .env
-nano .env
-```
-
-Keep these production values:
+keep:
 
 ```env
 NODE_ENV=production
-PORT=3011
+PORT=3009
 APP_ORIGIN=https://todayinfo.co.za
 PUBLIC_SITE_ORIGIN=https://todayinfo.co.za
 PUBLIC_API_ORIGIN=https://api.todayinfo.co.za
@@ -99,110 +53,107 @@ DATA_STORE=postgres
 R2_BUCKET=todayinfo
 ```
 
-Then fill in:
+Fill in your real JWT, database, R2 and ingestion credentials. Never commit the real .env.
 
-- `JWT_SECRET`
-- `DATABASE_URL_IPV4` with the **Supabase Session pooler** connection string when the VPS is IPv4-only
-- your existing R2 credentials
-- `TODAYINFO_INGEST_KEY`
-- optional Resend credentials
-- Apo/CEO seed email + password when rotating the login
+If the VPS is IPv4-only and Supabase direct PostgreSQL is unreachable (for example an `ENETUNREACH` error to an IPv6 database address), use the Session Pooler connection string in `DATABASE_URL_IPV4`.
 
-Never commit the real `.env`.
+## 2. Install dependencies
 
-## 5. Change/seed Apo's password
-
-Set a private value in:
-
-```env
-SEED_ADMIN_USERNAME=apo
-SEED_ADMIN_PASSWORD=YOUR_NEW_PASSWORD
-SEED_ADMIN_EMAIL=YOUR_EMAIL
-```
-
-Then run:
+Required:
 
 ```bash
-cd /var/www/today
-npm run seed:admin
+sudo apt update
+sudo apt install -y nginx curl
+node -v
+npm -v
 ```
 
-The production seed script refuses the password `admin`.
+Git is optional because TodayInfo's updater can download the GitHub main-branch archive when Git is unavailable.
 
-After seeding, you may remove `SEED_ADMIN_PASSWORD` from the real `.env`.
+## 3. First production install
 
-## 6. Prepare writable folders
-
-Node only needs write access to local fallback/queue/upload folders.
+From your existing project folder:
 
 ```bash
-cd /var/www/today
-sudo mkdir -p data uploads /var/cache/nginx/todayinfo
-sudo chown -R www-data:www-data data uploads
-sudo chown -R www-data:www-data /var/cache/nginx/todayinfo
-sudo chmod -R u+rwX,g+rwX data uploads
+cd /opt/filebrowser/today
+
+APP_DIR=/opt/filebrowser/today \
+APP_PORT=3009 \
+bash deploy/install-vps.sh
 ```
 
-The frontend and source code can remain read-only to the Node service.
+The installer:
 
-## 7. Install the systemd service
+- keeps `.env` private;
+- installs npm production packages;
+- runs `npm run doctor`, syntax checks and tests;
+- installs the systemd service;
+- installs the Nginx site;
+- starts Node through systemd;
+- checks `http://127.0.0.1:3009/health`.
 
-```bash
-sudo cp /var/www/today/deploy/systemd/todayinfo-api.service /etc/systemd/system/todayinfo-api.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now todayinfo-api
-sudo systemctl status todayinfo-api
-```
-
-Local checks:
-
-```bash
-curl http://127.0.0.1:3011/health
-curl http://127.0.0.1:3011/api/v1/meta
-```
-
-If this fails, inspect logs:
+Check it:
 
 ```bash
-sudo journalctl -u todayinfo-api -n 100 --no-pager
-sudo journalctl -u todayinfo-api -f
-```
-
-## 8. Install the combined Nginx config
-
-```bash
-sudo cp /var/www/today/deploy/nginx/todayinfo.conf /etc/nginx/sites-available/todayinfo
-sudo ln -sf /etc/nginx/sites-available/todayinfo /etc/nginx/sites-enabled/todayinfo
-
-# Optional: remove the default welcome site.
-sudo rm -f /etc/nginx/sites-enabled/default
-
+sudo systemctl status todayinfo-api --no-pager
+curl http://127.0.0.1:3009/health
+curl http://127.0.0.1:3009/api/v1/meta
 sudo nginx -t
-sudo systemctl reload nginx
 ```
 
-Before HTTPS, test:
+Do not use `npm start` as the production process after systemd is installed. A manual `npm start` stops when you press Ctrl+C or close the terminal.
 
-```bash
-curl -I http://todayinfo.co.za/
-curl -I http://todayinfo.co.za/jobs
-curl -I http://todayinfo.co.za/admin/
-curl http://api.todayinfo.co.za/health
+## 4. Nginx
+
+The checked-in Nginx configuration uses:
+
+```text
+root /opt/filebrowser/today/frontend
+proxy_pass http://127.0.0.1:3009
 ```
 
-The public Nginx site uses SPA fallback:
+The public frontend uses SPA fallback:
 
 ```nginx
 try_files $uri $uri/ /index.html;
 ```
 
-so routes such as `/jobs`, `/bursaries`, `/za/jobs/example-job`, and `/guides/example-how-to-apply` do not produce `Cannot GET`.
+so extension-free URLs such as `/jobs`, `/bursaries`, `/za/jobs/example` and guide pages load the frontend instead of producing `Cannot GET`.
 
-## 9. HTTPS with Certbot
+Public API GET/HEAD responses use Nginx proxy caching. Admin/auth/write traffic is not shared-cached.
 
-Once DNS resolves correctly, use the Certbot Nginx plugin.
+## 5. DNS and Cloudflare
 
-Typical command:
+If you want the VPS to be the origin with no Cloudflare proxy behavior, set these Cloudflare DNS records to **DNS only** (grey cloud):
+
+```text
+A  todayinfo.co.za
+A  www.todayinfo.co.za
+A  api.todayinfo.co.za
+```
+
+All should point to the VPS public IPv4.
+
+Your earlier response header:
+
+```text
+server: cloudflare
+```
+
+means the orange-cloud proxy was still enabled.
+
+For straightforward Certbot setup, DNS-only mode is the easiest while issuing/testing the certificate. You can decide later whether to re-enable the proxy.
+
+Check DNS:
+
+```bash
+getent ahostsv4 todayinfo.co.za
+getent ahostsv4 api.todayinfo.co.za
+```
+
+## 6. HTTPS
+
+After DNS points to this VPS and Nginx works over HTTP:
 
 ```bash
 sudo certbot --nginx \
@@ -211,17 +162,67 @@ sudo certbot --nginx \
   -d api.todayinfo.co.za
 ```
 
-Choose the HTTPS redirect option when prompted.
-
-Then verify automatic renewal:
+Then:
 
 ```bash
 sudo certbot renew --dry-run
 ```
 
-Final checks:
+## 7. Future updates — Git is optional
+
+Run:
 
 ```bash
+cd /opt/filebrowser/today
+APP_DIR=/opt/filebrowser/today APP_PORT=3009 bash deploy/update-vps.sh
+```
+
+If Git exists and the folder is a Git checkout, the updater uses `git pull --ff-only`.
+
+If Git is missing, it downloads:
+
+```text
+https://github.com/Codingapo/todayinfos/archive/refs/heads/main.tar.gz
+```
+
+and replaces versioned application files while preserving:
+
+- `.env`
+- runtime data/fallback queues
+- uploads
+- production secrets
+
+It then runs the release gate and restarts systemd + Nginx.
+
+## 8. Troubleshooting a 502
+
+A 502 means Nginx/Cloudflare reached the server layer but could not get a valid response from the Node origin.
+
+Run these in order:
+
+```bash
+grep '^PORT=' /opt/filebrowser/today/.env
+sudo systemctl status todayinfo-api --no-pager
+sudo journalctl -u todayinfo-api -n 100 --no-pager
+ss -ltnp | grep ':3009'
+curl -v http://127.0.0.1:3009/health
+sudo nginx -t
+grep -R "127.0.0.1:30" /etc/nginx/sites-enabled /etc/nginx/sites-available
+```
+
+Every TodayInfo upstream should point to 3009.
+
+If the systemd service is not installed yet:
+
+```bash
+cd /opt/filebrowser/today
+APP_DIR=/opt/filebrowser/today APP_PORT=3009 bash deploy/install-vps.sh
+```
+
+## 9. Final checks
+
+```bash
+curl http://127.0.0.1:3009/health
 curl -I https://todayinfo.co.za/
 curl -I https://todayinfo.co.za/jobs
 curl -I https://todayinfo.co.za/admin/
@@ -229,133 +230,19 @@ curl https://api.todayinfo.co.za/health
 curl https://api.todayinfo.co.za/api/v1/meta
 ```
 
-## 10. Caching / speed
-
-The VPS has several cache layers:
-
-1. **Nginx static cache headers** for frontend assets.
-2. **Nginx proxy cache** for public API GET/HEAD responses.
-3. **Node Cache-Control + X-Accel-Expires** cache hints.
-4. **Frontend memory/localStorage stale cache**.
-5. **R2/local published JSON fallback** in the existing backend.
-
-Nginx does not force-cache admin/auth/write requests. The backend sends `no-store` for personalized/admin/write paths, and Nginx respects those headers.
-
-To inspect API cache behavior:
-
-```bash
-curl -I "https://api.todayinfo.co.za/api/v1/posts?limit=5"
-```
-
-Look for:
+For cached public API responses, repeated requests should eventually show:
 
 ```text
-X-TodayInfo-Cache: MISS
 X-TodayInfo-Cache: HIT
 ```
 
-on repeated requests.
+## 10. R2 is unchanged
 
-## 11. R2 is not removed
+The VPS deployment does not remove or replace:
 
-Only the website hosting moved to the VPS.
-
-These remain unchanged:
-
-- R2 bucket name and credentials
-- published JSON object structure
+- R2 bucket/credentials
+- published page JSON
 - publication retry queue
 - Supabase/PostgreSQL tracking
-- multiple-database support
-- existing TodayInfo content/import logic
-
-## 12. Updating the live VPS later
-
-```bash
-cd /var/www/today
-
-sudo systemctl stop todayinfo-api
-sudo -u "$USER" git pull --ff-only
-sudo -u "$USER" npm ci --omit=dev
-sudo systemctl start todayinfo-api
-
-sudo nginx -t
-sudo systemctl reload nginx
-
-curl https://api.todayinfo.co.za/health
-```
-
-If a future release includes a database migration, review the migration before running it against production.
-
-
-## Database IPv6 / ENETUNREACH troubleshooting
-
-If the API log contains an error similar to:
-
-```text
-connect ENETUNREACH 2a05:...:5432
-```
-
-the application is trying to reach an IPv6-only PostgreSQL address from a VPS that has no working IPv6 route.
-
-For Supabase on an IPv4-only VPS, do **not** use the direct URL that looks like:
-
-```text
-postgresql://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres
-```
-
-Instead:
-
-1. Open **Supabase Dashboard -> Connect**.
-2. Choose **Session pooler**.
-3. Copy the complete connection string exactly as Supabase shows it.
-4. Put it in the private VPS environment:
-
-```env
-DATABASE_URL_IPV4=postgresql://postgres.PROJECT_REF:PASSWORD@YOUR_POOLER_HOST:5432/postgres
-DATABASE_URL=
-DATABASE_SSL=true
-DATABASE_CONNECT_TIMEOUT_MS=8000
-```
-
-Do not guess the pooler hostname; copy it from the Supabase Connect dialog.
-
-Then run:
-
-```bash
-cd /var/www/today
-npm run doctor
-sudo systemctl restart todayinfo-api
-sudo journalctl -u todayinfo-api -n 80 --no-pager
-curl http://127.0.0.1:3011/health
-```
-
-`npm run doctor` now prints the selected database host plus its IPv4 (A) and IPv6 (AAAA) DNS results. If it identifies a Supabase direct host without `DATABASE_URL_IPV4`, it prints a warning.
-
-### Port mismatch
-
-The production Nginx file proxies to:
-
-```text
-127.0.0.1:3011
-```
-
-The private VPS `.env` must therefore contain:
-
-```env
-PORT=3011
-```
-
-If the Node log says `http://localhost:3009`, edit `/var/www/today/.env`, change the port to 3011, and restart the service.
-
-### DNS check
-
-Before running Certbot, all three public names must resolve to the VPS public IPv4 address:
-
-```bash
-getent ahostsv4 todayinfo.co.za
-getent ahostsv4 www.todayinfo.co.za
-getent ahostsv4 api.todayinfo.co.za
-```
-
-If any command returns nothing, fix the DNS **A** record first. Certbot and the public site cannot work until DNS is visible.
+- multiple-database reads
+- Import Inbox/Source Hub/admin workflows

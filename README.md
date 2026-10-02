@@ -1,4 +1,4 @@
-# TodayInfo Control Center v0.8.5
+# TodayInfo Control Center v0.9.5
 
 A Node.js admin dashboard and structured publishing API for TodayInfo.
 
@@ -752,3 +752,34 @@ R2_BUCKET=todayinfo
 
 Moving the website to the VPS does not require an R2 content migration.
 
+
+
+## v0.9.5 — VPS port 3009
+
+The canonical VPS deployment now matches the live server layout:
+
+```text
+/opt/filebrowser/today
+127.0.0.1:3009
+https://todayinfo.co.za
+https://todayinfo.co.za/admin/
+https://api.todayinfo.co.za/api/v1
+```
+
+Install the VPS service and Nginx configuration:
+
+```bash
+cd /opt/filebrowser/today
+APP_DIR=/opt/filebrowser/today APP_PORT=3009 bash deploy/install-vps.sh
+```
+
+Later updates:
+
+```bash
+cd /opt/filebrowser/today
+APP_DIR=/opt/filebrowser/today APP_PORT=3009 bash deploy/update-vps.sh
+```
+
+The updater supports servers without Git by downloading the GitHub `main` archive and preserving the private `.env`, local data, uploads and runtime queues.
+
+R2 publishing/storage is unchanged.
