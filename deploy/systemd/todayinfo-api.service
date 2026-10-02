@@ -1,22 +1,24 @@
 [Unit]
 Description=TodayInfo API
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=www-data
 Group=www-data
-WorkingDirectory=/var/www/todayinfos
-EnvironmentFile=/var/www/todayinfos/.env
-ExecStart=/usr/bin/node /var/www/todayinfos/src/server.mjs
+WorkingDirectory=/var/www/today
+EnvironmentFile=/var/www/today/.env
+ExecStart=/usr/bin/node /var/www/today/src/server.mjs
 Restart=always
 RestartSec=5
 KillSignal=SIGINT
 TimeoutStopSec=20
 
-# Basic hardening while still allowing writes to local fallback/upload data.
+# Basic hardening while allowing local fallback/uploads.
 NoNewPrivileges=true
 PrivateTmp=true
+UMask=0027
 
 [Install]
 WantedBy=multi-user.target
