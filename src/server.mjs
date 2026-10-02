@@ -31,21 +31,55 @@ async function ensureReferenceSeed(){
 const app=express();
 app.disable('x-powered-by');
 app.set('trust proxy',1);
+app.set('etag','strong');
 app.use(helmet({contentSecurityPolicy:{directives:{defaultSrc:["'self'"],scriptSrc:["'self'"],styleSrc:["'self'","'unsafe-inline'"],imgSrc:["'self'","data:","https:"],connectSrc:["'self'"],fontSrc:["'self'","data:"],objectSrc:["'none'"],baseUri:["'self'"],frameAncestors:["'none'"]}}}));
 app.use(express.json({limit:'2mb'}));
 app.use(express.urlencoded({extended:false,limit:'2mb'}));
 app.use(cookieParser());
 
-app.get('/health',(req,res)=>res.json({status:'ok',service:'todayinfo-control-center',mode:config.dataStore,database_fallback:config.dataStoreFallback,store:store.health?.()||{mode:config.dataStore},reference_seed:referenceSeedStatus,time:new Date().toISOString()}));
-app.use('/api/v1',cors({origin:'*',methods:['GET','POST','OPTIONS']}),publicRouter);
-app.use('/internal/ingest/v1',internalRouter);
-app.use('/admin/api/auth',authRouter);
-app.use('/admin/api',adminRouter);
+function noStore(req,res,next){
+  res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma','no-cache');
+  res.setHeader('Expires','0');
+  next();
+}
+
+function publicApiCache(req,res,next){
+  res.vary('Origin');
+  res.vary('Accept-Encoding');
+
+  if(!['GET','HEAD'].includes(req.method)){
+    res.setHeader('Cache-Control','no-store');
+    return next();
+  }
+
+  const personalized=req.path.startsWith('/personalized')||Boolean(req.query.visitor_id);
+  const liveStatus=req.path.startsWith('/crawl/status');
+  if(personalized||liveStatus){
+    res.setHeader('Cache-Control','private, no-store');
+    return next();
+  }
+
+  const slowChanging=['/site','/meta','/sources','/countries','/locations','/categories','/tags'];
+  const slow=slowChanging.some(prefix=>req.path===prefix||req.path.startsWith(prefix+'/'));
+  const browserTtl=slow?120:30;
+  const edgeTtl=slow?600:120;
+
+  res.setHeader('Cache-Control',`public, max-age=${browserTtl}, stale-while-revalidate=300, stale-if-error=86400`);
+  res.setHeader('Cloudflare-CDN-Cache-Control',`public, max-age=${edgeTtl}, stale-while-revalidate=600, stale-if-error=86400`);
+  next();
+}
+
+app.get('/health',noStore,(req,res)=>res.json({status:'ok',service:'todayinfo-control-center',mode:config.dataStore,database_fallback:config.dataStoreFallback,store:store.health?.()||{mode:config.dataStore},reference_seed:referenceSeedStatus,time:new Date().toISOString()}));
+app.use('/api/v1',cors({origin:'*',methods:['GET','POST','OPTIONS']}),publicApiCache,publicRouter);
+app.use('/internal/ingest/v1',noStore,internalRouter);
+app.use('/admin/api/auth',noStore,authRouter);
+app.use('/admin/api',noStore,adminRouter);
 app.use('/uploads',express.static(path.resolve(__dirname,'../uploads'),{fallthrough:false,maxAge:'1y',immutable:true}));
 app.use('/admin',express.static(path.resolve(__dirname,'../public/admin'),{index:false,maxAge:0,setHeaders(res){res.setHeader('Cache-Control','no-store, no-cache, must-revalidate')}}));
 app.get(/^\/admin(?:\/.*)?$/,(req,res)=>res.sendFile(path.resolve(__dirname,'../public/admin/index.html')));
-app.get('/openapi.yaml',(req,res)=>res.sendFile(path.resolve(__dirname,'../public/openapi.yaml')));
-app.get('/',(req,res)=>res.json({name:'TodayInfo Managed API',version:'v1',admin:'/admin/',publicApi:'/api/v1',health:'/health',openapi:'/openapi.yaml'}));
+app.get('/openapi.yaml',(req,res)=>{res.setHeader('Cache-Control','public, max-age=300, stale-while-revalidate=86400');return res.sendFile(path.resolve(__dirname,'../public/openapi.yaml'))});
+app.get('/',(req,res)=>{res.setHeader('Cache-Control','public, max-age=60, stale-while-revalidate=300');res.json({name:'TodayInfo Managed API',version:'v1',site:config.publicSiteOrigin,api:config.publicApiOrigin,admin:'/admin/',publicApi:'/api/v1',health:'/health',openapi:'/openapi.yaml'})});
 app.use((err,req,res,next)=>{console.error(err);if(res.headersSent)return next(err);res.status(err.status||500).json({error:config.nodeEnv==='production'?'Unexpected server error':err.message});});
 
 app.listen(config.port,()=>{
