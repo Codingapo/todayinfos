@@ -4,34 +4,36 @@ import fs from 'node:fs';
 
 const read=path=>fs.readFileSync(new URL(`../${path}`,import.meta.url),'utf8');
 
-test('VPS deployment consistently uses /opt/filebrowser/today and port 3009',()=>{
+test('VPS deployment consistently separates API 3009 from frontend/admin 3011',()=>{
   const nginx=read('deploy/nginx/todayinfo.conf');
-  const service=read('deploy/systemd/todayinfo-api.service');
+  const apiService=read('deploy/systemd/todayinfo-api.service');
+  const frontendService=read('deploy/systemd/todayinfo-frontend.service');
   const env=read('.env.production.example');
   const config=read('src/config.mjs');
   const frontend=read('frontend/data/api-config.js');
 
-  assert.match(nginx,/root \/opt\/filebrowser\/today\/frontend;/);
-  assert.match(nginx,/127\.0\.0\.1:3009/);
-  assert.doesNotMatch(nginx,/127\.0\.0\.1:3011/);
+  assert.match(nginx,/server_name todayinfo\.co\.za www\.todayinfo\.co\.za[\s\S]*proxy_pass http:\/\/127\.0\.0\.1:3011/);
+  assert.match(nginx,/server_name api\.todayinfo\.co\.za[\s\S]*location \^~ \/admin\/api\/[\s\S]*proxy_pass http:\/\/127\.0\.0\.1:3009/);
+  assert.match(nginx,/location \^~ \/api\/v1\/[\s\S]*proxy_pass http:\/\/127\.0\.0\.1:3009/);
   assert.doesNotMatch(nginx,/\/var\/www\/today/);
 
-  assert.match(service,/WorkingDirectory=\/opt\/filebrowser\/today/);
-  assert.match(service,/EnvironmentFile=\/opt\/filebrowser\/today\/\.env/);
-  assert.match(service,/ExecStart=\/usr\/bin\/node \/opt\/filebrowser\/today\/src\/server\.mjs/);
+  assert.match(apiService,/WorkingDirectory=\/opt\/filebrowser\/today/);
+  assert.match(apiService,/EnvironmentFile=\/opt\/filebrowser\/today\/\.env/);
+  assert.match(apiService,/ExecStart=\/usr\/bin\/node \/opt\/filebrowser\/today\/src\/server\.mjs/);
+  assert.match(frontendService,/ExecStart=\/usr\/bin\/node \/opt\/filebrowser\/today\/src\/frontend-server\.mjs/);
 
   assert.match(env,/^PORT=3009$/m);
+  assert.match(env,/^FRONTEND_PORT=3011$/m);
   assert.match(config,/process\.env\.PORT \|\| 3009/);
   assert.match(frontend,/http:\/\/localhost:3009\/api\/v1/);
-  assert.doesNotMatch(frontend,/localhost:3011/);
 });
-
 test('VPS updater can work without git and preserves production state',()=>{
   const update=read('deploy/update-vps.sh');
   assert.match(update,/Git is not available here; using the GitHub main-branch archive instead/);
   assert.match(update,/Codingapo\/todayinfos\/archive\/refs\/heads\/main\.tar\.gz/);
   assert.match(update,/APP_DIR="\$\{APP_DIR:-\/opt\/filebrowser\/today\}"/);
-  assert.match(update,/APP_PORT="\$\{APP_PORT:-\$\(read_env_port\)\}"/);
+  assert.match(update,/APP_PORT="\$\{APP_PORT:-\$\(read_env_value PORT\)\}"/);
+  assert.match(update,/FRONTEND_PORT="\$\{FRONTEND_PORT:-\$\(read_env_value FRONTEND_PORT\)\}"/);
   assert.match(update,/data\/seeds/);
   assert.match(update,/No package-lock\.json found; using npm install --omit=dev/);
   assert.doesNotMatch(update,/rm -rf "\$APP_DIR\/data"/);
@@ -42,9 +44,11 @@ test('VPS installer generates Nginx and systemd from the actual app directory an
   const install=read('deploy/install-vps.sh');
   assert.match(install,/APP_DIR="\$\{APP_DIR:-\/opt\/filebrowser\/today\}"/);
   assert.match(install,/APP_PORT="\$\{APP_PORT:-3009\}"/);
-  assert.match(install,/systemctl enable todayinfo-api/);
+  assert.match(install,/FRONTEND_PORT="\$\{FRONTEND_PORT:-3011\}"/);
+  assert.match(install,/systemctl enable todayinfo-api todayinfo-frontend/);
   assert.match(install,/NODE_BIN=/);
   assert.match(install,/npm install --omit=dev/);
   assert.match(install,/nginx -t/);
   assert.match(install,/127\.0\.0\.1:\$APP_PORT\/health/);
+  assert.match(install,/127\.0\.0\.1:\$FRONTEND_PORT\/__frontend_health/);
 });
