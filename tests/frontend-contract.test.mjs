@@ -34,8 +34,8 @@ test('frontend runtime uses cache fallback and never consumes private crawler en
 test('frontend consumes current published API features',()=>{
   const app=read('frontend/assets/app-v6.js');
   for(const term of [
-    "safeGet('site'","safeGet('facets'","safeGet('countries'","safeGet('guides'",
-    "get('search'","get('sources'","get('guides/'","get('categories'","get('tags'"
+    "safeGet('site'","safeGet('meta'","safeGet('facets'","safeGet('countries'","safeGet('guides'",
+    "get('search'","get('sources'","get('guides/'","taxonomy('categories","taxonomy('tags'"
   ]) assert.ok(app.includes(term),term);
   for(const route of ['/bursaries','/scholarships','/jobs','/internships','/learnerships','/opportunities','/news']){
     assert.ok(app.includes(route),route);
