@@ -1,8 +1,8 @@
 // TodayInfo public frontend runtime configuration.
-// Production uses the VPS API only. Local development talks directly to port 3011.
+// Production uses the VPS API only. Local development talks directly to port 3009.
 (() => {
   const local = ['localhost','127.0.0.1'].includes(location.hostname)
-    ? 'http://localhost:3011/api/v1'
+    ? 'http://localhost:3009/api/v1'
     : null;
   const apiBases = [
     local,
