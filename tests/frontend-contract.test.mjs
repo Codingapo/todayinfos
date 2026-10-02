@@ -64,14 +64,14 @@ test('frontend displays application verification and application guides',()=>{
   assert.match(app,/guideDetail/);
 });
 
-test('Nginx owns SPA fallback and frontend cache policy',()=>{
+test('frontend Node process owns SPA fallback and CSP while Nginx reverse-proxies it',()=>{
   const nginx=read('deploy/nginx/todayinfo.conf');
-  assert.match(nginx,/root \/opt\/filebrowser\/today\/frontend/);
-  assert.match(nginx,/try_files \$uri \$uri\/ \/index\.html/);
-  assert.match(nginx,/location = \/data\/api-config\.js/);
-  assert.match(nginx,/no-cache, no-store, must-revalidate/);
-  assert.match(nginx,/location \^~ \/assets\//);
-  assert.match(nginx,/max-age=3600/);
+  const frontendServer=read('src/frontend-server.mjs');
+  assert.match(nginx,/server_name todayinfo\.co\.za www\.todayinfo\.co\.za[\s\S]*proxy_pass http:\/\/127\.0\.0\.1:3011/);
+  assert.match(frontendServer,/sendFile\(path\.join\(frontendRoot,'index\.html'\)\)/);
+  assert.match(frontendServer,/app\.get\('\/data\/api-config\.js'/);
+  assert.match(frontendServer,/connectSrc:\["'self'",apiOrigin\]/);
+  assert.match(frontendServer,/max-age=86400, stale-while-revalidate=604800/);
 });
 
 test('production examples preserve R2 bucket and API port 3009',()=>{
@@ -103,16 +103,21 @@ test('production dependencies keep frontend and server checks enabled',()=>{
   assert.match(pkg.scripts.check,/frontend\/assets\/app-v6\.js/);
 });
 
-test('Nginx and systemd use the single /opt/filebrowser/today VPS layout',()=>{
+test('Nginx and both systemd services use the single /opt/filebrowser/today VPS layout',()=>{
   const nginx=read('deploy/nginx/todayinfo.conf');
-  const service=read('deploy/systemd/todayinfo-api.service');
+  const apiService=read('deploy/systemd/todayinfo-api.service');
+  const frontendService=read('deploy/systemd/todayinfo-frontend.service');
   assert.match(nginx,/server_name todayinfo\.co\.za www\.todayinfo\.co\.za/);
   assert.match(nginx,/server_name api\.todayinfo\.co\.za/);
   assert.match(nginx,/127\.0\.0\.1:3009/);
+  assert.match(nginx,/127\.0\.0\.1:3011/);
   assert.match(nginx,/proxy_cache todayinfo_api_cache/);
-  assert.match(service,/WorkingDirectory=\/opt\/filebrowser\/today/);
-  assert.match(service,/EnvironmentFile=\/opt\/filebrowser\/today\/\.env/);
-  assert.match(service,/src\/server\.mjs/);
+  for(const service of [apiService,frontendService]){
+    assert.match(service,/WorkingDirectory=\/opt\/filebrowser\/today/);
+    assert.match(service,/EnvironmentFile=\/opt\/filebrowser\/today\/\.env/);
+  }
+  assert.match(apiService,/src\/server\.mjs/);
+  assert.match(frontendService,/src\/frontend-server\.mjs/);
 });
 
 
