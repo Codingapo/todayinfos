@@ -22,8 +22,14 @@ const nodeEnv = process.env.NODE_ENV || 'development';
 
 export const config = {
   nodeEnv,
-  port: Number(process.env.PORT || 8787),
-  appOrigin: process.env.APP_ORIGIN || `http://localhost:${process.env.PORT || 8787}`,
+  port: Number(process.env.PORT || 3009),
+  appOrigin: process.env.APP_ORIGIN || (nodeEnv==='production'?'https://todayinfo.co.za':`http://localhost:${process.env.PORT || 3009}`),
+  publicApiBaseUrl: (process.env.PUBLIC_API_BASE_URL || (nodeEnv==='production'?'https://api.todayinfo.co.za/api/v1':`http://localhost:${process.env.PORT || 3009}/api/v1`)).replace(/\/$/,''),
+  serveFrontend: String(process.env.SERVE_FRONTEND ?? 'false').toLowerCase()==='true',
+  frontendDir: process.env.FRONTEND_DIR || 'frontend',
+  corsOrigins: String(process.env.CORS_ORIGINS || 'https://todayinfo.co.za,https://www.todayinfo.co.za').split(',').map(x=>x.trim()).filter(Boolean),
+  publicCacheSeconds: Math.max(0,Number(process.env.PUBLIC_CACHE_SECONDS || 60)),
+  publicEdgeCacheSeconds: Math.max(0,Number(process.env.PUBLIC_EDGE_CACHE_SECONDS || 300)),
   jwtSecret,
   internalIngestKey: process.env.TODAYINFO_INGEST_KEY || '',
 
