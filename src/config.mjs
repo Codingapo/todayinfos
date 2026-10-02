@@ -22,7 +22,7 @@ const nodeEnv = process.env.NODE_ENV || 'development';
 const publicSiteOrigin=(process.env.PUBLIC_SITE_ORIGIN || 'https://todayinfo.co.za').replace(/\/$/, '');
 const publicApiOrigin=(process.env.PUBLIC_API_ORIGIN || 'https://api.todayinfo.co.za').replace(/\/$/, '');
 const adminAllowedOrigins=[...new Set(
-  String(process.env.ADMIN_ALLOWED_ORIGINS||`${publicSiteOrigin},${process.env.APP_ORIGIN||''}`)
+  String(process.env.ADMIN_ALLOWED_ORIGINS||`${publicSiteOrigin},${process.env.APP_ORIGIN||''},http://localhost:3011,http://127.0.0.1:3011`)
     .split(',').map(x=>x.trim().replace(/\/$/,'')).filter(Boolean)
 )];
 
