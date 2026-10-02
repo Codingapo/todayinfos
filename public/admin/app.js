@@ -10,7 +10,7 @@ const can=permission=>(state.permissions||[]).some(p=>p==='*'||p===permission||(
 const VIEW_PERMISSION={overview:'dashboard.view',sources:'imports.fetch',imports:'imports.view',demand:'imports.fetch',posts:'posts.view',media:'media.view',analytics:'analytics.view',team:'team.view',settings:'settings.view',audit:'audit.view'};
 const firstAllowedView=()=>['overview','imports','posts','media','sources','analytics','team','settings','audit'].find(v=>can(VIEW_PERMISSION[v]))||'posts';
 const applyAccess=()=>{
-  $$('#nav button[data-view]').forEach(btn=>{const permission=VIEW_PERMISSION[btn.dataset.view];btn.hidden=Boolean(permission&&!can(permission))});
+  $$$('#nav button[data-view]').forEach(btn=>{const permission=VIEW_PERMISSION[btn.dataset.view];btn.hidden=Boolean(permission&&!can(permission))});
   $$('#nav p').forEach(label=>{let next=label.nextElementSibling,visible=false;while(next&&next.tagName!=='P'){if(next.matches?.('button[data-view]')&&!next.hidden)visible=true;next=next.nextElementSibling}label.hidden=!visible});
   if($('#quickFetch'))$('#quickFetch').hidden=!can('imports.fetch');
   if($('#quickCreate'))$('#quickCreate').hidden=!can('posts.create');
@@ -67,7 +67,7 @@ async function loadContentTypes(){
   state.contentTypes=types;state.constraints=constraints;
 }
 const VIEW_META={overview:['COMMAND CENTER','Overview'],sources:['SOURCE INTELLIGENCE','Source Hub'],imports:['CONTENT PIPELINE','Import Inbox'],demand:['AUDIENCE DEMAND','Demand Queue'],posts:['CONTENT','Content Library'],media:['FILES','Media & Documents'],analytics:['INSIGHTS','Analytics'],team:['ACCESS','Team & Roles'],settings:['SYSTEM','Settings'],audit:['SECURITY','Audit Log']};
-async function navigate(view){if(VIEW_PERMISSION[view]&&!can(VIEW_PERMISSION[view]))view=firstAllowedView();state.view=view;$('#sidebar').classList.remove('open');$('#nav button[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===view));const [eye,title]=VIEW_META[view]||['TODAYINFO',view];$('#viewEyebrow').textContent=eye;$('#viewTitle').textContent=title;$('#content').innerHTML='<div class="empty">Loading…</div>';try{await renderers[view]()}catch(err){$('#content').innerHTML=`<div class="error-box">${esc(err.message)}</div>`}}
+async function navigate(view){if(VIEW_PERMISSION[view]&&!can(VIEW_PERMISSION[view]))view=firstAllowedView();state.view=view;$('#sidebar').classList.remove('open');$$('#nav button[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===view));const [eye,title]=VIEW_META[view]||['TODAYINFO',view];$('#viewEyebrow').textContent=eye;$('#viewTitle').textContent=title;$('#content').innerHTML='<div class="empty">Loading…</div>';try{await renderers[view]()}catch(err){$('#content').innerHTML=`<div class="error-box">${esc(err.message)}</div>`}}
 
 function metric(label,value,note=''){return`<div class="metric"><small>${esc(label)}</small><strong>${Number(value||0).toLocaleString()}</strong>${note?`<em>${esc(note)}</em>`:''}</div>`}
 function bars(obj={}){const entries=Object.entries(obj);const max=Math.max(1,...entries.map(([,v])=>Number(v)||0));return`<div class="bar-chart">${entries.length?entries.map(([k,v])=>`<div class="bar-row"><span>${esc(k.replaceAll('_',' '))}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max(2,(Number(v)/max)*100)}%"></div></div><b>${Number(v).toLocaleString()}</b></div>`).join(''):'<div class="empty">No data yet.</div>'}</div>`}
