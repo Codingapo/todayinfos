@@ -9,6 +9,7 @@ test('VPS deployment consistently uses /opt/filebrowser/today and port 3009',()=
   const service=read('deploy/systemd/todayinfo-api.service');
   const env=read('.env.production.example');
   const config=read('src/config.mjs');
+  const frontend=read('frontend/data/api-config.js');
 
   assert.match(nginx,/root \/opt\/filebrowser\/today\/frontend;/);
   assert.match(nginx,/127\.0\.0\.1:3009/);
@@ -21,6 +22,8 @@ test('VPS deployment consistently uses /opt/filebrowser/today and port 3009',()=
 
   assert.match(env,/^PORT=3009$/m);
   assert.match(config,/process\.env\.PORT \|\| 3009/);
+  assert.match(frontend,/http:\/\/localhost:3009\/api\/v1/);
+  assert.doesNotMatch(frontend,/localhost:3011/);
 });
 
 test('VPS updater can work without git and preserves production state',()=>{
