@@ -102,7 +102,7 @@ R2_BUCKET=todayinfo
 Then fill in:
 
 - `JWT_SECRET`
-- `DATABASE_URL`
+- `DATABASE_URL_IPV4` with the **Supabase Session pooler** connection string when the VPS is IPv4-only
 - your existing R2 credentials
 - `TODAYINFO_INGEST_KEY`
 - optional Resend credentials
@@ -286,3 +286,76 @@ curl https://api.todayinfo.co.za/health
 ```
 
 If a future release includes a database migration, review the migration before running it against production.
+
+
+## Database IPv6 / ENETUNREACH troubleshooting
+
+If the API log contains an error similar to:
+
+```text
+connect ENETUNREACH 2a05:...:5432
+```
+
+the application is trying to reach an IPv6-only PostgreSQL address from a VPS that has no working IPv6 route.
+
+For Supabase on an IPv4-only VPS, do **not** use the direct URL that looks like:
+
+```text
+postgresql://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres
+```
+
+Instead:
+
+1. Open **Supabase Dashboard -> Connect**.
+2. Choose **Session pooler**.
+3. Copy the complete connection string exactly as Supabase shows it.
+4. Put it in the private VPS environment:
+
+```env
+DATABASE_URL_IPV4=postgresql://postgres.PROJECT_REF:PASSWORD@YOUR_POOLER_HOST:5432/postgres
+DATABASE_URL=
+DATABASE_SSL=true
+DATABASE_CONNECT_TIMEOUT_MS=8000
+```
+
+Do not guess the pooler hostname; copy it from the Supabase Connect dialog.
+
+Then run:
+
+```bash
+cd /var/www/today
+npm run doctor
+sudo systemctl restart todayinfo-api
+sudo journalctl -u todayinfo-api -n 80 --no-pager
+curl http://127.0.0.1:3011/health
+```
+
+`npm run doctor` now prints the selected database host plus its IPv4 (A) and IPv6 (AAAA) DNS results. If it identifies a Supabase direct host without `DATABASE_URL_IPV4`, it prints a warning.
+
+### Port mismatch
+
+The production Nginx file proxies to:
+
+```text
+127.0.0.1:3011
+```
+
+The private VPS `.env` must therefore contain:
+
+```env
+PORT=3011
+```
+
+If the Node log says `http://localhost:3009`, edit `/var/www/today/.env`, change the port to 3011, and restart the service.
+
+### DNS check
+
+Before running Certbot, all three public names must resolve to the VPS public IPv4 address:
+
+```bash
+getent ahostsv4 todayinfo.co.za
+getent ahostsv4 www.todayinfo.co.za
+getent ahostsv4 api.todayinfo.co.za
+```
+
+If any command returns nothing, fix the DNS **A** record first. Certbot and the public site cannot work until DNS is visible.
