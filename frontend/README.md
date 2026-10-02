@@ -24,7 +24,7 @@ Production URLs:
 - API: `https://api.todayinfo.co.za/api/v1`
 - Node listener: `127.0.0.1:3011`
 
-The frontend has no Render or Cloudflare Pages fallback. Runtime API configuration is in `data/api-config.js`.
+The frontend has no external hosting/API fallback. Runtime API configuration is in `data/api-config.js`.
 
 ## SPA routing
 
