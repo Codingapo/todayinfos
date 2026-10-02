@@ -33,6 +33,7 @@ test('VPS updater can work without git and preserves production state',()=>{
   assert.match(update,/APP_DIR="\$\{APP_DIR:-\/opt\/filebrowser\/today\}"/);
   assert.match(update,/APP_PORT="\$\{APP_PORT:-\$\(read_env_port\)\}"/);
   assert.match(update,/data\/seeds/);
+  assert.match(update,/No package-lock\.json found; using npm install --omit=dev/);
   assert.doesNotMatch(update,/rm -rf "\$APP_DIR\/data"/);
   assert.doesNotMatch(update,/rm -f "\$APP_DIR\/\.env"/);
 });
@@ -42,6 +43,8 @@ test('VPS installer generates Nginx and systemd from the actual app directory an
   assert.match(install,/APP_DIR="\$\{APP_DIR:-\/opt\/filebrowser\/today\}"/);
   assert.match(install,/APP_PORT="\$\{APP_PORT:-3009\}"/);
   assert.match(install,/systemctl enable todayinfo-api/);
+  assert.match(install,/NODE_BIN=/);
+  assert.match(install,/npm install --omit=dev/);
   assert.match(install,/nginx -t/);
   assert.match(install,/127\.0\.0\.1:\$APP_PORT\/health/);
 });
