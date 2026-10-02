@@ -22,8 +22,10 @@ const nodeEnv = process.env.NODE_ENV || 'development';
 
 export const config = {
   nodeEnv,
-  port: Number(process.env.PORT || 8787),
-  appOrigin: process.env.APP_ORIGIN || `http://localhost:${process.env.PORT || 8787}`,
+  port: Number(process.env.PORT || 3009),
+  appOrigin: process.env.APP_ORIGIN || `http://localhost:${process.env.PORT || 3009}`,
+  publicSiteOrigin: (process.env.PUBLIC_SITE_ORIGIN || 'https://todayinfo.co.za').replace(/\/$/, ''),
+  publicApiOrigin: (process.env.PUBLIC_API_ORIGIN || 'https://api.todayinfo.co.za').replace(/\/$/, ''),
   jwtSecret,
   internalIngestKey: process.env.TODAYINFO_INGEST_KEY || '',
 
