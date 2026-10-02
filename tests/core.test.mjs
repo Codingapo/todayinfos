@@ -7,7 +7,7 @@ import { markdownToBlocks, renderBlocksHtml, extractInlineTags } from '../src/li
 import { publicPost } from '../src/lib/serializers.mjs';
 import { ROLE_PERMISSIONS, ROLE_LABELS, hasPermission } from '../src/lib/rbac.mjs';
 import { resolvedDefinition } from '../src/lib/content-types.mjs';
-import { inspectDatabaseUrl, resolveStoreMode, collectDatabaseUrls } from '../src/lib/database-config.mjs';
+import { inspectDatabaseUrl, resolveStoreMode, collectDatabaseUrls, isLikelySupabaseDirectHost } from '../src/lib/database-config.mjs';
 import { normalizeGeo, normalizeClassification, normalizeCountryCode, seoPath, filterPost, matchesSearch, queryFilters } from '../src/lib/global-content.mjs';
 import { publicationKey, PUBLICATION_SCHEMA } from '../src/lib/publication-service.mjs';
 import { publishedObjectKey } from '../src/lib/r2.mjs';
@@ -1229,4 +1229,45 @@ test('frontend production API config is VPS-only with no Render fallback',()=>{
   assert.match(config,/https:\/\/api\.todayinfo\.co\.za\/api\/v1/);
   assert.match(runtime,/http:\/\/localhost:3011\/api\/v1/);
   assert.match(readme,/\/var\/www\/today/);
+});
+
+
+test('v0.9.3: IPv4 database URL is preferred over direct IPv6-oriented URL',()=>{
+  const urls=collectDatabaseUrls({
+    DATABASE_URL_IPV4:'postgresql://postgres.project:pass@aws-0-region.pooler.supabase.com:5432/postgres',
+    DATABASE_URL:'postgresql://postgres:pass@db.project.supabase.co:5432/postgres'
+  },{max:3});
+  assert.equal(urls.length,2);
+  assert.match(urls[0],/pooler\.supabase\.com/);
+  assert.match(urls[1],/db\.project\.supabase\.co/);
+});
+
+test('v0.9.3: Supabase direct database hosts are identified for IPv4-only VPS warnings',()=>{
+  assert.equal(isLikelySupabaseDirectHost('db.projectref.supabase.co'),true);
+  assert.equal(isLikelySupabaseDirectHost('aws-0-region.pooler.supabase.com'),false);
+});
+
+test('v0.9.3: ENETUNREACH is treated as database availability failure',()=>{
+  const error=Object.assign(new Error('connect ENETUNREACH 2a05::1:5432'),{code:'ENETUNREACH'});
+  assert.equal(availabilityError(error),true);
+});
+
+test('v0.9.3: PostgreSQL pool uses bounded connection timeout and keepalive',()=>{
+  const src=fs.readFileSync(new URL('../src/lib/store-postgres.mjs',import.meta.url),'utf8');
+  const config=fs.readFileSync(new URL('../src/config.mjs',import.meta.url),'utf8');
+  assert.match(src,/connectionTimeoutMillis/);
+  assert.match(src,/keepAlive:true/);
+  assert.match(config,/DATABASE_CONNECT_TIMEOUT_MS/);
+});
+
+test('v0.9.3: VPS examples use port 3011 and document the Supabase Session pooler',()=>{
+  const env=fs.readFileSync(new URL('../.env.production.example',import.meta.url),'utf8');
+  const guide=fs.readFileSync(new URL('../deploy/VPS_DEPLOY.md',import.meta.url),'utf8');
+  assert.match(env,/PORT=3011/);
+  assert.match(env,/DATABASE_URL_IPV4=/);
+  assert.match(env,/Session pooler/);
+  assert.match(guide,/ENETUNREACH/);
+  assert.match(guide,/npm run doctor/);
+  assert.match(guide,/DATABASE_URL_IPV4/);
+  assert.match(guide,/PORT=3011/);
 });
