@@ -88,7 +88,7 @@ app.use('/api/v1',(req,res)=>res.status(404).json({error:'API route not found',p
 
 if(config.serveFrontend){
   app.use(express.static(frontendRoot,{index:false,etag:true,fallthrough:true,setHeaders(res,filePath){
-    const rel=path.relative(frontendRoot,filePath).replaceAll('\\\\','/');
+    const rel=path.relative(frontendRoot,filePath).split(path.sep).join('/');
     if(rel==='index.html'||rel==='data/api-config.js')res.setHeader('Cache-Control','public, max-age=0, must-revalidate');
     else res.setHeader('Cache-Control','public, max-age=3600, stale-while-revalidate=86400');
   }}));
