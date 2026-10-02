@@ -664,44 +664,77 @@ Source policy is enforced server-side, so sending `autoPublish=true` cannot bypa
 The Source Hub displays the publishing mode, rights/reuse state, AI rewriting state and auto-publish state for each source.
 
 
-## v0.9 — Production deployment
+## v0.9.2 — Single VPS production deployment
 
-TodayInfo can now be deployed with the public frontend and API separated cleanly:
+TodayInfo now has one production hosting model:
 
 ```text
-todayinfo.co.za
+https://todayinfo.co.za
     ↓
-Cloudflare Pages
+Nginx serves /var/www/today/frontend directly
+
+https://todayinfo.co.za/admin/
     ↓
+Nginx reverse proxy
+    ↓
+Node.js on 127.0.0.1:3011
+
 https://api.todayinfo.co.za/api/v1
     ↓
-Nginx
+Nginx public API cache/reverse proxy
     ↓
-Node.js on 127.0.0.1:3009
+Node.js on 127.0.0.1:3011
     ↓
-Supabase/PostgreSQL + existing Cloudflare R2 bucket
+Supabase/PostgreSQL + existing R2 bucket
 ```
 
-The static frontend uses the VPS API as its primary origin and the existing Render API as a temporary fallback during migration.
+Everything lives under:
+
+```text
+/var/www/today
+```
+
+The frontend has no Render fallback and does not require Cloudflare Pages. Nginx handles SPA routes such as `/jobs`, `/bursaries` and content-detail URLs with `try_files ... /index.html`, preventing frontend `Cannot GET` errors.
 
 Production files:
 
 ```text
 .env.production.example
 deploy/VPS_DEPLOY.md
-deploy/nginx/todayinfo-api.conf
+deploy/nginx/todayinfo.conf
 deploy/systemd/todayinfo-api.service
-frontend/api-config.production.js
+deploy/update-vps.sh
+frontend/data/api-config.js
 frontend/README.md
 ```
 
 ### Caching
 
-Public GET endpoints emit browser and Cloudflare edge cache directives with stale revalidation/error fallback. Admin/auth/internal/write traffic is explicitly no-store. Static versioned frontend assets can be cached for one year while HTML and API configuration revalidate.
+Performance uses layered caching:
+
+- frontend in-memory/localStorage cache;
+- Nginx static asset cache;
+- Nginx public API proxy cache;
+- Node `Cache-Control` + `X-Accel-Expires` cache hints;
+- R2/local JSON publication fallback.
+
+Admin, authentication, internal ingestion and writes remain `no-store`.
+
+### HTTPS
+
+After the three DNS records point at the VPS, Certbot can manage certificates for:
+
+```text
+todayinfo.co.za
+www.todayinfo.co.za
+api.todayinfo.co.za
+```
+
+See `deploy/VPS_DEPLOY.md` for the exact Nginx/Certbot steps.
 
 ### Owner password
 
-Never put the real password in Git. On the VPS set `SEED_ADMIN_PASSWORD` privately, then run:
+Keep the real password out of Git. Set `SEED_ADMIN_PASSWORD` in the private VPS `.env`, then run:
 
 ```bash
 npm run seed:admin
@@ -711,10 +744,11 @@ The production seed script refuses the password `admin`.
 
 ### R2
 
-The bucket name remains:
+The existing R2 publishing layer is unchanged:
 
 ```env
 R2_BUCKET=todayinfo
 ```
 
-No R2 content migration is required for v0.9.
+Moving the website to the VPS does not require an R2 content migration.
+
