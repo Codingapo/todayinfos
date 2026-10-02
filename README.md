@@ -662,3 +662,59 @@ TodayInfo does **not** automatically rewrite narrative source articles.
 Source policy is enforced server-side, so sending `autoPublish=true` cannot bypass a source marked manual review.
 
 The Source Hub displays the publishing mode, rights/reuse state, AI rewriting state and auto-publish state for each source.
+
+
+## v0.9 — Production deployment
+
+TodayInfo can now be deployed with the public frontend and API separated cleanly:
+
+```text
+todayinfo.co.za
+    ↓
+Cloudflare Pages
+    ↓
+https://api.todayinfo.co.za/api/v1
+    ↓
+Nginx
+    ↓
+Node.js on 127.0.0.1:3009
+    ↓
+Supabase/PostgreSQL + existing Cloudflare R2 bucket
+```
+
+The static frontend uses the VPS API as its primary origin and the existing Render API as a temporary fallback during migration.
+
+Production files:
+
+```text
+.env.production.example
+deploy/VPS_DEPLOY.md
+deploy/nginx/todayinfo-api.conf
+deploy/systemd/todayinfo-api.service
+frontend/api-config.production.js
+frontend/README.md
+```
+
+### Caching
+
+Public GET endpoints emit browser and Cloudflare edge cache directives with stale revalidation/error fallback. Admin/auth/internal/write traffic is explicitly no-store. Static versioned frontend assets can be cached for one year while HTML and API configuration revalidate.
+
+### Owner password
+
+Never put the real password in Git. On the VPS set `SEED_ADMIN_PASSWORD` privately, then run:
+
+```bash
+npm run seed:admin
+```
+
+The production seed script refuses the password `admin`.
+
+### R2
+
+The bucket name remains:
+
+```env
+R2_BUCKET=todayinfo
+```
+
+No R2 content migration is required for v0.9.

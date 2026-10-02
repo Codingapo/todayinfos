@@ -1174,3 +1174,47 @@ test('public API exposes application prominently and paginates filtered search',
   assert.match(routes,/const payload=paginate\(items,req\.query\.page,req\.query\.limit\)/);
   assert.match(routes,/req\.query\.query/);
 });
+
+
+test('production deployment defaults to port 3009 and keeps the R2 bucket name',()=>{
+  const config=fs.readFileSync(new URL('../src/config.mjs',import.meta.url),'utf8');
+  const env=fs.readFileSync(new URL('../.env.production.example',import.meta.url),'utf8');
+  assert.match(config,/process\.env\.PORT \|\| 3009/);
+  assert.match(config,/https:\/\/todayinfo\.co\.za/);
+  assert.match(config,/https:\/\/api\.todayinfo\.co\.za/);
+  assert.match(env,/PORT=3009/);
+  assert.match(env,/R2_BUCKET=todayinfo/);
+  assert.match(env,/SEED_ADMIN_USERNAME=apo/);
+});
+
+test('public API caching is fast while admin auth and writes stay no-store',()=>{
+  const server=fs.readFileSync(new URL('../src/server.mjs',import.meta.url),'utf8');
+  assert.match(server,/function publicApiCache/);
+  assert.match(server,/Cloudflare-CDN-Cache-Control/);
+  assert.match(server,/stale-while-revalidate=600/);
+  assert.match(server,/stale-if-error=86400/);
+  assert.match(server,/app\.use\('\/admin\/api\/auth',noStore,authRouter\)/);
+  assert.match(server,/app\.use\('\/admin\/api',noStore,adminRouter\)/);
+  assert.match(server,/app\.use\('\/internal\/ingest\/v1',noStore,internalRouter\)/);
+});
+
+test('VPS deployment files target nginx certbot and local node port 3009',()=>{
+  const nginx=fs.readFileSync(new URL('../deploy/nginx/todayinfo-api.conf',import.meta.url),'utf8');
+  const service=fs.readFileSync(new URL('../deploy/systemd/todayinfo-api.service',import.meta.url),'utf8');
+  const guide=fs.readFileSync(new URL('../deploy/VPS_DEPLOY.md',import.meta.url),'utf8');
+  assert.match(nginx,/server_name api\.todayinfo\.co\.za/);
+  assert.match(nginx,/proxy_pass http:\/\/127\.0\.0\.1:3009/);
+  assert.match(service,/EnvironmentFile=\/var\/www\/todayinfos\/\.env/);
+  assert.match(service,/src\/server\.mjs/);
+  assert.match(guide,/certbot --nginx -d api\.todayinfo\.co\.za/);
+  assert.match(guide,/todayinfo\.co\.za/);
+});
+
+test('frontend production API config supports VPS primary and Render fallback',()=>{
+  const config=fs.readFileSync(new URL('../frontend/api-config.production.js',import.meta.url),'utf8');
+  const readme=fs.readFileSync(new URL('../frontend/README.md',import.meta.url),'utf8');
+  assert.match(config,/https:\/\/api\.todayinfo\.co\.za\/api\/v1/);
+  assert.match(config,/https:\/\/todayinfos\.onrender\.com\/api\/v1/);
+  assert.match(readme,/_redirects/);
+  assert.match(readme,/_headers/);
+});
