@@ -74,11 +74,23 @@ function publicApiCache(req,res,next){
   next();
 }
 
+const adminCors=cors({
+  origin(origin,callback){
+    if(!origin)return callback(null,true);
+    const normalized=String(origin).replace(/\/$/,'');
+    if(config.adminAllowedOrigins.includes(normalized))return callback(null,true);
+    return callback(new Error('Admin origin is not allowed by CORS'));
+  },
+  credentials:true,
+  methods:['GET','POST','PATCH','DELETE','OPTIONS'],
+  allowedHeaders:['Accept','Content-Type','X-CSRF-Token']
+});
+
 app.get('/health',noStore,(req,res)=>res.json({status:'ok',service:'todayinfo-control-center',mode:config.dataStore,database_fallback:config.dataStoreFallback,store:store.health?.()||{mode:config.dataStore},reference_seed:referenceSeedStatus,time:new Date().toISOString()}));
 app.use('/api/v1',cors({origin:'*',methods:['GET','POST','OPTIONS']}),publicApiCache,publicRouter);
 app.use('/internal/ingest/v1',noStore,internalRouter);
-app.use('/admin/api/auth',noStore,authRouter);
-app.use('/admin/api',noStore,adminRouter);
+app.use('/admin/api/auth',adminCors,noStore,authRouter);
+app.use('/admin/api',adminCors,noStore,adminRouter);
 app.use('/uploads',express.static(path.resolve(__dirname,'../uploads'),{fallthrough:false,maxAge:'1y',immutable:true}));
 app.use('/admin',express.static(path.resolve(__dirname,'../public/admin'),{index:false,maxAge:0,setHeaders(res){res.setHeader('Cache-Control','no-store, no-cache, must-revalidate')}}));
 app.get(/^\/admin(?:\/.*)?$/,(req,res)=>res.sendFile(path.resolve(__dirname,'../public/admin/index.html')));

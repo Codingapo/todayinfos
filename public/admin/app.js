@@ -1,5 +1,13 @@
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const state={user:null,csrf:'',permissions:[],view:'overview',contentTypes:null,constraints:null,posts:[],editor:null};
+const defaultAdminApiBase=(()=>{
+  const host=location.hostname;
+  if(['localhost','127.0.0.1'].includes(host))return `http://${host}:3009/admin/api`;
+  if(['todayinfo.co.za','www.todayinfo.co.za'].includes(host))return 'https://api.todayinfo.co.za/admin/api';
+  return '/admin/api';
+})();
+const ADMIN_API_BASE=String(window.TODAYINFO_ADMIN_API_BASE||defaultAdminApiBase).replace(/\/$/,'');
+const adminEndpoint=path=>`${ADMIN_API_BASE}${String(path||'').startsWith('/')?'':'/'}${String(path||'')}`;
 const savedTheme=localStorage.getItem('todayinfo-theme');
 function applyTheme(theme){document.documentElement.dataset.theme=theme;localStorage.setItem('todayinfo-theme',theme);const button=$('#themeToggle');if(button){const dark=theme==='dark';button.setAttribute('aria-label',dark?'Switch to light mode':'Switch to dark mode');button.title=dark?'Switch to light mode':'Switch to dark mode';button.querySelector('span').textContent=dark?'☀':'☾';button.querySelector('.theme-label').textContent=dark?'Light mode':'Dark mode'}}
 applyTheme(savedTheme||'light');
@@ -23,7 +31,7 @@ const icon=(name)=>{const paths={trash:'<path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h
 const iconButton=(name,label,cls='')=>`<button class="icon-action ${cls}" type="button" aria-label="${esc(label)}" title="${esc(label)}">${icon(name)}</button>`;
 
 async function request(url,{method='GET',body,auth=true}={}){
-  const opts={method,credentials:'same-origin',headers:{accept:'application/json'}};
+  const opts={method,credentials:'include',headers:{accept:'application/json'}};
   if(auth&&state.csrf&&!['GET','HEAD'].includes(method))opts.headers['x-csrf-token']=state.csrf;
   if(body instanceof FormData)opts.body=body;else if(body!==undefined){opts.headers['content-type']='application/json';opts.body=JSON.stringify(body)}
   const res=await fetch(url,opts);let out={};try{out=await res.json()}catch{}
@@ -36,7 +44,7 @@ async function request(url,{method='GET',body,auth=true}={}){
   }
   return out.data;
 }
-const api=(path,opts)=>request(`/admin/api${path}`,opts);
+const api=(path,opts)=>request(adminEndpoint(path),opts);
 function toast(msg,error=false){const el=$('#toast');el.textContent=msg;el.className=`toast show${error?' error':''}`;clearTimeout(toast.t);toast.t=setTimeout(()=>el.className='toast',3300)}
 function modal(title,eyebrow,html){$('#modalTitle').textContent=title;$('#modalEyebrow').textContent=eyebrow;$('#modalBody').innerHTML=html;$('#modal').showModal()}
 function closeModal(){if($('#modal').open)$('#modal').close();state.editor=null}
@@ -44,12 +52,12 @@ $('#modalClose').addEventListener('click',closeModal);
 $('#modal').addEventListener('click',e=>{if(e.target===$('#modal'))closeModal()});
 
 async function boot(){
-  try{const me=await request('/admin/api/auth/me',{auth:false});state.user=me.user;state.csrf=me.csrf;state.permissions=me.permissions||[];showApp();applyAccess();await loadContentTypes();await navigate(firstAllowedView())}catch{showLogin()}
+  try{const me=await request(adminEndpoint('/auth/me'),{auth:false});state.user=me.user;state.csrf=me.csrf;state.permissions=me.permissions||[];showApp();applyAccess();await loadContentTypes();await navigate(firstAllowedView())}catch{showLogin()}
 }
 function showLogin(){$('#loginView').classList.remove('hidden');$('#appView').classList.add('hidden')}
 function showApp(){$('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');$('#avatar').textContent=(state.user?.display_name||state.user?.username||'A').slice(0,1).toUpperCase()}
-$('#loginForm').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.currentTarget);try{const r=await request('/admin/api/auth/login',{method:'POST',body:{username:f.get('username'),password:f.get('password')},auth:false});state.user=r.user;state.csrf=r.csrf;state.permissions=r.permissions||[];showApp();applyAccess();await loadContentTypes();await navigate(firstAllowedView())}catch(err){toast(err.message,true)}});
-$('#logoutBtn').addEventListener('click',async()=>{try{await request('/admin/api/auth/logout',{method:'POST',body:{}})}catch{}state.user=null;state.csrf='';state.permissions=[];showLogin()});
+$('#loginForm').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.currentTarget);try{const r=await request(adminEndpoint('/auth/login'),{method:'POST',body:{username:f.get('username'),password:f.get('password')},auth:false});state.user=r.user;state.csrf=r.csrf;state.permissions=r.permissions||[];showApp();applyAccess();await loadContentTypes();await navigate(firstAllowedView())}catch(err){toast(err.message,true)}});
+$('#logoutBtn').addEventListener('click',async()=>{try{await request(adminEndpoint('/auth/logout'),{method:'POST',body:{}})}catch{}state.user=null;state.csrf='';state.permissions=[];showLogin()});
 $('#menuBtn').addEventListener('click',()=>$('#sidebar').classList.toggle('open'));
 $('#themeToggle').addEventListener('click',()=>applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
 $('#nav').addEventListener('click',e=>{const b=e.target.closest('button[data-view]');if(b)navigate(b.dataset.view)});
