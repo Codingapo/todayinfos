@@ -15,7 +15,9 @@
     "doctor": "node scripts/config-doctor.mjs",
     "start:api": "node src/server.mjs",
     "start:frontend": "node src/frontend-server.mjs",
-    "dev:frontend": "node --watch src/frontend-server.mjs"
+    "dev:frontend": "node --watch src/frontend-server.mjs",
+    "start:admin": "node src/admin-server.mjs",
+    "dev:admin": "node --watch src/admin-server.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.900.0",
