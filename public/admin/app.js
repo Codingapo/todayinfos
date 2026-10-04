@@ -3,7 +3,7 @@ const state={user:null,csrf:'',permissions:[],view:'overview',contentTypes:null,
 const defaultAdminApiBase=(()=>{
   const host=location.hostname;
   if(['localhost','127.0.0.1'].includes(host))return `http://${host}:3009/admin/api`;
-  if(['todayinfo.co.za','www.todayinfo.co.za'].includes(host))return 'https://api.todayinfo.co.za/admin/api';
+  if(['todayinfo.co.za','www.todayinfo.co.za','admin.todayinfo.co.za'].includes(host))return 'https://api.todayinfo.co.za/admin/api';
   return '/admin/api';
 })();
 const ADMIN_API_BASE=String(window.TODAYINFO_ADMIN_API_BASE||defaultAdminApiBase).replace(/\/$/,'');
