@@ -22,8 +22,10 @@ APP_PORT="${APP_PORT:-$(read_env_value PORT)}"
 APP_PORT="${APP_PORT:-3009}"
 FRONTEND_PORT="${FRONTEND_PORT:-$(read_env_value FRONTEND_PORT)}"
 FRONTEND_PORT="${FRONTEND_PORT:-3011}"
+ADMIN_PORT="${ADMIN_PORT:-$(read_env_value ADMIN_PORT)}"
+ADMIN_PORT="${ADMIN_PORT:-3020}"
 
-printf 'Updating TodayInfo in %s (API %s, frontend %s)\n' "$APP_DIR" "$APP_PORT" "$FRONTEND_PORT"
+printf 'Updating TodayInfo in %s (API %s, frontend %s, admin %s)\n' "$APP_DIR" "$APP_PORT" "$FRONTEND_PORT" "$ADMIN_PORT"
 
 if command -v git >/dev/null 2>&1 && [[ -d .git ]]; then
   git pull --ff-only
@@ -69,6 +71,11 @@ if [[ -f .env ]]; then
   else
     printf 'FRONTEND_PORT=%s\n' "$FRONTEND_PORT" >> .env
   fi
+  if grep -q '^ADMIN_PORT=' .env; then
+    sed -i "s/^ADMIN_PORT=.*/ADMIN_PORT=$ADMIN_PORT/" .env
+  else
+    printf 'ADMIN_PORT=%s\n' "$ADMIN_PORT" >> .env
+  fi
 fi
 
 if [[ -f package-lock.json || -f npm-shrinkwrap.json ]]; then
@@ -83,19 +90,20 @@ npm run doctor
 npm run check
 npm test
 
-for service in todayinfo-api todayinfo-frontend; do
+for service in todayinfo-api todayinfo-frontend todayinfo-admin; do
   if ! systemctl list-unit-files --type=service 2>/dev/null | grep -q "^$service\\.service"; then
     echo
     echo "$service systemd service is not installed yet."
     echo "Run:"
-    echo "  APP_DIR=$APP_DIR APP_PORT=$APP_PORT FRONTEND_PORT=$FRONTEND_PORT bash deploy/install-vps.sh"
+    echo "  APP_DIR=$APP_DIR APP_PORT=$APP_PORT FRONTEND_PORT=$FRONTEND_PORT ADMIN_PORT=$ADMIN_PORT bash deploy/install-vps.sh"
     exit 2
   fi
 done
 
-printf '\nRestarting API, frontend and Nginx...\n'
+printf '\nRestarting API, frontend, admin and Nginx...\n'
 sudo systemctl restart todayinfo-api
 sudo systemctl restart todayinfo-frontend
+sudo systemctl restart todayinfo-admin
 sudo nginx -t
 sudo systemctl reload nginx
 
@@ -103,4 +111,6 @@ sleep 2
 curl --fail --silent --show-error "http://127.0.0.1:$APP_PORT/health"
 printf '\n'
 curl --fail --silent --show-error "http://127.0.0.1:$FRONTEND_PORT/__frontend_health"
+printf '\n'
+curl --fail --silent --show-error "http://127.0.0.1:$ADMIN_PORT/__admin_health"
 printf '\n\nTodayInfo update complete.\n'
