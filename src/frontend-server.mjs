@@ -8,7 +8,6 @@ import helmet from 'helmet';
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const projectRoot=path.resolve(__dirname,'..');
 const frontendRoot=path.resolve(projectRoot,process.env.FRONTEND_DIR||'frontend');
-const adminRoot=path.resolve(projectRoot,'public/admin');
 const port=Math.max(1,Math.min(65535,Number(process.env.FRONTEND_PORT||3011)));
 const host=process.env.FRONTEND_HOST||'127.0.0.1';
 const siteOrigin=(process.env.PUBLIC_SITE_ORIGIN||'https://todayinfo.co.za').replace(/\/$/,'');
@@ -66,21 +65,6 @@ app.get('/data/api-config.js',(req,res)=>{
 })();`);
 });
 
-app.use('/admin',express.static(adminRoot,{
-  index:false,
-  etag:true,
-  fallthrough:true,
-  setHeaders(res,filePath){
-    if(path.basename(filePath)==='index.html')noStore(res);
-    else res.setHeader('Cache-Control','private, max-age=0, must-revalidate');
-  }
-}));
-
-app.get(/^\/admin(?:\/.*)?$/,(req,res)=>{
-  noStore(res);
-  res.sendFile(path.join(adminRoot,'index.html'));
-});
-
 app.use(express.static(frontendRoot,{
   index:false,
   etag:true,
@@ -100,7 +84,7 @@ app.use(express.static(frontendRoot,{
 // SPA fallback: public extension-free URLs always load index.html instead of "Cannot GET".
 app.use((req,res,next)=>{
   if(req.method!=='GET'||!req.accepts('html'))return next();
-  if(/^\/(?:admin|__frontend_health)(?:\/|$)/.test(req.path))return next();
+  if(/^\/(?:__frontend_health)(?:\/|$)/.test(req.path))return next();
   res.setHeader('Cache-Control','public, max-age=0, must-revalidate');
   return res.sendFile(path.join(frontendRoot,'index.html'));
 });
@@ -110,6 +94,5 @@ app.use((req,res)=>res.status(404).json({error:'Frontend route not found',path:r
 app.listen(port,host,()=>{
   console.log(`TodayInfo frontend: http://${host}:${port}`);
   console.log(`Public site: ${siteOrigin}`);
-  console.log(`Admin: ${siteOrigin}/admin/`);
   console.log(`API origin: ${apiOrigin}`);
 });
