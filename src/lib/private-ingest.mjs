@@ -120,10 +120,10 @@ export function preparePrivateIngestItem(item={},{
   const inputGeo=item.geo||{};
 
   const suppliedCountryName=item.country_name||inputGeo.country_name||td.country||country_name||null;
+  const globalCountry=/^(worldwide|global|remote|multiple countries|international)$/i.test(String(suppliedCountryName||'').trim());
   const geo=normalizeGeo({
-    country_code:item.country_code||inputGeo.country_code||country_code,
+    country_code:item.country_code||inputGeo.country_code||country_code||(globalCountry?'':suppliedCountryName),
     country_name:suppliedCountryName,
-    country:suppliedCountryName,
     region_name:item.region_name||inputGeo.region_name||item.region||item.province||item.state,
     region_code:item.region_code||inputGeo.region_code,
     city:item.city||inputGeo.city,
@@ -193,7 +193,7 @@ export function preparePrivateIngestItem(item={},{
 
   const draft={
     title,
-    slug:clean(item.slug)||descriptiveOpportunitySlug(item,contentType,geo.country_code),
+    slug:item.slug?slugify(clean(item.slug)):descriptiveOpportunitySlug(item,contentType,geo.country_code),
     content_type:contentType,
     summary,
     body_markdown:standardBody(item,contentType),
