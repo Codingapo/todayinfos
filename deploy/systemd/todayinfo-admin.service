@@ -1,0 +1,23 @@
+[Unit]
+Description=TodayInfo Admin
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/filebrowser/today
+EnvironmentFile=/opt/filebrowser/today/.env
+ExecStart=/usr/bin/node /opt/filebrowser/today/src/admin-server.mjs
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=20
+
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target
