@@ -1204,28 +1204,35 @@ test('public API caching stays enabled while credentialed admin traffic is no-st
   assert.match(server,/app\.use\('\/internal\/ingest\/v1',noStore,internalRouter\)/);
 });
 
-test('dual-port VPS serves public frontend and admin on 3011 while API stays on 3009',()=>{
+test('three-port VPS serves public frontend on 3011, admin on 3020 and API on 3009',()=>{
   const frontend=fs.readFileSync(new URL('../src/frontend-server.mjs',import.meta.url),'utf8');
+  const adminServer=fs.readFileSync(new URL('../src/admin-server.mjs',import.meta.url),'utf8');
   const apiService=fs.readFileSync(new URL('../deploy/systemd/todayinfo-api.service',import.meta.url),'utf8');
   const frontendService=fs.readFileSync(new URL('../deploy/systemd/todayinfo-frontend.service',import.meta.url),'utf8');
+  const adminService=fs.readFileSync(new URL('../deploy/systemd/todayinfo-admin.service',import.meta.url),'utf8');
   const env=fs.readFileSync(new URL('../.env.production.example',import.meta.url),'utf8');
   const guide=fs.readFileSync(new URL('../deploy/VPS_DEPLOY.md',import.meta.url),'utf8');
   assert.match(frontend,/FRONTEND_PORT\|\|3011/);
-  assert.match(frontend,/app\.use\('\/admin',express\.static/);
+  assert.doesNotMatch(frontend,/app\.use\('\/admin',express\.static/);
+  assert.match(adminServer,/ADMIN_PORT\|\|3020/);
+  assert.match(adminServer,/app\.use\('\/admin',express\.static/);
   assert.match(frontend,/SPA fallback/);
   assert.match(frontend,/sendFile\(path\.join\(frontendRoot,'index\.html'\)\)/);
   assert.match(frontend,/Cache-Control','public, max-age=86400, stale-while-revalidate=604800/);
   assert.match(apiService,/EnvironmentFile=\/opt\/filebrowser\/today\/\.env/);
   assert.match(frontendService,/src\/frontend-server\.mjs/);
+  assert.match(adminService,/src\/admin-server\.mjs/);
   assert.match(env,/PORT=3009/);
   assert.match(env,/FRONTEND_PORT=3011/);
+  assert.match(env,/ADMIN_PORT=3020/);
   assert.match(env,/ADMIN_ALLOWED_ORIGINS=https:\/\/admin\.todayinfo\.co\.za,https:\/\/todayinfo\.co\.za,https:\/\/www\.todayinfo\.co\.za/);
   assert.match(guide,/127\.0\.0\.1:3011/);
+  assert.match(guide,/127\.0\.0\.1:3020/);
   assert.match(guide,/127\.0\.0\.1:3009/);
   assert.doesNotMatch(guide,/certbot --nginx/);
 });
 
-test('admin dashboard uses api.todayinfo.co.za when served from todayinfo.co.za',()=>{
+test('admin dashboard uses api.todayinfo.co.za when served from admin.todayinfo.co.za',()=>{
   const admin=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
   assert.match(admin,/https:\/\/api\.todayinfo\.co\.za\/admin\/api/);
   assert.match(admin,/credentials:'include'/);
@@ -1294,6 +1301,7 @@ test('v0.9.3: VPS examples use port 3009 and document the Supabase Session poole
 test('VPS reverse proxy keeps frontend and API on separate ports',()=>{
   const nginx=fs.readFileSync(new URL('../deploy/nginx/todayinfo.conf',import.meta.url),'utf8');
   assert.match(nginx,/server_name todayinfo\.co\.za www\.todayinfo\.co\.za[\s\S]*proxy_pass http:\/\/127\.0\.0\.1:3011/);
+  assert.match(nginx,/server_name admin\.todayinfo\.co\.za[\s\S]*proxy_pass http:\/\/127\.0\.0\.1:3020/);
   assert.match(nginx,/server_name api\.todayinfo\.co\.za[\s\S]*location \^~ \/admin\/api\/[\s\S]*proxy_pass http:\/\/127\.0\.0\.1:3009/);
   assert.match(nginx,/location \^~ \/api\/v1\/[\s\S]*proxy_pass http:\/\/127\.0\.0\.1:3009/);
   const adminApiPos=nginx.indexOf('location ^~ /admin/api/');
@@ -1308,21 +1316,26 @@ test('frontend CSP allows the API subdomain without allowing Cloudflare Insights
   assert.doesNotMatch(src,/cloudflareinsights\.com/);
 });
 
-test('VPS installer preserves separate API and frontend ports and installs both services',()=>{
+test('VPS installer preserves API, frontend and admin ports and installs all services',()=>{
   const install=fs.readFileSync(new URL('../deploy/install-vps.sh',import.meta.url),'utf8');
   assert.match(install,/FRONTEND_PORT="\$\{FRONTEND_PORT:-3011\}"/);
+  assert.match(install,/ADMIN_PORT="\$\{ADMIN_PORT:-3020\}"/);
   assert.match(install,/todayinfo-api\.service/);
   assert.match(install,/todayinfo-frontend\.service/);
+  assert.match(install,/todayinfo-admin\.service/);
   assert.match(install,/127\.0\.0\.1:3009#127\.0\.0\.1:\$APP_PORT/);
   assert.match(install,/127\.0\.0\.1:3011#127\.0\.0\.1:\$FRONTEND_PORT/);
+  assert.match(install,/127\.0\.0\.1:3020#127\.0\.0\.1:\$ADMIN_PORT/);
   assert.doesNotMatch(install,/127\\\.0\\\.0\\\.1:\[0-9\]\+#127\.0\.0\.1:\$APP_PORT/);
 });
 
-test('VPS updater restarts and health-checks both Node processes',()=>{
+test('VPS updater restarts and health-checks all three Node processes',()=>{
   const update=fs.readFileSync(new URL('../deploy/update-vps.sh',import.meta.url),'utf8');
   assert.match(update,/systemctl restart todayinfo-api/);
   assert.match(update,/systemctl restart todayinfo-frontend/);
+  assert.match(update,/systemctl restart todayinfo-admin/);
   assert.match(update,/\$FRONTEND_PORT\/__frontend_health/);
+  assert.match(update,/\$ADMIN_PORT\/__admin_health/);
   assert.match(update,/\$APP_PORT\/health/);
 });
 
