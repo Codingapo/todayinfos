@@ -1142,12 +1142,14 @@ test('private ingestion creates descriptive SEO slugs and structured rule-based 
   assert.match(prepared.draft.body_markdown,/## Requirements/);
 });
 
-test('private ingestion API is secret protected and enforces 50 jobs or 100 bursaries',()=>{
+test('private ingestion API is secret protected and supports mixed opportunity batches',()=>{
   const route=fs.readFileSync(new URL('../src/routes/internal.mjs',import.meta.url),'utf8');
   const server=fs.readFileSync(new URL('../src/server.mjs',import.meta.url),'utf8');
   const config=fs.readFileSync(new URL('../src/config.mjs',import.meta.url),'utf8');
   assert.match(route,/x-todayinfo-ingest-key/);
-  assert.match(route,/input\.type==='job'\?50:100/);
+  assert.match(route,/INGEST_BATCH_LIMITS=\{job:50,internship:50,learnership:50,opportunity:50,bursary:100,scholarship:100\}/);
+  assert.match(route,/verify_applications/);
+  assert.match(route,/not-checked-draft-ingest/);
   assert.match(route,/verifyApplicationUrl/);
   assert.match(route,/config\.autoPublishMinScore/);
   assert.match(server,/\/internal\/ingest\/v1/);
@@ -1343,4 +1345,75 @@ test('admin client uses the API subdomain in production and credentialed request
   const admin=fs.readFileSync(new URL('../public/admin/app.js',import.meta.url),'utf8');
   assert.match(admin,/https:\/\/api\.todayinfo\.co\.za\/admin\/api/);
   assert.match(admin,/credentials:'include'/);
+});
+
+
+test('native TodayInfo dataset records preserve nested type_data and source metadata',()=>{
+  const item={
+    id:'kenya-example',
+    title:'Example Programme Manager',
+    slug:'example-programme-manager',
+    content_type:'job',
+    summary:'A researched job summary.',
+    body_markdown:'## Overview\n\nA researched job summary.\n\n## How to apply\n\nUse the official portal.',
+    posted_date:'2026-09-21',
+    categories:['Africa','Kenya'],
+    tags:['Kenya','Jobs','2026'],
+    type_data:{
+      country:'Kenya',company:'Example Organisation',location:'Nairobi, Kenya',
+      closing_date:'2026-10-30',status_override:'open',
+      requirements:'Degree required.',how_to_apply:'Use the official portal.',
+      application_url:'https://apply.example.org/job/123',source_url:'https://example.org/job/123'
+    },
+    source:{
+      source_url:'https://example.org/job/123',source_title:'Official vacancy',
+      verified_as_of:'2026-10-01',confidence:'high',notes:'Official source checked.'
+    },
+    status:'draft'
+  };
+  const prepared=preparePrivateIngestItem(item,{type:'job',country_name:'Kenya'});
+  assert.equal(prepared.draft.content_type,'job');
+  assert.equal(prepared.draft.slug,'example-programme-manager');
+  assert.equal(prepared.draft.geo.country_code,'KE');
+  assert.equal(prepared.draft.geo.country_name,'Kenya');
+  assert.equal(prepared.draft.type_data.company,'Example Organisation');
+  assert.equal(prepared.draft.type_data.application_url,'https://apply.example.org/job/123');
+  assert.equal(prepared.draft.type_data.status_override,'open');
+  assert.equal(prepared.draft.source.source_url,'https://example.org/job/123');
+  assert.equal(prepared.draft.source.confidence,'high');
+  assert.match(prepared.draft.body_markdown,/A researched job summary/);
+});
+
+test('private ingest preserves internship and learnership content types',()=>{
+  const internship=preparePrivateIngestItem({
+    title:'Graduate Trainee',content_type:'internship',
+    type_data:{country:'Uganda',company:'Example',application_url:'https://example.org/apply',source_url:'https://example.org/job'}
+  },{type:'internship',country_name:'Uganda'});
+  const learnership=preparePrivateIngestItem({
+    title:'Apprenticeship',content_type:'learnership',
+    type_data:{country:'South Africa',company:'Example',application_url:'https://example.org/apply2',source_url:'https://example.org/learn'}
+  },{type:'learnership',country_name:'South Africa'});
+  assert.equal(internship.draft.content_type,'internship');
+  assert.equal(internship.draft.category,'Internships');
+  assert.equal(learnership.draft.content_type,'learnership');
+  assert.equal(learnership.draft.category,'Learnerships');
+});
+
+test('worldwide dataset records do not fabricate a three-letter country code',()=>{
+  const prepared=preparePrivateIngestItem({
+    title:'Remote Worldwide Role',content_type:'job',categories:['Worldwide'],
+    type_data:{country:'Worldwide',company:'Remote Company',location:'Worldwide',application_url:'https://example.org/apply',source_url:'https://example.org/job'}
+  },{type:'job',country_name:'Worldwide'});
+  assert.equal(prepared.draft.geo.country_code,null);
+  assert.equal(prepared.draft.geo.country_name,'Worldwide');
+});
+
+test('dataset ingest VPS script is draft-first and uses the protected internal API',()=>{
+  const script=fs.readFileSync(new URL('../scripts/ingest-dataset.mjs',import.meta.url),'utf8');
+  assert.match(script,/TODAYINFO_INGEST_KEY/);
+  assert.match(script,/\/internal\/ingest\/v1\/batch/);
+  assert.match(script,/const publish=has\('--publish'\)/);
+  assert.match(script,/verify_applications:verifyApplications/);
+  assert.match(script,/job:50,internship:50,learnership:50,opportunity:50,bursary:100,scholarship:100/);
+  assert.match(script,/--dry-run/);
 });
