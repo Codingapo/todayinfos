@@ -1219,7 +1219,7 @@ test('dual-port VPS serves public frontend and admin on 3011 while API stays on 
   assert.match(frontendService,/src\/frontend-server\.mjs/);
   assert.match(env,/PORT=3009/);
   assert.match(env,/FRONTEND_PORT=3011/);
-  assert.match(env,/ADMIN_ALLOWED_ORIGINS=https:\/\/todayinfo\.co\.za,https:\/\/www\.todayinfo\.co\.za/);
+  assert.match(env,/ADMIN_ALLOWED_ORIGINS=https:\/\/admin\.todayinfo\.co\.za,https:\/\/todayinfo\.co\.za,https:\/\/www\.todayinfo\.co\.za/);
   assert.match(guide,/127\.0\.0\.1:3011/);
   assert.match(guide,/127\.0\.0\.1:3009/);
   assert.doesNotMatch(guide,/certbot --nginx/);
