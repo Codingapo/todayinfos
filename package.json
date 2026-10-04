@@ -1,6 +1,6 @@
 {
   "name": "todayinfo-control-center",
-  "version": "0.9.7",
+  "version": "0.9.8",
   "private": true,
   "type": "module",
   "engines": {
@@ -17,7 +17,8 @@
     "start:frontend": "node src/frontend-server.mjs",
     "dev:frontend": "node --watch src/frontend-server.mjs",
     "start:admin": "node src/admin-server.mjs",
-    "dev:admin": "node --watch src/admin-server.mjs"
+    "dev:admin": "node --watch src/admin-server.mjs",
+    "ingest:dataset": "node scripts/ingest-dataset.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.900.0",

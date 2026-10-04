@@ -1,4 +1,4 @@
-# TodayInfo Control Center v0.9.6
+# TodayInfo Control Center v0.9.8
 
 A Node.js admin dashboard and structured publishing API for TodayInfo.
 
@@ -824,3 +824,99 @@ Caching:
 - published JSON: existing R2/local fallback remains unchanged.
 
 Your Nginx/Certbot configuration is intentionally left to you.
+
+
+## v0.9.8 — Native dataset ingest
+
+TodayInfo's existing private ingest API now accepts native TodayInfo-shaped opportunity records as well as the older flat job/bursary payloads.
+
+Protected endpoint:
+
+```text
+POST /internal/ingest/v1/batch
+Header: X-TodayInfo-Ingest-Key: <TODAYINFO_INGEST_KEY>
+```
+
+Supported batch types:
+
+```text
+job          50 per request
+internship   50 per request
+learnership  50 per request
+opportunity  50 per request
+bursary      100 per request
+scholarship  100 per request
+```
+
+Native records may contain fields such as:
+
+```json
+{
+  "content_type": "internship",
+  "title": "...",
+  "slug": "...",
+  "summary": "...",
+  "body_markdown": "...",
+  "type_data": {
+    "country": "Uganda",
+    "company": "...",
+    "closing_date": "2026-10-07",
+    "requirements": "...",
+    "how_to_apply": "...",
+    "application_url": "https://..."
+  },
+  "source": {
+    "source_url": "https://...",
+    "verified_as_of": "2026-10-01",
+    "confidence": "high"
+  },
+  "status": "draft"
+}
+```
+
+The importer preserves structured content and source metadata. It does not use AI rewriting.
+
+### Load a large JSON dataset on the VPS
+
+Put the file anywhere on the VPS, for example:
+
+```text
+/opt/filebrowser/today/data/imports/multi-country-opportunities-expanded-v3.json
+```
+
+Preview grouping/batches without sending anything:
+
+```bash
+cd /opt/filebrowser/today
+npm run ingest:dataset -- --file data/imports/multi-country-opportunities-expanded-v3.json --dry-run
+```
+
+Ingest it as editable drafts:
+
+```bash
+npm run ingest:dataset -- --file data/imports/multi-country-opportunities-expanded-v3.json
+```
+
+The script reads `TODAYINFO_INGEST_KEY` from the private VPS `.env`, groups records by content type and country, and sends them in the allowed batch sizes.
+
+It is **draft-first by default**. It does not verify thousands of application links during the initial bulk load, which keeps the first ingest much faster.
+
+Later, to explicitly allow publishing after the API verifies application destinations and normal quality rules pass:
+
+```bash
+npm run ingest:dataset -- --file data/imports/multi-country-opportunities-expanded-v3.json --publish
+```
+
+Do not use `--publish` for a dataset whose own metadata says records still need review.
+
+Useful filters:
+
+```bash
+npm run ingest:dataset -- --file data/imports/file.json --type bursary
+npm run ingest:dataset -- --file data/imports/file.json --country ZA
+npm run ingest:dataset -- --file data/imports/file.json --limit 50
+```
+
+Re-running the same dataset is safe: TodayInfo matches existing records primarily by source URL and otherwise by slug/type/country, so it updates instead of intentionally duplicating content.
+
+Worldwide/global records remain country-neutral rather than being given a fake ISO country code.

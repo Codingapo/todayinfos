@@ -1,41 +1,27 @@
-# Build Status — v0.9.6 Dual-Port VPS
+# Build Status — v0.9.8 Native Dataset Ingest
 
-This release changes deployment wiring only. Existing TodayInfo content, Import Inbox, Demand Queue, Source Hub, R2 publishing, Supabase/PostgreSQL tracking, public API, employee roles and publishing rules remain intact.
+## Existing system retained
+- Public frontend/API/admin/VPS deployment remain unchanged.
+- Existing R2 bucket and publication flow remain unchanged.
+- Existing Import Inbox, Source Hub, Demand Queue and public API remain unchanged.
+- Private ingestion remains protected by TODAYINFO_INGEST_KEY.
 
-## Production listeners
+## Ingest improvements
+- Native TodayInfo JSON records are accepted directly.
+- Nested type_data and source metadata are preserved.
+- Jobs, internships, learnerships, opportunities, bursaries and scholarships are supported.
+- Batch limits remain conservative: 50 career/opportunity records and 100 bursary/scholarship records.
+- Worldwide records are accepted without fabricating a country code.
+- Bulk draft ingestion can defer live application-link verification for speed.
+- publish=true still uses the application-link verification and normal publishing quality gate.
+- Re-ingestion updates by source identity/slug instead of intentionally duplicating records.
 
-- API / admin API: `127.0.0.1:3009`
-- Public frontend + admin UI: `127.0.0.1:3011`
-- Public site: `https://todayinfo.co.za`
-- Admin UI: `https://todayinfo.co.za/admin/`
-- API: `https://api.todayinfo.co.za`
-
-## Changes
-
-- Added `src/frontend-server.mjs`.
-- Added `npm run start:api` and `npm run start:frontend`.
-- Public frontend has server-side SPA fallback, so extension-free routes no longer depend on Nginx `try_files`.
-- `/admin` is served by the frontend process on port 3011.
-- Admin API calls switch to `https://api.todayinfo.co.za/admin/api` when the UI is on the public domain.
-- Admin browser requests use `credentials: include`.
-- API enables credentialed CORS only for configured admin origins.
-- Local `localhost:3011 -> localhost:3009` admin development is supported.
-- Added optional `todayinfo-frontend.service` systemd unit.
-- Admin login no longer prefills a password.
-- R2 settings and object structure are unchanged.
-
-## Caching
-
-- Frontend compression enabled.
-- Strong ETags enabled.
-- `frontend/assets/*` cache for one day with stale-while-revalidate.
-- SPA HTML revalidates.
-- Admin UI is no-store.
-- Existing API cache policy stays in place.
+## VPS utility
+- scripts/ingest-dataset.mjs reads a JSON array or an object containing records.
+- npm run ingest:dataset invokes the utility.
+- Default mode is draft-only.
+- --publish must be supplied explicitly to request publishing.
+- --dry-run previews grouping and batch count without writing anything.
 
 ## Release gate
-
-Before merge:
-- dependency install must pass;
-- `npm run check` must pass;
-- full `npm test` must pass.
+Do not merge unless dependency installation, syntax checks and the complete Node test suite pass on the exact release head.

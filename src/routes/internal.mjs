@@ -7,6 +7,7 @@ import { preparePrivateIngestItem } from '../lib/private-ingest.mjs';
 import { verifyApplicationUrl, buildApplicationGuide } from '../lib/application-intelligence.mjs';
 import { contentQuality } from '../lib/content-rules.mjs';
 import { publishPostArtifact } from '../lib/publication-service.mjs';
+import { rootForType } from '../lib/global-content.mjs';
 
 export const internalRouter=Router();
 
@@ -27,7 +28,7 @@ const itemSchema=z.object({
   job_title:z.string().min(3).max(240).optional(),
   name:z.string().min(3).max(240).optional(),
   company:z.string().max(180).optional(),organisation:z.string().max(180).optional(),organization:z.string().max(180).optional(),provider:z.string().max(180).optional(),
-  source_url:z.string().url().max(2048),application_url:z.string().url().max(2048),
+  source_url:z.string().url().max(2048).optional(),application_url:z.string().url().max(2048).optional(),
   rewritten_summary:z.string().max(1000).optional(),rewritten_body:z.string().max(30000).optional(),rewritten_content:z.string().max(30000).optional(),
   summary:z.string().max(3000).optional(),description:z.string().max(10000).optional(),
   requirements:z.union([z.string(),z.array(z.string())]).optional(),
@@ -45,12 +46,14 @@ const itemSchema=z.object({
   main_image_url:z.string().url().max(2048).optional(),image_url:z.string().url().max(2048).optional(),seo_title:z.string().max(180).optional(),seo_description:z.string().max(500).optional()
 }).passthrough();
 
+const INGEST_BATCH_LIMITS={job:50,internship:50,learnership:50,opportunity:50,bursary:100,scholarship:100};
 const batchSchema=z.object({
-  type:z.enum(['job','bursary']),
-  country_code:z.string().min(2).max(3),
+  type:z.enum(Object.keys(INGEST_BATCH_LIMITS)),
+  country_code:z.string().min(2).max(3).optional(),
   country_name:z.string().max(120).optional(),
   source_name:z.string().min(2).max(160).optional().default('TodayInfo Private Ingest'),
   publish:z.boolean().optional().default(true),
+  verify_applications:z.boolean().optional(),
   items:z.array(itemSchema).min(1).max(100)
 });
 
@@ -63,17 +66,18 @@ const publishable=(draft,quality,route)=>Boolean(
 );
 
 internalRouter.get('/status',(req,res)=>res.json({data:{
-  enabled:true,max_batch:{job:50,bursary:100},minimum_publish_score:config.autoPublishMinScore,
+  enabled:true,max_batch:INGEST_BATCH_LIMITS,minimum_publish_score:config.autoPublishMinScore,
+  supported_types:Object.keys(INGEST_BATCH_LIMITS),
   publishing:'verified application URL + quality gate + required structured fields',
-  rewrite_policy:'content is converted into TodayInfo structured wording before storage; supplied rewrites are preferred',
-  growth_mode:'append-or-update by source identity; there is no fixed permanent catalog size',
-  application_link:'stored as the primary official application destination, separate from the source URL'
+  rewrite_policy:'no AI rewriting; supplied structured TodayInfo content is preserved and otherwise deterministic rules build the draft',
+  growth_mode:'append-or-update by source identity; re-running the same dataset does not intentionally create duplicates',
+  application_link:'stored separately from source URL; draft-only bulk imports may defer live verification until editorial review'
 }}));
 
 internalRouter.post('/batch',async(req,res)=>{
   const parsed=batchSchema.safeParse(req.body||{});
   if(!parsed.success)return res.status(400).json({error:'Invalid ingestion batch',details:parsed.error.flatten()});
-  const input=parsed.data;const max=input.type==='job'?50:100;
+  const input=parsed.data;const max=INGEST_BATCH_LIMITS[input.type]||50;
   if(input.items.length>max)return res.status(400).json({error:`${input.type} batches are limited to ${max} items`});
 
   const existing=await store.listPosts({include_deleted:true});
@@ -84,7 +88,10 @@ internalRouter.post('/batch',async(req,res)=>{
       const prepared=preparePrivateIngestItem(raw,{
         type:input.type,country_code:input.country_code,country_name:input.country_name,source_name:input.source_name
       });
-      const route=await verifyApplicationUrl(prepared.application_url,{sourceUrl:prepared.source_url});
+      const shouldVerify=input.verify_applications ?? input.publish;
+      const route=shouldVerify&&prepared.application_url
+        ?await verifyApplicationUrl(prepared.application_url,{sourceUrl:prepared.source_url})
+        :{verified:false,reason:prepared.application_url?'not-checked-draft-ingest':'missing-application-url',original_url:prepared.application_url||null,final_url:null,checked_at:null};
       const draft=prepared.draft;
       draft.type_data={...(draft.type_data||{}),
         application_url:route.verified?route.final_url:prepared.application_url,
@@ -96,7 +103,7 @@ internalRouter.post('/batch',async(req,res)=>{
       const goLive=input.publish&&publishable(draft,quality,route);
       draft.status=goLive?'published':'draft';
 
-      let row=existing.find(x=>sameUrl(x.source?.source_url,prepared.source_url))||
+      let row=(prepared.source_url?existing.find(x=>sameUrl(x.source?.source_url,prepared.source_url)):null)||
         existing.find(x=>x.slug===draft.slug&&x.content_type===input.type&&x.geo?.country_code===draft.geo?.country_code);
 
       const existingPublished=Boolean(row?.status==='published'&&!row?.deleted_at);
@@ -130,7 +137,7 @@ internalRouter.post('/batch',async(req,res)=>{
       });
 
       results.push({
-        ok:true,id:row.id,title:row.title,slug:row.slug,path:`/${String(draft.geo?.country_code||'').toLowerCase()}/${input.type==='job'?'jobs':'bursaries'}/${row.slug}`,
+        ok:true,id:row.id,title:row.title,slug:row.slug,path:`${draft.geo?.country_code?`/${String(draft.geo.country_code).toLowerCase()}`:''}/${rootForType(input.type)}/${row.slug}`,
         status:goLive?'published':'draft',quality_score:quality.score,
         application:{url:draft.type_data.application_url,verified:Boolean(route.verified),reason:route.reason},
         source_url:prepared.source_url
