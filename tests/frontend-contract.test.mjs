@@ -64,19 +64,26 @@ test('frontend displays application verification and application guides',()=>{
   assert.match(app,/guideDetail/);
 });
 
-test('frontend Node process owns SPA fallback and CSP while Nginx reverse-proxies it',()=>{
+test('public frontend owns SPA fallback while admin runs on its own Node service',()=>{
   const nginx=read('deploy/nginx/todayinfo.conf');
   const frontendServer=read('src/frontend-server.mjs');
+  const adminServer=read('src/admin-server.mjs');
   assert.match(nginx,/server_name todayinfo\.co\.za www\.todayinfo\.co\.za[\s\S]*proxy_pass http:\/\/127\.0\.0\.1:3011/);
+  assert.match(nginx,/server_name admin\.todayinfo\.co\.za[\s\S]*proxy_pass http:\/\/127\.0\.0\.1:3020/);
   assert.match(frontendServer,/sendFile\(path\.join\(frontendRoot,'index\.html'\)\)/);
   assert.match(frontendServer,/app\.get\('\/data\/api-config\.js'/);
-  assert.match(frontendServer,/connectSrc:\["'self'",apiOrigin\]/);
+  assert.doesNotMatch(frontendServer,/app\.use\('\/admin'/);
+  assert.match(adminServer,/ADMIN_PORT\|\|3020/);
+  assert.match(adminServer,/app\.use\('\/admin',express\.static/);
+  assert.match(adminServer,/connectSrc:\["'self'",apiOrigin\]/);
   assert.match(frontendServer,/max-age=86400, stale-while-revalidate=604800/);
 });
 
 test('production examples preserve R2 bucket and API port 3009',()=>{
   const env=read('.env.production.example');
   assert.match(env,/PORT=3009/);
+  assert.match(env,/ADMIN_PORT=3020/);
+  assert.match(env,/ADMIN_ORIGIN=https:\/\/admin\.todayinfo\.co\.za/);
   assert.match(env,/R2_BUCKET=todayinfo/);
   assert.match(env,/PUBLIC_API_ORIGIN=https:\/\/api\.todayinfo\.co\.za/);
   assert.match(env,/ADMIN_ALLOWED_ORIGINS=.*https:\/\/admin\.todayinfo\.co\.za/);
@@ -108,19 +115,23 @@ test('Nginx and both systemd services use the single /opt/filebrowser/today VPS 
   const nginx=read('deploy/nginx/todayinfo.conf');
   const apiService=read('deploy/systemd/todayinfo-api.service');
   const frontendService=read('deploy/systemd/todayinfo-frontend.service');
+  const adminService=read('deploy/systemd/todayinfo-admin.service');
   assert.match(nginx,/server_name todayinfo\.co\.za www\.todayinfo\.co\.za/);
   assert.match(nginx,/server_name admin\.todayinfo\.co\.za/);
   assert.match(nginx,/https:\/\/admin\.todayinfo\.co\.za\//);
+  assert.match(nginx,/server_name admin\.todayinfo\.co\.za/);
   assert.match(nginx,/server_name api\.todayinfo\.co\.za/);
   assert.match(nginx,/127\.0\.0\.1:3009/);
   assert.match(nginx,/127\.0\.0\.1:3011/);
+  assert.match(nginx,/127\.0\.0\.1:3020/);
   assert.match(nginx,/proxy_cache todayinfo_api_cache/);
-  for(const service of [apiService,frontendService]){
+  for(const service of [apiService,frontendService,adminService]){
     assert.match(service,/WorkingDirectory=\/opt\/filebrowser\/today/);
     assert.match(service,/EnvironmentFile=\/opt\/filebrowser\/today\/\.env/);
   }
   assert.match(apiService,/src\/server\.mjs/);
   assert.match(frontendService,/src\/frontend-server\.mjs/);
+  assert.match(adminService,/src\/admin-server\.mjs/);
 });
 
 
