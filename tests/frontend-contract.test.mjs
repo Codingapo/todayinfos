@@ -79,6 +79,7 @@ test('production examples preserve R2 bucket and API port 3009',()=>{
   assert.match(env,/PORT=3009/);
   assert.match(env,/R2_BUCKET=todayinfo/);
   assert.match(env,/PUBLIC_API_ORIGIN=https:\/\/api\.todayinfo\.co\.za/);
+  assert.match(env,/ADMIN_ALLOWED_ORIGINS=.*https:\/\/admin\.todayinfo\.co\.za/);
   assert.match(env,/APP_ORIGIN=https:\/\/todayinfo\.co\.za/);
   assert.match(env,/SERVE_FRONTEND=false/);
 });
@@ -108,6 +109,8 @@ test('Nginx and both systemd services use the single /opt/filebrowser/today VPS 
   const apiService=read('deploy/systemd/todayinfo-api.service');
   const frontendService=read('deploy/systemd/todayinfo-frontend.service');
   assert.match(nginx,/server_name todayinfo\.co\.za www\.todayinfo\.co\.za/);
+  assert.match(nginx,/server_name admin\.todayinfo\.co\.za/);
+  assert.match(nginx,/https:\/\/admin\.todayinfo\.co\.za\//);
   assert.match(nginx,/server_name api\.todayinfo\.co\.za/);
   assert.match(nginx,/127\.0\.0\.1:3009/);
   assert.match(nginx,/127\.0\.0\.1:3011/);
